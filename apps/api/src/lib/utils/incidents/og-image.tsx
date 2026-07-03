@@ -1,6 +1,6 @@
-import { ImageResponse } from "hono-og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { ImageResponse } from "takumi-js/response";
 
 import type { IncidentStatistics } from "@/lib/utils/incidents/statistics";
 import type { DetailedIncident } from "@bomberoscr/db/queries/incidents";

@@ -1,6 +1,6 @@
-import { ImageResponse } from "hono-og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { ImageResponse } from "takumi-js/response";
 
 const size = { width: 1200, height: 630 } as const;
 

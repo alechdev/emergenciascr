@@ -27,11 +27,6 @@
     "oxlint": "1.46.0",
     "oxlint-tsgolint": "0.12.0"
   },
-  "overrides": {
-    "hono-og@0.0.29": {
-      "satori": "0.12.2"
-    }
-  },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,jsonc,css,scss,md,mdx,html,yml,yaml}": "bunx oxfmt"
   },

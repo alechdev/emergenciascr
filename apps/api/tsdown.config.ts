@@ -6,5 +6,6 @@ export default defineConfig({
   platform: "node",
   clean: true,
   sourcemap: true,
-  noExternal: [/@bomberoscr\/.*/]
+  noExternal: [/@bomberoscr\/.*/],
+  external: ["@takumi-rs/core"]
 });

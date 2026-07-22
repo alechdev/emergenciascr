@@ -74,7 +74,7 @@ export const Route = createRootRouteWithContext<{
       {
         defer: true,
         src: "https://u.alech.dev/script.js",
-        "data-website-id": "876f9c97-a6a7-4262-b125-b763e4126706"
+        "data-website-id": "6de5b3a0-67fc-41dd-9263-84b16e910ad7"
       }
     ]
   }),

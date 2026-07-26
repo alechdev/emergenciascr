@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Suspense, lazy } from "react";
 import { z } from "zod";
 
 import { LandingHero } from "@/components/homepage/landing-hero";
@@ -93,97 +93,30 @@ function SectionPlaceholder({ className }: { className: string }) {
   );
 }
 
-function DeferredSection({
-  children,
-  placeholderClassName,
-  rootMargin = "320px 0px"
-}: {
-  children: JSX.Element;
-  placeholderClassName: string;
-  rootMargin?: string;
-}) {
-  const [isVisible, setIsVisible] = useState(false);
-  const sectionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (isVisible) {
-      return;
-    }
-
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (!("IntersectionObserver" in window)) {
-      setIsVisible(true);
-      return;
-    }
-
-    const element = sectionRef.current;
-
-    if (!element) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin }
-    );
-
-    observer.observe(element);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [isVisible, rootMargin]);
-
-  return (
-    <div ref={sectionRef}>
-      {isVisible ? (
-        <Suspense fallback={<SectionPlaceholder className={placeholderClassName} />}>
-          {children}
-        </Suspense>
-      ) : (
-        <SectionPlaceholder className={placeholderClassName} />
-      )}
-    </div>
-  );
-}
-
 function HomePage() {
   return (
     <div className="-mt-8 flex flex-col gap-8">
       <LandingHero />
-      <DeferredSection placeholderClassName="mt-6 h-[920px] py-8 md:h-[980px] lg:h-[860px]">
+      <Suspense
+        fallback={<SectionPlaceholder className="mt-6 h-[920px] py-8 md:h-[980px] lg:h-[860px]" />}>
         <section className="mt-6 flex flex-col py-8">
           <AnnualRecapSection />
           <DailyResponseTimesLineChart />
           <RecentIncidentsHoursBarChart />
         </section>
-      </DeferredSection>
+      </Suspense>
       <Separator />
-      <DeferredSection
-        rootMargin="420px 0px"
-        placeholderClassName="h-[560px] md:h-[620px]">
+      <Suspense fallback={<SectionPlaceholder className="h-[560px] md:h-[620px]" />}>
         <HighlightedIncidents />
-      </DeferredSection>
-      <DeferredSection
-        rootMargin="520px 0px"
-        placeholderClassName="h-[560px] md:h-[620px]">
+      </Suspense>
+      <Suspense fallback={<SectionPlaceholder className="h-[560px] md:h-[620px]" />}>
         <LatestIncidents />
-      </DeferredSection>
+      </Suspense>
       {/* <MapCTA /> */}
       <Separator />
-      <DeferredSection
-        rootMargin="620px 0px"
-        placeholderClassName="h-[420px] md:h-[460px]">
+      <Suspense fallback={<SectionPlaceholder className="h-[420px] md:h-[460px]" />}>
         <IncidentTypesChart />
-      </DeferredSection>
+      </Suspense>
     </div>
   );
 }

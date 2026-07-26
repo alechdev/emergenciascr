@@ -19,10 +19,7 @@ RUN bun run --filter frontend build
 # Build a minimal package.json with only runtime dependencies (no devDependencies).
 # Workspace packages (@bomberoscr/*) are bundled into the Vite SSR build, same as the API image.
 RUN apk add --no-cache jq && \
-  jq 'del(.devDependencies) | .dependencies |= with_entries(select(
-    (.key | test("@tanstack/react-(devtools|query-devtools|router-devtools|start)") | not)
-    and (.key | startswith("@bomberoscr/") | not)
-  ))' \
+  jq 'del(.devDependencies) | .dependencies |= with_entries(select((.key | test("@tanstack/react-(devtools|query-devtools|router-devtools|start)") | not) and (.key | startswith("@bomberoscr/") | not)))' \
   apps/frontend/package.json > /tmp/package.json
 FROM oven/bun:1.3.9-alpine AS runner
 

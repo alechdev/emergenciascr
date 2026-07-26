@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
+import { JsonLdScript } from "@/components/seo/json-ld-script";
 import { StationCard, StationCardSkeleton } from "@/components/stations/station-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { StatCard, StatCardSkeleton } from "@/components/ui/stat-card";
 import { getSystemOverviewOptions, listStationsOptions } from "@/lib/api/@tanstack/react-query.gen";
+import { buildCollectionPageJsonLd } from "@/lib/json-ld";
 import { SITE_URL } from "@/lib/site";
 import { formatMinutesToHMS } from "@/lib/utils";
 
@@ -173,6 +175,13 @@ function Page() {
 
   return (
     <div className="flex flex-col gap-6">
+      <JsonLdScript
+        data={buildCollectionPageJsonLd({
+          name: title,
+          description,
+          url: `${SITE_URL}/estaciones`
+        })}
+      />
       {isSystemOverviewPending && !systemOverview ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <StatCardSkeleton />

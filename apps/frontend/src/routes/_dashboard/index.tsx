@@ -4,6 +4,8 @@ import { z } from "zod";
 
 import { LandingHero } from "@/components/homepage/landing-hero";
 import { Separator } from "@/components/homepage/separator";
+import { JsonLdScript } from "@/components/seo/json-ld-script";
+import { buildHomeJsonLd } from "@/lib/json-ld";
 import { SITE_URL } from "@/lib/site";
 // import { MapCTA } from "@/components/homepage/map-cta";
 
@@ -96,6 +98,7 @@ function SectionPlaceholder({ className }: { className: string }) {
 function HomePage() {
   return (
     <div className="-mt-8 flex flex-col gap-8">
+      <JsonLdScript data={buildHomeJsonLd()} />
       <LandingHero />
       <Suspense
         fallback={<SectionPlaceholder className="mt-6 h-[920px] py-8 md:h-[980px] lg:h-[860px]" />}>

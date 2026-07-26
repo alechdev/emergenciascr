@@ -7,6 +7,7 @@ import { IncidentsList } from "@/components/incidents/list";
 import { IncidentsMap } from "@/components/incidents/map";
 import { IncidentsSearchHeader } from "@/components/incidents/search/header";
 import { LogoIcon } from "@/components/layout/logo-icon";
+import { JsonLdScript } from "@/components/seo/json-ld-script";
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
@@ -19,6 +20,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { listIncidentTypes, listStations } from "@/lib/api";
 import { client } from "@/lib/api/client.gen";
+import { buildCollectionPageJsonLd } from "@/lib/json-ld";
 import { SITE_URL } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
@@ -165,6 +167,13 @@ function IncidentesPage() {
 
   return (
     <div className={pageClassName}>
+      <JsonLdScript
+        data={buildCollectionPageJsonLd({
+          name: title,
+          description,
+          url: `${SITE_URL}/incidentes`
+        })}
+      />
       <div className="max-md:sticky max-md:top-0 max-md:z-30 max-md:border-b max-md:border-border max-md:bg-background">
         <IncidentsSearchHeader
           incidentTypes={incidentTypes}

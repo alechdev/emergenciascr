@@ -18,10 +18,11 @@ import {
   VehicleResponseTimes,
   VehicleResponseTimesSkeleton
 } from "@/components/incidents/details/vehicle-response-times";
+import { JsonLdScript } from "@/components/seo/json-ld-script";
 import { getIncidentById } from "@/lib/api";
 import { client } from "@/lib/api/client.gen";
+import { buildIncidentJsonLd } from "@/lib/json-ld";
 import { SITE_URL } from "@/lib/site";
-import { areCoordinatesValid } from "@/lib/utils";
 
 export const Route = createFileRoute("/_dashboard/incidentes/$slug")({
   ssr: true,
@@ -143,50 +144,25 @@ function IncidenteDetailPage() {
     (acc, station) => acc + station.vehicles.length,
     0
   );
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Event",
-    name: incident.title,
+  const description = `Incidente reportado el ${new Date(incident.incidentTimestamp).toLocaleDateString("es-CR", { day: "2-digit", month: "long", year: "numeric" })} en ${incident.address}. EE-${incident.EEConsecutive}. ${dispatchedStationsCount} estación(es) y ${dispatchedVehiclesCount} unidad(es) despachadas.`;
+
+  const jsonLd = buildIncidentJsonLd({
+    title: incident.title,
+    description,
     url: `${SITE_URL}/incidentes/${incident.slug}`,
-    description: `Incidente reportado el ${new Date(incident.incidentTimestamp).toLocaleDateString("es-CR", { day: "2-digit", month: "long", year: "numeric" })} en ${incident.address}. EE-${incident.EEConsecutive}. ${dispatchedStationsCount} estación(es) y ${dispatchedVehiclesCount} unidad(es) despachadas.`,
-    startDate: incident.incidentTimestamp,
-    eventStatus: incident.isOpen
-      ? "https://schema.org/EventScheduled"
-      : "https://schema.org/EventCancelled",
-    endDate: incident.isOpen ? incident.modifiedAt : undefined,
-    location: {
-      "@type": "Place",
-      name: incident.address,
-      ...(incident.address && {
-        address: {
-          "@type": "PostalAddress",
-          streetAddress: incident.address,
-          addressCountry: "CR"
-        }
-      }),
-      ...(areCoordinatesValid(incident.latitude.toString(), incident.longitude.toString()) && {
-        geo: {
-          "@type": "GeoCoordinates",
-          latitude: Number(incident.latitude),
-          longitude: Number(incident.longitude)
-        }
-      })
-    },
-    organizer: {
-      "@type": "EmergencyService",
-      name: "Emergencias CR"
-    },
-    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode"
-  };
+    datePublished: incident.incidentTimestamp,
+    dateModified: incident.modifiedAt,
+    address: incident.address,
+    latitude: incident.latitude,
+    longitude: incident.longitude,
+    isOpen: incident.isOpen,
+    eeConsecutive: incident.EEConsecutive,
+    incidentId: incident.id
+  });
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c")
-        }}
-      />
+      <JsonLdScript data={jsonLd} />
       <div className="typography grid w-full max-w-none grid-cols-1 gap-6 pt-8 pb-24 md:gap-8 lg:grid-cols-3 lg:items-start">
         {incident.isOpen && (
           <OpenIncidentBanner

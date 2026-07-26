@@ -1,6 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { Suspense } from "react";
 
+import { JsonLdScript } from "@/components/seo/json-ld-script";
 import {
   StationDetailsCollaborations,
   StationDetailsCollaborationsSkeleton
@@ -27,6 +28,7 @@ import {
 } from "@/components/stations/station-details-vehicles";
 import { getStationByName } from "@/lib/api";
 import { client } from "@/lib/api/client.gen";
+import { buildFireStationJsonLd } from "@/lib/json-ld";
 import { SITE_URL } from "@/lib/site";
 
 export const Route = createFileRoute("/_dashboard/estaciones/$name")({
@@ -83,9 +85,24 @@ export const Route = createFileRoute("/_dashboard/estaciones/$name")({
 
 function EstacionDetailPage() {
   const { station } = Route.useLoaderData();
+  const stationUrl = `${SITE_URL}/estaciones/${encodeURIComponent(station.name)}`;
+
+  const jsonLd = buildFireStationJsonLd({
+    name: station.name,
+    url: stationUrl,
+    stationKey: station.stationKey,
+    address: station.address,
+    phoneNumber: station.phoneNumber,
+    email: station.email,
+    latitude: station.latitude,
+    longitude: station.longitude,
+    imageUrl: station.imageUrl,
+    isOperative: station.isOperative
+  });
 
   return (
     <div className="flex flex-col gap-6">
+      <JsonLdScript data={jsonLd} />
       <div className="grid w-full grid-cols-1 gap-6 md:gap-8 lg:grid-cols-3">
         <aside className="top-[calc(var(--app-top-offset)+2rem)] self-start lg:sticky">
           <StationDetailsProfileHeader station={station} />

@@ -11,7 +11,7 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { useEffect } from "react";
 
 import { Header } from "@/components/layout/header";
-import { SITE_URL, STATIC_OG_IMAGE_URL } from "@/lib/site";
+import { STATIC_OG_IMAGE_URL } from "@/lib/site";
 
 import appCss from "../styles.css?url";
 
@@ -50,16 +50,14 @@ export const Route = createRootRouteWithContext<{
         name: "googlebot",
         content: "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
       },
-      // Open Graph
+      // Open Graph defaults (page routes set og:url / canonical themselves)
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: brandName },
-      { property: "og:url", content: SITE_URL },
       { property: "og:title", content: defaultTitle },
       { property: "og:description", content: description },
       { property: "og:image", content: STATIC_OG_IMAGE_URL },
-      // Twitter
+      // Twitter defaults
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:url", content: SITE_URL },
       { name: "twitter:title", content: defaultTitle },
       { name: "twitter:description", content: description },
       { name: "twitter:image", content: STATIC_OG_IMAGE_URL }
@@ -67,8 +65,7 @@ export const Route = createRootRouteWithContext<{
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
-      { rel: "manifest", href: "/manifest.json" },
-      { rel: "canonical", href: SITE_URL }
+      { rel: "manifest", href: "/manifest.json" }
     ],
     scripts: [
       {

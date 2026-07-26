@@ -7,7 +7,8 @@
     "./logger": "./src/logger.ts",
     "./areCoordinatesValid": "./src/areCoordinatesValid.ts",
     "./compare-two-strings": "./src/compare-two-strings.ts",
-    "./incidents-search": "./src/incidents-search.ts"
+    "./incidents-search": "./src/incidents-search.ts",
+    "./incident-indexability": "./src/incident-indexability.ts"
   },
   "scripts": {
     "build": "tsc"

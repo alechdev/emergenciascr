@@ -1,4 +1,8 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import {
+  getIncidentRobotsContent,
+  isIncidentIndexable
+} from "@bomberoscr/lib/incident-indexability";
+import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 
 import { IncidentArticle, IncidentArticleSkeleton } from "@/components/incidents/details/article";
 import {
@@ -17,7 +21,7 @@ import {
 import { getIncidentById } from "@/lib/api";
 import { client } from "@/lib/api/client.gen";
 import { SITE_URL } from "@/lib/site";
-import { areCoordinatesValid, buildIncidentUrl } from "@/lib/utils";
+import { areCoordinatesValid } from "@/lib/utils";
 
 export const Route = createFileRoute("/_dashboard/incidentes/$slug")({
   ssr: true,
@@ -43,6 +47,17 @@ export const Route = createFileRoute("/_dashboard/incidentes/$slug")({
       throw notFound();
     }
 
+    // Titles (and thus pretty slugs) can change after close; ID is stable.
+    // Permanently redirect outdated / partial slugs to the current canonical.
+    if (slug !== data.slug) {
+      throw redirect({
+        to: "/incidentes/$slug",
+        params: { slug: data.slug },
+        replace: true,
+        statusCode: 301
+      });
+    }
+
     return {
       incident: data
     };
@@ -62,24 +77,31 @@ export const Route = createFileRoute("/_dashboard/incidentes/$slug")({
       (acc, station) => acc + station.vehicles.length,
       0
     );
+    const totalDispatched = dispatchedStationsCount + dispatchedVehiclesCount;
+    const indexable = isIncidentIndexable({
+      isOpen: incident.isOpen,
+      incidentTimestamp: incident.incidentTimestamp,
+      totalDispatched
+    });
+    const robotsContent = getIncidentRobotsContent(indexable);
 
     const description = `Incidente reportado el ${formattedDate}${incident.address ? ` en ${incident.address}` : ""}. EE-${incident.EEConsecutive}. ${dispatchedStationsCount} estación(es) y ${dispatchedVehiclesCount} unidad(es) despachadas.`;
 
     const titleWithLocation = incident.title;
-
-    const canonicalUrl = buildIncidentUrl(
-      incident.id,
-      incident.title,
-      new Date(incident.incidentTimestamp)
-    );
-
-    const fullUrl = `${SITE_URL}${canonicalUrl}`;
+    const fullUrl = `${SITE_URL}/incidentes/${incident.slug}`;
     const ogImageUrl = `${SITE_URL}/api/incidents/${incident.id}/og`;
 
     return {
       meta: [
         { title: `${titleWithLocation} | EE-${incident.EEConsecutive}` },
         { name: "description", content: description },
+        { name: "robots", content: robotsContent },
+        {
+          name: "googlebot",
+          content: indexable
+            ? "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+            : "noindex, follow"
+        },
         { property: "og:title", content: titleWithLocation },
         { property: "og:description", content: description },
         { property: "og:url", content: fullUrl },
@@ -88,6 +110,7 @@ export const Route = createFileRoute("/_dashboard/incidentes/$slug")({
         { name: "twitter:card", content: "summary_large_image" },
         { name: "twitter:title", content: titleWithLocation },
         { name: "twitter:description", content: description },
+        { name: "twitter:url", content: fullUrl },
         { name: "twitter:image", content: ogImageUrl }
       ],
       links: [{ rel: "canonical", href: fullUrl }]
@@ -124,6 +147,7 @@ function IncidenteDetailPage() {
     "@context": "https://schema.org",
     "@type": "Event",
     name: incident.title,
+    url: `${SITE_URL}/incidentes/${incident.slug}`,
     description: `Incidente reportado el ${new Date(incident.incidentTimestamp).toLocaleDateString("es-CR", { day: "2-digit", month: "long", year: "numeric" })} en ${incident.address}. EE-${incident.EEConsecutive}. ${dispatchedStationsCount} estación(es) y ${dispatchedVehiclesCount} unidad(es) despachadas.`,
     startDate: incident.incidentTimestamp,
     eventStatus: incident.isOpen
@@ -188,7 +212,7 @@ function IncidenteDetailPage() {
 function extractIncidentIdFromSlug(slug: string) {
   const id = Number.parseInt(slug.split("-")[0] ?? "", 10);
   if (Number.isNaN(id)) {
-    throw new Error(`Invalid incident slug: ${slug}`);
+    throw notFound();
   }
   return id;
 }

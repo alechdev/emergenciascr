@@ -9,7 +9,7 @@ on:
       - "packages/db/**"
       - "packages/lib/**"
       - "packages/sync-domain/**"
-      - ".github/workflows/build-web.yaml"
+      - ".github/workflows/build-emergenciascr-web.yaml"
 jobs:
   check-version:
     runs-on: ubuntu-latest

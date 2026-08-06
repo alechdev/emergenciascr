@@ -1,4 +1,4 @@
-name: Build Web
+name: Build App
 on:
   workflow_dispatch:
   push:
@@ -9,7 +9,7 @@ on:
       - "packages/db/**"
       - "packages/lib/**"
       - "packages/sync-domain/**"
-      - ".github/workflows/build-emergenciascr-web.yaml"
+      - ".github/workflows/build-app.yaml"
 jobs:
   check-version:
     runs-on: ubuntu-latest

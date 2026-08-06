@@ -29,8 +29,7 @@ Emergencias CR brings together real-time details, analysis, and statistics about
 
 ## What's Included
 
-- `apps/api`: Hono API.
-- `apps/frontend`: TanStack Start frontend.
+- `apps/web`: TanStack Start app + Hono OpenAPI API (one deployable unit).
 - `apps/sync-v2`: BullMQ-based sync service.
 - `apps/sync`: legacy sync service.
 - `packages/*`: shared modules for DB, libraries, and domain logic.
@@ -43,7 +42,7 @@ Install dependencies:
 bun install
 ```
 
-Run API and frontend:
+Run the web app (Start + API on `:3000`):
 
 ```bash
 bun dev
@@ -55,11 +54,10 @@ Run everything, including sync:
 bun dev:all
 ```
 
-Run individual services:
+Run individual processes:
 
 ```bash
-bun dev:api
-bun dev:frontend
+bun dev:web
 bun dev:sync
 ```
 

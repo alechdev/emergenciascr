@@ -1,9 +1,22 @@
 import { extname, join, normalize, sep } from "node:path";
 
+import apiApp from "./api/app.ts";
 import startServer from "./dist/server/server.js";
 
 const BASE_PATH = "";
 const PORT = Number(process.env.PORT ?? 3000);
+
+const apiFetch =
+  typeof apiApp === "object" &&
+  apiApp !== null &&
+  "fetch" in apiApp &&
+  typeof apiApp.fetch === "function"
+    ? apiApp.fetch.bind(apiApp)
+    : null;
+
+if (!apiFetch) {
+  throw new Error("Missing fetch handler in api/app.ts");
+}
 
 const startFetch =
   ("fetch" in startServer && typeof startServer.fetch === "function"
@@ -19,6 +32,10 @@ const startFetch =
 
 if (!startFetch) {
   throw new Error("Missing fetch handler in dist/server/server.js");
+}
+
+function isApiPath(pathname: string) {
+  return pathname === "/api" || pathname.startsWith("/api/");
 }
 
 const clientRoot = normalize(join(import.meta.dir, "dist", "client"));
@@ -78,6 +95,26 @@ Bun.serve({
   async fetch(request) {
     const normalizedRequest = normalizeBasePathRequest(request);
     const url = new URL(normalizedRequest.url);
+
+    if (isApiPath(url.pathname)) {
+      try {
+        return await apiFetch(normalizedRequest);
+      } catch (error) {
+        console.error("Unhandled API request error", {
+          path: url.pathname,
+          method: request.method,
+          error
+        });
+
+        return new Response("Internal Server Error", {
+          status: 500,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8"
+          }
+        });
+      }
+    }
+
     const staticFilePath = resolveStaticFilePath(url.pathname);
 
     if (staticFilePath) {
@@ -115,4 +152,4 @@ Bun.serve({
   }
 });
 
-console.log(`frontend listening on http://0.0.0.0:${PORT}`);
+console.log(`web + api listening on http://0.0.0.0:${PORT}`);

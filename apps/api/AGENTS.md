@@ -1,4 +1,0 @@
-- Feature routers live in a single file under `apps/api/src/routers`, with matching schemas in `apps/api/src/schemas` and DB queries in `packages/db/src/queries`.
-- Schema exports use lowerCamelCase; list endpoints follow the incidents pattern with `*ListRequest`/`*ListResponse` and `{ meta, data }` payloads.
-- List sorting uses a two-item array `[field, direction]` in query params.
-- For boolean query params, prefer `stringBoolean` from `@/lib/zod-utils` so `true`/`false` strings parse correctly.

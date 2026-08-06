@@ -1,4 +1,4 @@
-FROM oven/bun:1.3.9-alpine AS build
+FROM oven/bun:1.3.14-alpine AS build
 
 WORKDIR /app
 
@@ -14,25 +14,43 @@ ENV VITE_SITE_URL=${VITE_SITE_URL}
 COPY . .
 
 RUN bun install --frozen-lockfile
-RUN bun run --filter frontend build
+RUN bun run --filter web build
 
-# Build a minimal package.json with only runtime dependencies (no devDependencies).
-# Workspace packages (@bomberoscr/*) are bundled into the Vite SSR build, same as the API image.
+# Minimal workspace manifest for the runtime image (web + packages the API imports).
 RUN apk add --no-cache jq && \
-  jq 'del(.devDependencies) | .dependencies |= with_entries(select((.key | test("@tanstack/react-(devtools|query-devtools|router-devtools|start)") | not) and (.key | startswith("@bomberoscr/") | not)))' \
-  apps/frontend/package.json > /tmp/package.json
-FROM oven/bun:1.3.9-alpine AS runner
+  printf '%s\n' \
+  '{' \
+  '  "private": true,' \
+  '  "workspaces": ["apps/web", "packages/db", "packages/lib", "packages/sync-domain"],' \
+  '  "packageManager": "bun@1.3.14"' \
+  '}' > /tmp/root.package.json \
+  && jq 'del(.devDependencies)' apps/web/package.json > /tmp/web.package.json
+
+FROM oven/bun:1.3.14-alpine AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
 
-COPY --from=build /tmp/package.json ./package.json
-COPY --from=build /app/apps/frontend/dist ./dist
-COPY --from=build /app/apps/frontend/server.ts ./server.ts
+COPY --from=build /tmp/root.package.json ./package.json
+COPY --from=build /tmp/web.package.json ./apps/web/package.json
+COPY --from=build /app/packages/db/package.json ./packages/db/package.json
+COPY --from=build /app/packages/lib/package.json ./packages/lib/package.json
+COPY --from=build /app/packages/sync-domain/package.json ./packages/sync-domain/package.json
 
 RUN bun install --production --ignore-scripts
+
+COPY --from=build /app/apps/web/dist ./apps/web/dist
+COPY --from=build /app/apps/web/server.ts ./apps/web/server.ts
+COPY --from=build /app/apps/web/api ./apps/web/api
+COPY --from=build /app/apps/web/public ./apps/web/public
+COPY --from=build /app/apps/web/tsconfig.json ./apps/web/tsconfig.json
+COPY --from=build /app/packages/db ./packages/db
+COPY --from=build /app/packages/lib ./packages/lib
+COPY --from=build /app/packages/sync-domain ./packages/sync-domain
+
+WORKDIR /app/apps/web
 
 USER bun
 

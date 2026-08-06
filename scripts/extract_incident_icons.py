@@ -9,8 +9,8 @@ from PIL import Image
 from scipy import ndimage
 
 # Input/Output paths
-SPRITE_PATH = "apps/frontend/public/assets/generated-sprite.jpeg"
-OUTPUT_DIR = "apps/frontend/public/assets/incident-types"
+SPRITE_PATH = "apps/web/public/assets/generated-sprite.jpeg"
+OUTPUT_DIR = "apps/web/public/assets/incident-types"
 
 # Grid configuration: 6 columns x 4 rows
 COLS = 6

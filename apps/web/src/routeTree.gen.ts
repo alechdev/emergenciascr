@@ -16,7 +16,9 @@ import { Route as SitemapIncidentsDotxmlRouteImport } from './routes/sitemap-inc
 import { Route as SitemapIncidentsChar123yearMonthChar125DotxmlRouteImport } from './routes/sitemap-incidents-{$yearMonth}[.]xml'
 import { Route as IncidentsRouteImport } from './routes/_incidents'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
+import { Route as ApiIndexRouteImport } from './routes/api/index'
 import { Route as DashboardIndexRouteImport } from './routes/_dashboard/index'
+import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as IncidentsIncidentesIndexRouteImport } from './routes/_incidents/incidentes/index'
 import { Route as DashboardEstacionesIndexRouteImport } from './routes/_dashboard/estaciones/index'
 import { Route as DashboardIncidentesSlugRouteImport } from './routes/_dashboard/incidentes/$slug'
@@ -56,10 +58,20 @@ const DashboardRoute = DashboardRouteImport.update({
   id: '/_dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIndexRoute = ApiIndexRouteImport.update({
+  id: '/api/',
+  path: '/api/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardRoute,
+} as any)
+const ApiSplatRoute = ApiSplatRouteImport.update({
+  id: '/api/$',
+  path: '/api/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const IncidentsIncidentesIndexRoute =
   IncidentsIncidentesIndexRouteImport.update({
@@ -91,6 +103,8 @@ export interface FileRoutesByFullPath {
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap-stations.xml': typeof SitemapStationsDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/$': typeof ApiSplatRoute
+  '/api/': typeof ApiIndexRoute
   '/estaciones/$name': typeof DashboardEstacionesNameRoute
   '/incidentes/$slug': typeof DashboardIncidentesSlugRoute
   '/estaciones/': typeof DashboardEstacionesIndexRoute
@@ -103,6 +117,8 @@ export interface FileRoutesByTo {
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap-stations.xml': typeof SitemapStationsDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/$': typeof ApiSplatRoute
+  '/api': typeof ApiIndexRoute
   '/estaciones/$name': typeof DashboardEstacionesNameRoute
   '/incidentes/$slug': typeof DashboardIncidentesSlugRoute
   '/estaciones': typeof DashboardEstacionesIndexRoute
@@ -117,7 +133,9 @@ export interface FileRoutesById {
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap-stations.xml': typeof SitemapStationsDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/$': typeof ApiSplatRoute
   '/_dashboard/': typeof DashboardIndexRoute
+  '/api/': typeof ApiIndexRoute
   '/_dashboard/estaciones/$name': typeof DashboardEstacionesNameRoute
   '/_dashboard/incidentes/$slug': typeof DashboardIncidentesSlugRoute
   '/_dashboard/estaciones/': typeof DashboardEstacionesIndexRoute
@@ -132,6 +150,8 @@ export interface FileRouteTypes {
     | '/sitemap-pages.xml'
     | '/sitemap-stations.xml'
     | '/sitemap.xml'
+    | '/api/$'
+    | '/api/'
     | '/estaciones/$name'
     | '/incidentes/$slug'
     | '/estaciones/'
@@ -144,6 +164,8 @@ export interface FileRouteTypes {
     | '/sitemap-pages.xml'
     | '/sitemap-stations.xml'
     | '/sitemap.xml'
+    | '/api/$'
+    | '/api'
     | '/estaciones/$name'
     | '/incidentes/$slug'
     | '/estaciones'
@@ -157,7 +179,9 @@ export interface FileRouteTypes {
     | '/sitemap-pages.xml'
     | '/sitemap-stations.xml'
     | '/sitemap.xml'
+    | '/api/$'
     | '/_dashboard/'
+    | '/api/'
     | '/_dashboard/estaciones/$name'
     | '/_dashboard/incidentes/$slug'
     | '/_dashboard/estaciones/'
@@ -172,6 +196,8 @@ export interface RootRouteChildren {
   SitemapPagesDotxmlRoute: typeof SitemapPagesDotxmlRoute
   SitemapStationsDotxmlRoute: typeof SitemapStationsDotxmlRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiSplatRoute: typeof ApiSplatRoute
+  ApiIndexRoute: typeof ApiIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -225,12 +251,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/': {
+      id: '/api/'
+      path: '/api'
+      fullPath: '/api/'
+      preLoaderRoute: typeof ApiIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_dashboard/': {
       id: '/_dashboard/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/api/$': {
+      id: '/api/$'
+      path: '/api/$'
+      fullPath: '/api/$'
+      preLoaderRoute: typeof ApiSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_incidents/incidentes/': {
       id: '/_incidents/incidentes/'
@@ -302,6 +342,8 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapPagesDotxmlRoute: SitemapPagesDotxmlRoute,
   SitemapStationsDotxmlRoute: SitemapStationsDotxmlRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiSplatRoute: ApiSplatRoute,
+  ApiIndexRoute: ApiIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

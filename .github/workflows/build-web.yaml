@@ -1,0 +1,107 @@
+name: Build Web
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*.*"]
+    paths:
+      - "apps/web/package.json"
+      - "apps/web/Dockerfile"
+      - "apps/web/server.ts"
+      - "apps/web/api/**"
+      - "apps/web/src/**"
+      - "apps/web/public/**"
+      - "packages/db/**"
+      - "packages/lib/**"
+      - "packages/sync-domain/**"
+      - ".github/workflows/build-web.yaml"
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      version_changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Check if version changed
+        id: check
+        run: |
+          NEW_VERSION=$(node -p "JSON.parse(require('fs').readFileSync('apps/web/package.json', 'utf8')).version")
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          if ! git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "No previous commit found, treating version as changed: $NEW_VERSION"
+            exit 0
+          fi
+          git show HEAD^:apps/web/package.json > /tmp/old-package.json 2>/dev/null || {
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "No previous apps/web/package.json, treating version as changed: $NEW_VERSION"
+            exit 0
+          }
+          OLD_VERSION=$(node -p "JSON.parse(require('fs').readFileSync('/tmp/old-package.json', 'utf8')).version")
+          if [ "$OLD_VERSION" != "$NEW_VERSION" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Version changed: $OLD_VERSION -> $NEW_VERSION"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Version unchanged: $NEW_VERSION"
+          fi
+  amd64:
+    needs: check-version
+    if: needs.check-version.outputs.version_changed == 'true' || startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TAILSCALE_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TAILSCALE_CLIENT_SECRET }}
+          tags: tag:ci
+      - name: Add registry host entry
+        run: |
+          echo "${{ secrets.TAILSCALE_SERVER_IP }} ${{ secrets.REGISTRY_HOST }}" | sudo tee -a /etc/hosts
+          getent hosts "${{ secrets.REGISTRY_HOST }}"
+          curl -fsS -k "https://${{ secrets.REGISTRY_HOST }}:${{ secrets.REGISTRY_PORT }}/v2/" || true
+      - name: Login to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            network=host
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.REGISTRY }}/${{ secrets.FRONTEND_IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ needs.check-version.outputs.version }},enable=${{ needs.check-version.outputs.version_changed == 'true' }}
+            type=ref,event=tag
+            type=sha
+      - name: Build image and push to registry
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./apps/web/Dockerfile
+          platforms: linux/amd64
+          build-args: |
+            VITE_BASE=${{ secrets.VITE_BASE }}
+            VITE_MAPBOX_TOKEN=${{ secrets.VITE_MAPBOX_TOKEN }}
+            VITE_SERVER_URL=${{ secrets.VITE_SERVER_URL }}
+            VITE_SITE_URL=${{ secrets.VITE_SITE_URL }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - name: Trigger deploy webhook
+        run: |
+          curl -fsS -X POST "${{ secrets.DEPLOY_WEBHOOK_BASE_URL }}/hooks/emergenciascr-frontend"

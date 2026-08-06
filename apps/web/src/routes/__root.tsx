@@ -67,13 +67,15 @@ export const Route = createRootRouteWithContext<{
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "manifest", href: "/manifest.json" }
     ],
-    scripts: [
-      {
-        defer: true,
-        src: "https://u.alech.dev/script.js",
-        "data-website-id": "6de5b3a0-67fc-41dd-9263-84b16e910ad7"
-      }
-    ]
+    scripts: import.meta.env.PROD
+      ? [
+          {
+            defer: true,
+            src: "https://u.alech.dev/script.js",
+            "data-website-id": "6de5b3a0-67fc-41dd-9263-84b16e910ad7"
+          }
+        ]
+      : []
   }),
 
   component: RootComponent

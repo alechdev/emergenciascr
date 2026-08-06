@@ -19,6 +19,6 @@
   "experimentalSortPackageJson": true,
   "experimentalTailwindcss": {
     "functions": ["cn", "clsx", "cva", "tw", "twMerge"],
-    "stylesheet": "apps/frontend/src/styles.css"
+    "stylesheet": "apps/web/src/styles.css"
   }
 }

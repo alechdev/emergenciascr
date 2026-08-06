@@ -5,17 +5,16 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently --names api,frontend --prefix-colors auto \"bun run --cwd apps/api dev\" \"bun run --cwd apps/frontend dev\"",
-    "dev:api": "bun run --cwd apps/api dev",
-    "dev:frontend": "bun run --cwd apps/frontend dev",
+    "dev": "bun run --cwd apps/web dev",
+    "dev:web": "bun run --cwd apps/web dev",
     "dev:sync": "bun run --cwd apps/sync-v2 dev",
-    "dev:all": "concurrently --names api,frontend,sync --prefix-colors auto \"bun run --cwd apps/api dev\" \"bun run --cwd apps/frontend dev\" \"bun run --cwd apps/sync-v2 dev\"",
-    "lint:check": "bun run --cwd apps/api lint && bun run --cwd apps/frontend lint",
-    "lint:safefix": "bun run --cwd apps/api lint:fix && bun run --cwd apps/frontend lint:fix",
+    "dev:all": "concurrently --names web,sync --prefix-colors auto \"bun run --cwd apps/web dev\" \"bun run --cwd apps/sync-v2 dev\"",
+    "lint:check": "bun run --cwd apps/web lint",
+    "lint:safefix": "bun run --cwd apps/web lint:fix",
     "lint:next": "next lint",
-    "typecheck:frontend": "bun run --cwd apps/frontend typecheck",
-    "format:check": "bun run --cwd apps/api format:check && bun run --cwd apps/frontend format:check",
-    "format": "bun run --cwd apps/api format && bun run --cwd apps/frontend format",
+    "typecheck:web": "bun run --cwd apps/web typecheck",
+    "format:check": "bun run --cwd apps/web format:check",
+    "format": "bun run --cwd apps/web format",
     "prepare": "husky"
   },
   "devDependencies": {

@@ -1,0 +1,9 @@
+name: CI Smoke
+on:
+  push:
+    branches: ["main"]
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "actions are alive" && echo "sha=$GITHUB_SHA"

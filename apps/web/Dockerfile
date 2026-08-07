@@ -17,6 +17,8 @@ RUN bun install --frozen-lockfile
 RUN bun run --filter web build
 
 # Minimal workspace manifest for the runtime image (web + packages the API imports).
+# Strip devDependencies so bun does not require build-only workspace packages
+# like @bomberoscr/typescript-config during the production install.
 RUN apk add --no-cache jq && \
   printf '%s\n' \
   '{' \
@@ -24,7 +26,10 @@ RUN apk add --no-cache jq && \
   '  "workspaces": ["apps/web", "packages/db", "packages/lib", "packages/sync-domain"],' \
   '  "packageManager": "bun@1.3.14"' \
   '}' > /tmp/root.package.json \
-  && jq 'del(.devDependencies)' apps/web/package.json > /tmp/web.package.json
+  && jq 'del(.devDependencies)' apps/web/package.json > /tmp/web.package.json \
+  && jq 'del(.devDependencies)' packages/db/package.json > /tmp/db.package.json \
+  && jq 'del(.devDependencies)' packages/lib/package.json > /tmp/lib.package.json \
+  && jq 'del(.devDependencies)' packages/sync-domain/package.json > /tmp/sync-domain.package.json
 
 FROM oven/bun:1.3.14-alpine AS runner
 
@@ -35,9 +40,9 @@ ENV PORT=3000
 
 COPY --from=build /tmp/root.package.json ./package.json
 COPY --from=build /tmp/web.package.json ./apps/web/package.json
-COPY --from=build /app/packages/db/package.json ./packages/db/package.json
-COPY --from=build /app/packages/lib/package.json ./packages/lib/package.json
-COPY --from=build /app/packages/sync-domain/package.json ./packages/sync-domain/package.json
+COPY --from=build /tmp/db.package.json ./packages/db/package.json
+COPY --from=build /tmp/lib.package.json ./packages/lib/package.json
+COPY --from=build /tmp/sync-domain.package.json ./packages/sync-domain/package.json
 
 RUN bun install --production --ignore-scripts
 

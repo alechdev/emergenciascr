@@ -16,7 +16,7 @@ COPY . .
 RUN bun install --frozen-lockfile
 RUN bun run --filter web build
 
-# Minimal workspace manifest for the runtime image (web + packages the API imports).
+# Minimal workspace manifests for the runtime image (web + packages the API imports).
 # Strip devDependencies so bun does not require build-only workspace packages
 # like @bomberoscr/typescript-config during the production install.
 RUN apk add --no-cache jq && \
@@ -38,22 +38,28 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
+# Manifests first. Do not copy the monorepo bun.lock here — the slim workspace
+# does not match it, and BuildKit/bun will refuse to rewrite a frozen lockfile.
 COPY --from=build /tmp/root.package.json ./package.json
 COPY --from=build /tmp/web.package.json ./apps/web/package.json
 COPY --from=build /tmp/db.package.json ./packages/db/package.json
 COPY --from=build /tmp/lib.package.json ./packages/lib/package.json
 COPY --from=build /tmp/sync-domain.package.json ./packages/sync-domain/package.json
 
-RUN bun install --production --ignore-scripts
-
+# Runtime sources must be present BEFORE install so workspace links land correctly.
+# Do not copy package trees after install — that wipes bun's node_modules symlinks.
+COPY --from=build /app/packages/db/src ./packages/db/src
+COPY --from=build /app/packages/lib/src ./packages/lib/src
+COPY --from=build /app/packages/sync-domain/src ./packages/sync-domain/src
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 COPY --from=build /app/apps/web/server.ts ./apps/web/server.ts
 COPY --from=build /app/apps/web/api ./apps/web/api
 COPY --from=build /app/apps/web/public ./apps/web/public
 COPY --from=build /app/apps/web/tsconfig.json ./apps/web/tsconfig.json
-COPY --from=build /app/packages/db ./packages/db
-COPY --from=build /app/packages/lib ./packages/lib
-COPY --from=build /app/packages/sync-domain ./packages/sync-domain
+
+RUN bun install --production --ignore-scripts \
+  && bun --cwd apps/web -e 'import "drizzle-orm/node-postgres"; import "pg"; console.log("web deps ok")' \
+  && bun --cwd packages/db -e 'import "drizzle-orm/node-postgres"; console.log("db deps ok")'
 
 WORKDIR /app/apps/web
 

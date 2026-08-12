@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 
 import { LogoIcon } from "@/components/layout/logo-icon";
 import { navItems } from "@/components/layout/nav-items";
+import { SERVER_URL } from "@/lib/site";
 
 const SOCIAL_LINKS = [
   {
@@ -11,7 +12,7 @@ const SOCIAL_LINKS = [
   },
   {
     title: "API",
-    url: "https://emergencias.alech.dev/api"
+    url: SERVER_URL
   },
   {
     title: "Web oficial de Bomberos",
@@ -23,9 +24,9 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="app-footer rail-divider-top mt-20 bg-background px-6">
-      <div className="mx-auto w-full max-w-6xl px-2 py-12 sm:px-0">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.8fr)] md:gap-6">
+    <footer className="app-footer rail-divider-top mt-20 bg-background">
+      <div className="mx-auto w-full max-w-6xl px-8 py-12 xl:px-0">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.75fr)_minmax(12rem,1fr)] lg:gap-8">
           <div className="flex flex-col gap-4">
             <Link
               to="/"
@@ -46,7 +47,7 @@ export function Footer() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-4 md:border-l md:pl-8">
+          <div className="flex flex-col gap-4 lg:border-l lg:pl-8">
             <h3 className="text-sm font-semibold tracking-tight">Navegación</h3>
             <nav className="flex flex-col gap-3">
               {navItems
@@ -62,7 +63,7 @@ export function Footer() {
             </nav>
           </div>
 
-          <div className="flex flex-col gap-4 md:border-l md:pl-8">
+          <div className="flex flex-col gap-4 lg:border-l lg:pl-8">
             <h3 className="text-sm font-semibold tracking-tight">Enlaces</h3>
             <nav className="flex flex-col gap-3">
               {SOCIAL_LINKS.map((link) => (
@@ -71,10 +72,10 @@ export function Footer() {
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+                  className="inline-flex w-fit max-w-full items-center gap-1.5 text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground">
                   <span>{link.title}</span>
                   <ArrowUpRightIcon
-                    size={14}
+                    className="size-3.5 shrink-0"
                     aria-hidden="true"
                   />
                 </a>

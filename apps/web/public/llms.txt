@@ -4,9 +4,9 @@
 
 ## Paginas principales
 
-- [Inicio](https://emergencias.alech.dev): Resumen general con incidentes destacados, ultimos incidentes y estadisticas.
-- [Incidentes](https://emergencias.alech.dev/incidentes): Explorador de incidentes con mapa interactivo y lista filtrable. Permite buscar por tipo, estacion, fecha y ubicacion.
-- [Estaciones](https://emergencias.alech.dev/estaciones): Directorio de todas las estaciones de bomberos del pais con estado operativo, ubicacion y estadisticas.
+- [Inicio](https://emergenciascr.com): Resumen general con incidentes destacados, ultimos incidentes y estadisticas.
+- [Incidentes](https://emergenciascr.com/incidentes): Explorador de incidentes con mapa interactivo y lista filtrable. Permite buscar por tipo, estacion, fecha y ubicacion.
+- [Estaciones](https://emergenciascr.com/estaciones): Directorio de todas las estaciones de bomberos del pais con estado operativo, ubicacion y estadisticas.
 
 ## Contenido dinamico
 
@@ -18,8 +18,8 @@
 - Mas de 43,000 incidentes registrados
 - Aproximadamente 150 estaciones de bomberos
 - Datos actualizados en tiempo real desde SIGAE - Sistema de Información Geográfica para la Atención de Emergencias
-- API publica disponible en `https://emergencias.alech.dev/api`
+- API publica disponible en `https://emergenciascr.com/api`
 
 ## Sitemap
 
-- [sitemap.xml](https://emergencias.alech.dev/sitemap.xml)
+- [sitemap.xml](https://emergenciascr.com/sitemap.xml)

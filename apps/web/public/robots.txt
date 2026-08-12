@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://emergencias.alech.dev/sitemap.xml
+Sitemap: https://emergenciascr.com/sitemap.xml

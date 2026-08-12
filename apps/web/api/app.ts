@@ -1,5 +1,5 @@
 import configureOpenAPI from "@api/lib/configure-open-api";
-import createApp from "@api/lib/create-app";
+import createApp, { createRouter } from "@api/lib/create-app";
 import { healthRouter } from "@api/routers/health";
 import { incidentsRouter } from "@api/routers/incidents";
 import { ogRouter } from "@api/routers/og";
@@ -10,7 +10,8 @@ import { typesRouter } from "@api/routers/types";
 
 const app = createApp();
 
-const api = createApp();
+// Nested router only — createApp() would re-apply logger/cors/requestId middleware.
+const api = createRouter();
 
 configureOpenAPI(api);
 

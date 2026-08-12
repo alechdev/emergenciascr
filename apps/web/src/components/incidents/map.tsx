@@ -386,7 +386,7 @@ function renderIncidentMarkers(
                 src={incidentImageUrl}
                 alt=""
                 aria-hidden="true"
-                className="absolute top-1/2 left-1/2 h-[140%] w-[140%] -translate-x-1/2 -translate-y-1/2 scale-110 object-cover opacity-15 blur-2xl transition-transform duration-500 group-hover:scale-125"
+                className="absolute top-1/2 left-1/2 h-[140%] w-[140%] -translate-x-1/2 -translate-y-1/2 scale-110 object-cover opacity-15 blur-2xl transition-transform duration-500 will-change-transform group-hover:scale-125"
                 loading="lazy"
                 decoding="async"
               />
@@ -396,11 +396,11 @@ function renderIncidentMarkers(
           <div className="relative flex flex-1 gap-3 p-3">
             {incidentImageUrl && (
               <div className="flex shrink-0 items-center justify-center">
-                <div className="relative size-14 overflow-hidden rounded-lg bg-muted/50 md:size-16">
+                <div className="relative size-14 overflow-hidden md:size-16">
                   <img
                     src={incidentImageUrl}
                     alt="Ilustración del tipo de incidente"
-                    className="size-full object-contain p-1.5 drop-shadow-md transition-transform duration-300 group-hover:scale-110"
+                    className="size-full object-contain drop-shadow-md transition-transform duration-300 will-change-transform group-hover:scale-110"
                     loading="lazy"
                     decoding="async"
                   />

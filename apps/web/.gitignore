@@ -11,3 +11,7 @@ count.txt
 .output
 .vinxi
 todos.json
+
+# Generated incident-type icons (extract from sprite locally, upload to S3)
+public/assets/generated-sprite.png
+public/assets/incident-types/

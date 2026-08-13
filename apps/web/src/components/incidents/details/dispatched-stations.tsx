@@ -3,13 +3,13 @@ import { Link } from "@tanstack/react-router";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Route } from "@/routes/_dashboard/incidentes/$slug";
 
-import type { GetIncidentByIdResponse } from "@/lib/api";
+type Station = ReturnType<typeof Route.useLoaderData>["stations"][number];
 
 export function DispatchedStations() {
-  const { incident } = Route.useLoaderData();
+  const { stations } = Route.useLoaderData();
 
   // Filter out stations without a valid stationKey (vehicles dispatched but station not dispatched)
-  const validStations = incident.dispatchedStations.filter(
+  const validStations = stations.filter(
     (station) => station.stationKey && station.stationKey.trim() !== ""
   );
 
@@ -38,11 +38,7 @@ export function DispatchedStations() {
   );
 }
 
-function StationCard({
-  station
-}: {
-  station: GetIncidentByIdResponse["dispatchedStations"][number];
-}) {
+function StationCard({ station }: { station: Station }) {
   return (
     <Link
       to="/estaciones/$name"

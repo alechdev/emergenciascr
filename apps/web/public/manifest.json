@@ -4,6 +4,11 @@
   "description": "Dashboard interactivo con estadísticas, análisis de datos y mapa de incidentes atendidos por Bomberos de Costa Rica en tiempo real.",
   "icons": [
     {
+      "src": "favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    },
+    {
       "src": "favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml"

@@ -19,53 +19,75 @@ import {
   VehicleResponseTimesSkeleton
 } from "@/components/incidents/details/vehicle-response-times";
 import { JsonLdScript } from "@/components/seo/json-ld-script";
-import { getIncidentById } from "@/lib/api";
-import { client } from "@/lib/api/client.gen";
+import { markdownResponse, prefersMarkdown, splitMarkdownPathSlug } from "@/lib/accepts-markdown";
 import { buildIncidentJsonLd } from "@/lib/json-ld";
 import { SITE_URL } from "@/lib/site";
+import { getIncidentPage } from "@/server/incidents/get-incident-page";
+import { incidentPageToMarkdown } from "@/server/incidents/to-markdown";
+
+const ONE_MINUTE_MS = 60_000;
 
 export const Route = createFileRoute("/_dashboard/incidentes/$slug")({
   ssr: true,
+  // Matches the open-incident API TTL. Router staleTime is a scalar, so closed
+  // incidents share this 1-minute floor instead of the API's 3-hour cache.
+  staleTime: ONE_MINUTE_MS,
   loader: async ({ params }) => {
     const { slug } = params;
 
-    const isServer = typeof window === "undefined";
-    const baseUrl = isServer
-      ? process.env.SERVER_INTERNAL_URL
-      : import.meta.env.VITE_SERVER_URL || "/api";
-
-    client.setConfig({ baseUrl });
-
-    const incidentId = extractIncidentIdFromSlug(slug);
-
-    const { data } = await getIncidentById({
-      path: {
-        id: incidentId
-      }
-    });
-
-    if (!data) {
+    const page = await getIncidentPage({ data: { slug } });
+    if (!page) {
       throw notFound();
     }
 
     // Titles (and thus pretty slugs) can change after close; ID is stable.
     // Permanently redirect outdated / partial slugs to the current canonical.
-    if (slug !== data.slug) {
+    if (slug !== page.incident.slug) {
       throw redirect({
         to: "/incidentes/$slug",
-        params: { slug: data.slug },
+        params: { slug: page.incident.slug },
         replace: true,
         statusCode: 301
       });
     }
 
-    return {
-      incident: data
-    };
+    return page;
+  },
+  server: {
+    handlers: {
+      GET: async ({ request, params, next }) => {
+        const { slug, fromMarkdownPath } = splitMarkdownPathSlug(params.slug);
+        if (!fromMarkdownPath && !prefersMarkdown(request)) {
+          return next();
+        }
+
+        const page = await getIncidentPage({ data: { slug } });
+        if (!page) {
+          return markdownResponse("# No encontrado\n\nNo se encontró el incidente.\n", {
+            status: 404
+          });
+        }
+
+        if (slug !== page.incident.slug) {
+          const canonicalPath = fromMarkdownPath
+            ? `/incidentes/${page.incident.slug}.md`
+            : `/incidentes/${page.incident.slug}`;
+          return new Response(null, {
+            status: 301,
+            headers: {
+              Location: `${SITE_URL}${canonicalPath}`,
+              Vary: "Accept"
+            }
+          });
+        }
+
+        return markdownResponse(incidentPageToMarkdown(page));
+      }
+    }
   },
   head: ({ loaderData }) => {
     if (!loaderData) return {};
-    const { incident } = loaderData;
+    const { incident, stations } = loaderData;
 
     const formattedDate = new Date(incident.incidentTimestamp).toLocaleDateString("es-CR", {
       day: "2-digit",
@@ -73,8 +95,8 @@ export const Route = createFileRoute("/_dashboard/incidentes/$slug")({
       year: "numeric"
     });
 
-    const dispatchedStationsCount = incident.dispatchedStations.length;
-    const dispatchedVehiclesCount = incident.dispatchedStations.reduce(
+    const dispatchedStationsCount = stations.length;
+    const dispatchedVehiclesCount = stations.reduce(
       (acc, station) => acc + station.vehicles.length,
       0
     );
@@ -114,7 +136,10 @@ export const Route = createFileRoute("/_dashboard/incidentes/$slug")({
         { name: "twitter:url", content: fullUrl },
         { name: "twitter:image", content: ogImageUrl }
       ],
-      links: [{ rel: "canonical", href: fullUrl }]
+      links: [
+        { rel: "canonical", href: fullUrl },
+        { rel: "alternate", type: "text/markdown", href: `${fullUrl}.md` }
+      ]
     };
   },
   pendingComponent: IncidentDetailSkeleton,
@@ -137,10 +162,10 @@ function IncidentDetailSkeleton() {
 }
 
 function IncidenteDetailPage() {
-  const { incident } = Route.useLoaderData();
+  const { incident, stations } = Route.useLoaderData();
 
-  const dispatchedStationsCount = incident.dispatchedStations.length;
-  const dispatchedVehiclesCount = incident.dispatchedStations.reduce(
+  const dispatchedStationsCount = stations.length;
+  const dispatchedVehiclesCount = stations.reduce(
     (acc, station) => acc + station.vehicles.length,
     0
   );
@@ -183,12 +208,4 @@ function IncidenteDetailPage() {
       </div>
     </>
   );
-}
-
-function extractIncidentIdFromSlug(slug: string) {
-  const id = Number.parseInt(slug.split("-")[0] ?? "", 10);
-  if (Number.isNaN(id)) {
-    throw notFound();
-  }
-  return id;
 }

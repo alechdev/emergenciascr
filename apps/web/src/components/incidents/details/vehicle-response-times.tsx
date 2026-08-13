@@ -1,5 +1,4 @@
-import { ChartBarHorizontalIcon, TableIcon, WarningIcon } from "@phosphor-icons/react";
-import { useQuery } from "@tanstack/react-query";
+import { ChartBarHorizontalIcon, TableIcon } from "@phosphor-icons/react";
 import { Bar, BarChart, XAxis, YAxis } from "recharts";
 
 import {
@@ -19,11 +18,8 @@ import {
   TableRow
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
-import { getIncidentResponseTimesOptions } from "@/lib/api/@tanstack/react-query.gen";
 import { cn } from "@/lib/utils";
 import { Route } from "@/routes/_dashboard/incidentes/$slug";
-
-import type { GetIncidentResponseTimesResponse } from "@/lib/api/types.gen";
 
 const chartConfig = {
   responseTime: {
@@ -72,33 +68,9 @@ function formatTime(dateString: string | null): string {
 }
 
 export function VehicleResponseTimes() {
-  const { incident } = Route.useLoaderData();
+  const { responseTimes } = Route.useLoaderData();
 
-  const {
-    data: responseTimes,
-    isLoading,
-    isError
-  } = useQuery(
-    getIncidentResponseTimesOptions({
-      path: { id: incident.id }
-    })
-  );
-
-  if (isLoading || isError || !responseTimes) {
-    return (
-      <div className="relative">
-        <VehicleResponseTimesSkeleton />
-        {isError ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/70 p-4 text-center text-sm text-muted-foreground backdrop-blur-sm">
-            <WarningIcon className="size-6" />
-            Ocurrió un error cargando los tiempos de respuesta
-          </div>
-        ) : null}
-      </div>
-    );
-  }
-
-  const vehicles = responseTimes.vehicles ?? [];
+  const vehicles = responseTimes;
   const timeData = vehicles
     .filter((v) => v.totalTimeSeconds > 0)
     .sort((a, b) => a.totalTimeSeconds - b.totalTimeSeconds);
@@ -155,7 +127,7 @@ export function VehicleResponseTimes() {
   );
 }
 
-type VehicleTimeData = GetIncidentResponseTimesResponse["vehicles"][number];
+type VehicleTimeData = ReturnType<typeof Route.useLoaderData>["responseTimes"][number];
 
 function VehicleResponseTimeChart({ vehicles }: { vehicles: VehicleTimeData[] }) {
   const chartData = vehicles.map((v) => ({

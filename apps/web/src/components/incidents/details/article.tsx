@@ -41,7 +41,7 @@ function calculateResponseTime(dispatchTime: Date, arrivalTime: Date): string {
 }
 
 export function IncidentArticle() {
-  const { incident } = Route.useLoaderData();
+  const { incident, stations } = Route.useLoaderData();
 
   const incidentTimestamp = new Date(incident.incidentTimestamp);
   const formattedIncidentDate = incidentTimestamp.toLocaleString("es-CR", {
@@ -55,11 +55,9 @@ export function IncidentArticle() {
     hour12: true
   });
 
-  const responsibleStation = incident.dispatchedStations.find((station) => station.isResponsible);
+  const responsibleStation = stations.find((station) => station.isResponsible);
 
-  const supportingStations = incident.dispatchedStations.filter(
-    (station) => !station.isResponsible
-  );
+  const supportingStations = stations.filter((station) => !station.isResponsible);
 
   const firstBatchVehicles = responsibleStation
     ? responsibleStation.vehicles
@@ -81,11 +79,9 @@ export function IncidentArticle() {
         )
     : [];
 
-  const allVehicles = incident.dispatchedStations.flatMap((s) => s.vehicles);
+  const allVehicles = stations.flatMap((s) => s.vehicles);
 
-  const getSingleVehicleWithDeparture = (
-    allVehicles: (typeof incident.dispatchedStations)[number]["vehicles"]
-  ) => {
+  const getSingleVehicleWithDeparture = (allVehicles: (typeof stations)[number]["vehicles"]) => {
     if (allVehicles.length !== 1) return null;
     const vehicle = allVehicles[0];
     // Check if departureTime and arrivalTime exist and are valid dates
@@ -147,7 +143,7 @@ export function IncidentArticle() {
           Al ser {formatArticleForTime(incidentTimestamp)} {formattedIncidentTime}, Bomberos recibe
           una alerta de "
           <em className="lowercase">
-            {[incident.dispatchType?.name, incident.specificDispatchType?.name]
+            {[incident.dispatchTypeName, incident.specificDispatchTypeName]
               .filter(Boolean)
               .join(", ") || "incidente"}
           </em>
@@ -236,13 +232,10 @@ export function IncidentArticle() {
         )}
 
         {(() => {
-          const dispatchTypeDisplay = [
-            incident.dispatchType?.name,
-            incident.specificDispatchType?.name
-          ]
+          const dispatchTypeDisplay = [incident.dispatchTypeName, incident.specificDispatchTypeName]
             .filter(Boolean)
             .join(", ");
-          const actualTypeDisplay = [incident.actualType?.name, incident.specificActualType?.name]
+          const actualTypeDisplay = [incident.actualTypeName, incident.specificActualTypeName]
             .filter(Boolean)
             .join(", ");
 
@@ -274,8 +267,8 @@ export function IncidentArticle() {
             const prevCount = incident.statistics.previousYearCount;
 
             const typeDisplay = [
-              incident.actualType?.name ?? incident.dispatchType?.name,
-              incident.specificActualType?.name ?? incident.specificDispatchType?.name
+              incident.actualTypeName ?? incident.dispatchTypeName,
+              incident.specificActualTypeName ?? incident.specificDispatchTypeName
             ]
               .filter(Boolean)
               .join(", ");

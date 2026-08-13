@@ -1,6 +1,3 @@
-import { WarningIcon } from "@phosphor-icons/react";
-import { useQuery } from "@tanstack/react-query";
-
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Timeline,
@@ -12,7 +9,6 @@ import {
   TimelineSeparator,
   TimelineTitle
 } from "@/components/ui/timeline";
-import { getIncidentTimelineOptions } from "@/lib/api/@tanstack/react-query.gen";
 import { Route } from "@/routes/_dashboard/incidentes/$slug";
 
 type TimelineEvent = {
@@ -47,34 +43,10 @@ function formatEventDate(date: Date, incidentDate: Date): string {
 }
 
 export function IncidentTimeline() {
-  const { incident } = Route.useLoaderData();
+  const { incident, timeline } = Route.useLoaderData();
   const incidentDate = new Date(incident.incidentTimestamp);
 
-  const {
-    data: timeline,
-    isLoading,
-    isError
-  } = useQuery(
-    getIncidentTimelineOptions({
-      path: { id: incident.id }
-    })
-  );
-
-  if (isLoading || isError || !timeline) {
-    return (
-      <div className="relative">
-        <IncidentTimelineSkeleton />
-        {isError ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/70 p-4 text-center text-sm text-muted-foreground backdrop-blur-sm">
-            <WarningIcon className="size-6" />
-            Ocurrió un error cargando la línea de tiempo
-          </div>
-        ) : null}
-      </div>
-    );
-  }
-
-  const events: TimelineEvent[] = (timeline.events ?? []).map((event) => ({
+  const events: TimelineEvent[] = timeline.map((event) => ({
     ...event,
     date: new Date(event.date)
   }));

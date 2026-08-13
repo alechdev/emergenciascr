@@ -31,26 +31,30 @@ function getLocation(incident: {
   return undefined;
 }
 
-function getIncidentTitle(incident: {
-  importantDetails: string | null;
-  specificDispatchIncidentType?: { name: string } | null;
-  dispatchIncidentType?: { name: string } | null;
-  province?: { name: string } | null;
-  canton?: { name: string } | null;
-  district?: { name: string } | null;
-}): string {
-  const incidentType =
-    incident.importantDetails ||
-    incident.specificDispatchIncidentType?.name ||
-    incident.dispatchIncidentType?.name ||
-    "Incidente";
-
-  let title = incidentType;
-  const location = getLocation(incident);
-  if (location) {
-    title += ` EN ${location}`;
+function getIncidentTitle(
+  importantDetails: string | null,
+  specificType: string | null | undefined,
+  type: string | null | undefined,
+  location?: {
+    districtName: string | null;
+    cantonName: string | null;
+    provinceName: string | null;
   }
-  return title;
+): string {
+  const baseTitle = importantDetails || specificType || type || "Incidente";
+
+  if (!location) return baseTitle;
+
+  const { districtName, cantonName, provinceName } = location;
+
+  const locationParts: string[] = [];
+  if (districtName) locationParts.push(districtName);
+  if (cantonName) locationParts.push(cantonName);
+  if (provinceName) locationParts.push(provinceName);
+
+  if (locationParts.length === 0) return baseTitle;
+
+  return `${baseTitle} EN ${locationParts.join(", ")}`;
 }
 
 function calculateTimeDiffInSeconds(end?: Date | null, start?: Date | null): number {

@@ -3,10 +3,11 @@ import { getFromS3, uploadToS3 } from "@api/lib/s3";
 import { buildIncidentSlug } from "@api/lib/slug";
 import { buildMapImageUrl, buildStationImageUrl, buildTypeImageUrl } from "@api/lib/url-builder";
 import {
-  calculateTimeDiffInSeconds,
-  isUndefinedDate,
-  toIsoStringOrNull
-} from "@api/lib/utils/incidents/formatters";
+  getFirstValidCoordinatePair,
+  resolveIncidentCoordinates,
+  toCoordinateNumber
+} from "@api/lib/utils/incidents/coordinates";
+import { getIncidentTitle, toIsoStringOrNull } from "@api/lib/utils/incidents/formatters";
 import {
   buildImgproxyUrl,
   buildMapboxUrl,
@@ -14,6 +15,7 @@ import {
   getS3Key
 } from "@api/lib/utils/incidents/map-utils";
 import { generateOgImage } from "@api/lib/utils/incidents/og-image";
+import { buildIncidentResponseTimes } from "@api/lib/utils/incidents/response-times";
 import { getIncidentStatistics } from "@api/lib/utils/incidents/statistics";
 import { buildTimelineEvents } from "@api/lib/utils/incidents/timeline";
 import {
@@ -41,10 +43,6 @@ import { createMessageObjectSchema } from "stoker/openapi/schemas";
 
 const app = new OpenAPIHono();
 
-const EARTH_METERS_PER_DEGREE_LATITUDE = 111_320;
-const TEMP_COORDINATE_RING_SPACING_METERS = 35;
-const TEMP_COORDINATE_RING_COUNT = 1;
-const GOLDEN_ANGLE_DEGREES = 137.50776405003785;
 const ONE_MINUTE_SECONDS = 60;
 const THREE_HOURS_SECONDS = 3 * 60 * 60;
 
@@ -73,138 +71,6 @@ function buildIncidentType(
     name,
     imageUrl: buildTypeImageUrl(code)
   };
-}
-
-function isValidCoordinates(latitude: number | null, longitude: number | null): boolean {
-  if (latitude === null || longitude === null) return false;
-  if (latitude === 0 || longitude === 0) return false;
-  return true;
-}
-
-function toCoordinateNumber(value: number | string | null | undefined): number | null {
-  if (value === null || value === undefined) return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function getFirstValidCoordinatePair(
-  pairs: Array<{ latitude: number | null; longitude: number | null } | null | undefined>
-): { latitude: number; longitude: number } | null {
-  for (const pair of pairs) {
-    if (!pair) continue;
-    if (isValidCoordinates(pair.latitude, pair.longitude)) {
-      return { latitude: pair.latitude, longitude: pair.longitude };
-    }
-  }
-  return null;
-}
-
-function applyTemporaryCoordinateOffset(
-  latitude: number,
-  longitude: number,
-  incidentId: number
-): { latitude: number; longitude: number } {
-  const angleInRadians = (((incidentId * GOLDEN_ANGLE_DEGREES) % 360) * Math.PI) / 180;
-  const ring = (Math.abs(incidentId) % TEMP_COORDINATE_RING_COUNT) + 1;
-  const radiusInMeters = ring * TEMP_COORDINATE_RING_SPACING_METERS;
-
-  const latitudeOffset =
-    (radiusInMeters / EARTH_METERS_PER_DEGREE_LATITUDE) * Math.sin(angleInRadians);
-
-  const metersPerDegreeLongitude = Math.max(
-    Math.abs(EARTH_METERS_PER_DEGREE_LATITUDE * Math.cos((latitude * Math.PI) / 180)),
-    1e-6
-  );
-
-  const longitudeOffset = (radiusInMeters / metersPerDegreeLongitude) * Math.cos(angleInRadians);
-
-  return {
-    latitude: latitude + latitudeOffset,
-    longitude: longitude + longitudeOffset
-  };
-}
-
-function resolveIncidentCoordinates({
-  incidentId,
-  latitude,
-  longitude,
-  fallbackLatitude,
-  fallbackLongitude
-}: {
-  incidentId: number;
-  latitude: number | string | null | undefined;
-  longitude: number | string | null | undefined;
-  fallbackLatitude: number | string | null | undefined;
-  fallbackLongitude: number | string | null | undefined;
-}): {
-  latitude: number;
-  longitude: number;
-  isTemporaryCoordinates: boolean;
-  hasStoredCoordinates: boolean;
-} {
-  const parsedLatitude = toCoordinateNumber(latitude);
-  const parsedLongitude = toCoordinateNumber(longitude);
-
-  if (isValidCoordinates(parsedLatitude, parsedLongitude)) {
-    return {
-      latitude: parsedLatitude,
-      longitude: parsedLongitude,
-      isTemporaryCoordinates: false,
-      hasStoredCoordinates: true
-    };
-  }
-
-  const parsedFallbackLatitude = toCoordinateNumber(fallbackLatitude);
-  const parsedFallbackLongitude = toCoordinateNumber(fallbackLongitude);
-
-  if (!isValidCoordinates(parsedFallbackLatitude, parsedFallbackLongitude)) {
-    return {
-      latitude: parsedLatitude ?? 0,
-      longitude: parsedLongitude ?? 0,
-      isTemporaryCoordinates: false,
-      hasStoredCoordinates: false
-    };
-  }
-
-  const offsetCoordinates = applyTemporaryCoordinateOffset(
-    parsedFallbackLatitude,
-    parsedFallbackLongitude,
-    incidentId
-  );
-
-  return {
-    latitude: offsetCoordinates.latitude,
-    longitude: offsetCoordinates.longitude,
-    isTemporaryCoordinates: true,
-    hasStoredCoordinates: false
-  };
-}
-
-function getIncidentTitle(
-  importantDetails: string | null,
-  specificType: string | null | undefined,
-  type: string | null | undefined,
-  location?: {
-    districtName: string | null;
-    cantonName: string | null;
-    provinceName: string | null;
-  }
-): string {
-  const baseTitle = importantDetails || specificType || type || "Incidente";
-
-  if (!location) return baseTitle;
-
-  const { districtName, cantonName, provinceName } = location;
-
-  // Build location string: "EN district, canton, province"
-  const locationParts: string[] = [];
-  if (districtName) locationParts.push(districtName);
-  if (cantonName) locationParts.push(cantonName);
-  if (provinceName) locationParts.push(provinceName);
-
-  if (locationParts.length === 0) return baseTitle;
-
-  return `${baseTitle} EN ${locationParts.join(", ")}`;
 }
 
 function buildDispatchedStations(incident: {
@@ -625,41 +491,7 @@ app.openapi(
     const ttlSeconds = incident.isOpen ? ONE_MINUTE_SECONDS : THREE_HOURS_SECONDS;
     c.header("Cache-Control", buildCacheControlHeader(ttlSeconds));
 
-    const vehicles = incident.dispatchedVehicles.map((vehicle) => {
-      const responseTimeSeconds = calculateTimeDiffInSeconds(
-        vehicle.arrivalTime,
-        vehicle.dispatchedTime
-      );
-      const hasDeparture = !!vehicle.departureTime && !isUndefinedDate(vehicle.departureTime);
-      const hasReturn = !!vehicle.baseReturnTime && !isUndefinedDate(vehicle.baseReturnTime);
-      const onSceneEndDate = hasDeparture
-        ? vehicle.departureTime
-        : incident.isOpen
-          ? new Date()
-          : null;
-      const onSceneTimeSeconds = calculateTimeDiffInSeconds(onSceneEndDate, vehicle.arrivalTime);
-      const isEnRoute = hasDeparture && !hasReturn;
-      const returnTimeSeconds =
-        hasDeparture && hasReturn
-          ? calculateTimeDiffInSeconds(vehicle.baseReturnTime, vehicle.departureTime)
-          : 0;
-      const totalTimeSeconds = responseTimeSeconds + onSceneTimeSeconds + returnTimeSeconds;
-
-      return {
-        id: vehicle.id,
-        vehicle: vehicle.vehicle?.internalNumber || "N/A",
-        station: vehicle.station.name,
-        dispatchedTime: toIsoStringOrNull(vehicle.dispatchedTime),
-        arrivalTime: toIsoStringOrNull(vehicle.arrivalTime),
-        departureTime: toIsoStringOrNull(vehicle.departureTime),
-        baseReturnTime: toIsoStringOrNull(vehicle.baseReturnTime),
-        responseTimeSeconds,
-        onSceneTimeSeconds,
-        returnTimeSeconds,
-        totalTimeSeconds,
-        isEnRoute
-      };
-    });
+    const vehicles = buildIncidentResponseTimes(incident);
 
     return c.json({ vehicles }, HttpStatusCodes.OK);
   }

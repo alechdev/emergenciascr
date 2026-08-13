@@ -25,7 +25,7 @@ export function StationDetailsIncidentCard({ incident }: StationDetailsIncidentC
   return (
     <Link
       to="/incidentes/$slug"
-      params={{ slug: String(incident.id) }}
+      params={{ slug: incident.slug }}
       className="flex overflow-hidden rounded-lg bg-card hover:bg-accent/10">
       <div className="relative flex aspect-square w-24 shrink-0 items-center justify-center p-1.5">
         {incident.mapImageUrl ? (

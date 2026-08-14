@@ -154,7 +154,7 @@ function IncidentDetailSkeleton() {
         <VehicleResponseTimesSkeleton />
         <DispatchedStationsSkeleton />
       </div>
-      <aside className="incident-timeline-scroll order-2 lg:sticky lg:top-[calc(var(--app-header-height)+1rem)] lg:order-2 lg:col-span-1 lg:max-h-[calc(100dvh-var(--app-header-height)-2rem)] lg:overflow-y-auto lg:overscroll-contain">
+      <aside className="incident-timeline-scroll order-2 lg:sticky lg:top-[calc(var(--app-header-height)+1rem)] lg:order-2 lg:col-span-1 lg:max-h-[calc(100dvh-var(--app-header-height)-2rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-24">
         <IncidentTimelineSkeleton />
       </aside>
     </article>
@@ -201,7 +201,7 @@ function IncidenteDetailPage() {
           <DispatchedStations />
         </div>
         <aside
-          className="incident-timeline-scroll not-typography order-2 lg:sticky lg:top-[calc(var(--app-header-height)+1rem)] lg:order-2 lg:col-span-1 lg:max-h-[calc(100dvh-var(--app-header-height)-2rem)] lg:overflow-y-auto lg:overscroll-contain"
+          className="incident-timeline-scroll not-typography order-2 lg:sticky lg:top-[calc(var(--app-header-height)+1rem)] lg:order-2 lg:col-span-1 lg:max-h-[calc(100dvh-var(--app-header-height)-2rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-24"
           aria-label="Cronología del incidente">
           <IncidentTimeline />
         </aside>

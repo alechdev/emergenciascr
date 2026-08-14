@@ -1,7 +1,7 @@
 const MARKDOWN_TYPES = new Set(["text/markdown", "text/x-markdown"]);
 const MARKDOWN_PATH_SUFFIX = /\.md$/i;
 
-/** Strips a trailing `.md` so `/incidentes/$slug.md` can reuse the HTML route param. */
+/** Strips a trailing `.md` so `/incidentes/$slug.md` and `/estaciones/$name.md` reuse the HTML route param. */
 export function splitMarkdownPathSlug(slug: string): { slug: string; fromMarkdownPath: boolean } {
   if (!MARKDOWN_PATH_SUFFIX.test(slug)) {
     return { slug, fromMarkdownPath: false };

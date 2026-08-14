@@ -26,10 +26,13 @@ import {
   StationDetailsVehicles,
   StationDetailsVehiclesSkeleton
 } from "@/components/stations/station-details-vehicles";
+import { markdownResponse, prefersMarkdown, splitMarkdownPathSlug } from "@/lib/accepts-markdown";
 import { getStationByName } from "@/lib/api";
 import { client } from "@/lib/api/client.gen";
 import { buildFireStationJsonLd } from "@/lib/json-ld";
 import { SITE_URL } from "@/lib/site";
+import { getStationPage } from "@/server/stations/get-station-page";
+import { stationPageToMarkdown } from "@/server/stations/to-markdown";
 
 export const Route = createFileRoute("/_dashboard/estaciones/$name")({
   ssr: true,
@@ -58,6 +61,40 @@ export const Route = createFileRoute("/_dashboard/estaciones/$name")({
       station: data.station
     };
   },
+  server: {
+    handlers: {
+      GET: async ({ request, params, next }) => {
+        const { slug: rawName, fromMarkdownPath } = splitMarkdownPathSlug(params.name);
+        if (!fromMarkdownPath && !prefersMarkdown(request)) {
+          return next();
+        }
+
+        const name = decodeURIComponent(rawName).trim();
+        const page = await getStationPage({ data: { name } });
+        if (!page) {
+          return markdownResponse("# No encontrado\n\nNo se encontró la estación.\n", {
+            status: 404
+          });
+        }
+
+        if (name !== page.station.name) {
+          const encodedName = encodeURIComponent(page.station.name);
+          const canonicalPath = fromMarkdownPath
+            ? `/estaciones/${encodedName}.md`
+            : `/estaciones/${encodedName}`;
+          return new Response(null, {
+            status: 301,
+            headers: {
+              Location: `${SITE_URL}${canonicalPath}`,
+              Vary: "Accept"
+            }
+          });
+        }
+
+        return markdownResponse(stationPageToMarkdown(page));
+      }
+    }
+  },
   head: ({ loaderData, params }) => {
     const stationName =
       loaderData?.station?.name ?? decodeURIComponent(params.name).replace(/-/g, " ");
@@ -76,7 +113,10 @@ export const Route = createFileRoute("/_dashboard/estaciones/$name")({
         { name: "twitter:description", content: description },
         { name: "twitter:url", content: stationUrl }
       ],
-      links: [{ rel: "canonical", href: stationUrl }]
+      links: [
+        { rel: "canonical", href: stationUrl },
+        { rel: "alternate", type: "text/markdown", href: `${stationUrl}.md` }
+      ]
     };
   },
   component: EstacionDetailPage,

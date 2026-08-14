@@ -36,7 +36,7 @@ export function buildHomeJsonLd() {
         name: ORGANIZATION_NAME,
         url: SITE_URL,
         description:
-          "Dashboard con estadísticas, mapa e historial de incidentes del Cuerpo de Bomberos de Costa Rica.",
+          "Historial de incidentes del Cuerpo de Bomberos de Costa Rica, con estaciones y tiempos de respuesta.",
         inLanguage: "es-CR",
         publisher: { "@id": ORGANIZATION_ID },
         potentialAction: {
@@ -195,7 +195,7 @@ export function buildFireStationJsonLd(input: {
   return {
     "@context": "https://schema.org",
     "@type": "FireStation",
-    name: `Estación ${input.name}`,
+    name: `Estación de Bomberos ${input.name}`,
     alternateName: input.stationKey,
     url: input.url,
     image: input.imageUrl ?? undefined,

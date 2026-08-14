@@ -22,7 +22,7 @@ function ScrollArea({
       {...props}>
       <ScrollAreaPrimitive.Viewport
         className={cn(
-          "transition-shadows h-full rounded-[inherit] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background data-has-overflow-x:overscroll-x-contain",
+          "transition-shadows h-full rounded-[inherit] outline-none [-ms-overflow-style:none] [scrollbar-width:none] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background data-has-overflow-x:overscroll-x-contain [&::-webkit-scrollbar]:hidden",
           showTopFade &&
             "mask-t-from-[calc(100%-min(var(--fade-size),var(--scroll-area-overflow-y-start)))]",
           showBottomFade &&
@@ -57,7 +57,7 @@ function ScrollBar({
       orientation={orientation}
       {...props}>
       <ScrollAreaPrimitive.Thumb
-        className="relative flex-1 rounded-full bg-foreground/20"
+        className="relative flex-1 rounded-full bg-foreground/45"
         data-slot="scroll-area-thumb"
       />
     </ScrollAreaPrimitive.Scrollbar>

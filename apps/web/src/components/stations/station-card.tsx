@@ -28,7 +28,7 @@ export function StationCard({ station }: { station: GetStationByNameResponse["st
         </div>
         <div className="flex flex-1 flex-col px-5 pt-7 pb-5">
           <h3 className="text-lg leading-tight font-bold tracking-tight text-foreground group-hover:text-primary">
-            {station.name}
+            Estación {station.name}
           </h3>
           {station.address ? (
             <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground/80">

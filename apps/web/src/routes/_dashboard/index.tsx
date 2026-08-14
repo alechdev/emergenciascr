@@ -39,9 +39,9 @@ const IncidentTypesChart = lazy(async () => {
   return { default: module.IncidentTypesChart };
 });
 
-const title = "Emergencias CR - Incidentes de Bomberos en Tiempo Real";
+const title = "Incidentes de Bomberos en Costa Rica | Emergencias CR";
 const description =
-  "Monitoreo en tiempo real de incidentes del Cuerpo de Bomberos de Costa Rica. Visualiza emergencias activas, mapa de estaciones y estadísticas operativas.";
+  "Historial de incidentes del Cuerpo de Bomberos de Costa Rica: despachos, estaciones y tiempos de respuesta.";
 
 export const ALLOWED_TIME_RANGE_VALUES = [7, 30, 90, 365] as const;
 export const DEFAULT_TIME_RANGE = 30;

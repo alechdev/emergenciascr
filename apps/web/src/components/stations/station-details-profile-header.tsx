@@ -31,7 +31,9 @@ export function StationDetailsProfileHeader({ station }: StationDetailsProfileHe
       </div>
 
       <div className="pt-14 sm:pt-16">
-        <h1 className="text-3xl font-black tracking-tight sm:text-4xl">{station.name}</h1>
+        <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
+          Estación de Bomberos {station.name}
+        </h1>
         {station.address && <p className="mt-1 text-sm text-muted-foreground">{station.address}</p>}
 
         {(station.phoneNumber || station.email) && (

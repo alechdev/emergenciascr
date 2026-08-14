@@ -32,9 +32,9 @@ import { formatMinutesToHMS } from "@/lib/utils";
 
 import type { ListStationsResponse } from "@/lib/api/types.gen";
 
-const title = "Estaciones de Bomberos — Emergencias CR";
+const title = "Estaciones de Bomberos de Costa Rica | Emergencias CR";
 const description =
-  "Consulta el directorio de estaciones de bomberos de Costa Rica, con datos de ubicación, unidades y estadísticas de respuesta.";
+  "Directorio de estaciones de bomberos de Costa Rica: ubicación, unidades y tiempos de respuesta del Cuerpo de Bomberos.";
 
 const STATIONS_PER_PAGE = 9;
 
@@ -213,6 +213,15 @@ function Page() {
       ) : null}
 
       <section className="flex flex-col gap-6">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            Estaciones de Bomberos de Costa Rica
+          </h1>
+          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Directorio de estaciones del Cuerpo de Bomberos, con dirección, unidades y actividad
+            reciente.
+          </p>
+        </div>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <h2 className="text-xl font-semibold tracking-tight">Directorio</h2>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

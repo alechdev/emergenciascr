@@ -1,9 +1,47 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@import "@fontsource/ibm-plex-sans/latin.css";
-@import "@fontsource/ibm-plex-serif/latin.css";
 @import "@fontsource/ibm-plex-mono/latin.css";
+
+@font-face {
+  font-display: swap;
+  font-family: "Tablet Gothic";
+  font-style: normal;
+  font-weight: 400;
+  src: url("/fonts/TabletGothic-Regular-2024.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Tablet Gothic";
+  font-style: normal;
+  font-weight: 700;
+  src: url("/fonts/TabletGothic-Bold-2024.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Tablet Gothic";
+  font-style: italic;
+  font-weight: 400;
+  src: url("/fonts/TabletGothic-Oblique.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Franziska";
+  font-style: normal;
+  font-weight: 400;
+  src: url("/fonts/FranziskaWebPro.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Franziska";
+  font-style: italic;
+  font-weight: 400;
+  src: url("/fonts/FranziskaWebPro-Italic.woff2") format("woff2");
+}
 
 @custom-variant dark (&:is(.dark *));
 
@@ -152,10 +190,10 @@
 }
 
 @theme inline {
-  --font-sans: "IBM Plex Sans", "IBM Plex Mono", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Tablet Gothic", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
-  --font-serif: "IBM Plex Serif", ui-serif, Georgia, serif;
+  --font-serif: "Franziska", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -456,6 +494,28 @@ html {
   scrollbar-width: thin;
 }
 
+.incident-timeline-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--color-foreground) 45%, transparent) transparent;
+}
+
+.incident-timeline-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.incident-timeline-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.incident-timeline-scroll::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklch, var(--color-foreground) 45%, transparent);
+  border-radius: 999px;
+}
+
+.incident-timeline-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in oklch, var(--color-foreground) 65%, transparent);
+}
+
 html body[data-scroll-locked] {
   --removed-body-scroll-bar-size: 0 !important;
   margin-right: 0 !important;
@@ -732,6 +792,42 @@ html body[data-scroll-locked] {
     .typography h1:not(.not-typography h1) {
       font-size: var(--text-5xl);
       line-height: var(--text-5xl--line-height);
+    }
+  }
+
+  .typography .incident-prose {
+    font-family: var(--font-serif);
+    font-size: 1.0625rem;
+    line-height: 1.7;
+    max-width: 40em;
+    text-wrap: pretty;
+  }
+  .typography .incident-prose p {
+    margin-top: 0;
+    line-height: inherit;
+  }
+  .typography .incident-prose p + p,
+  .typography .incident-prose p + blockquote,
+  .typography .incident-prose blockquote + p {
+    margin-top: 1.5em;
+  }
+  .typography .incident-prose a {
+    font-weight: 400;
+  }
+  .typography .incident-prose blockquote {
+    margin-top: 1.5em;
+    margin-bottom: 0;
+    font-family: var(--font-sans);
+    font-style: normal;
+    font-size: 0.875rem;
+    line-height: 1.55;
+    letter-spacing: 0.02em;
+    color: var(--color-muted-foreground);
+  }
+  @media (min-width: 640px) {
+    .typography .incident-prose {
+      font-size: 1.125rem;
+      line-height: 1.68;
     }
   }
 }

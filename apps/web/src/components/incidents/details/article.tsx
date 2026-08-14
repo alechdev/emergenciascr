@@ -95,7 +95,9 @@ export function IncidentArticle() {
 
   return (
     <article className="flex flex-col gap-4 md:gap-6">
-      <h1>{incident.title}</h1>
+      <h1 className="font-sans text-2xl leading-snug font-bold tracking-tight text-balance sm:text-3xl lg:text-4xl lg:leading-[1.15]">
+        {incident.title}
+      </h1>
       <figure className="not-typography">
         {incident.mapImageUrl ? (
           // TODO: Re-enable interactive map when ready
@@ -135,10 +137,12 @@ export function IncidentArticle() {
           </div>
         )}
       </figure>
-      <time dateTime={incidentTimestamp.toISOString()}>
+      <time
+        dateTime={incidentTimestamp.toISOString()}
+        className="font-sans text-sm text-muted-foreground">
         {formattedIncidentDate}, {formattedIncidentTime}
       </time>
-      <section className="space-y-4">
+      <section className="incident-prose">
         <p>
           Al ser {formatArticleForTime(incidentTimestamp)} {formattedIncidentTime}, Bomberos recibe
           una alerta de "
@@ -315,9 +319,9 @@ export function IncidentArticleSkeleton() {
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       <div className="space-y-2">
-        <Skeleton className="h-9 w-full md:h-10" />
-        <Skeleton className="h-9 w-full md:h-10" />
-        <Skeleton className="h-9 w-3/4 md:h-10" />
+        <Skeleton className="h-7 w-full sm:h-8 lg:h-9" />
+        <Skeleton className="h-7 w-full sm:h-8 lg:h-9" />
+        <Skeleton className="h-7 w-3/4 sm:h-8 lg:h-9" />
       </div>
 
       <Skeleton className="aspect-video w-full rounded-xl" />

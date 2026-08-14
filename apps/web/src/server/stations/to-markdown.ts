@@ -121,7 +121,7 @@ export function stationPageToMarkdown(page: StationPageData): string {
   ];
 
   const sections = [
-    `# Estación ${station.name}`,
+    `# Estación de Bomberos ${station.name}`,
     facts.join("\n"),
     `## Actividad del último año\n\n${yearCount} incidente${page.yearIncidentCount === 1 ? "" : "s"}.`,
     incidentsSection(

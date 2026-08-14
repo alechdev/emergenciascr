@@ -52,13 +52,14 @@ export function LandingHero() {
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}>
-          <h1 className="mt-5 max-w-3xl font-serif text-4xl leading-tight sm:text-5xl lg:text-[3.4rem] lg:leading-[1.04]">
-            Bomberos de Costa Rica: Reporte de Incidentes en Tiempo Real
+          <h1 className="mt-5 max-w-3xl font-sans text-4xl leading-[1.12] tracking-tight sm:text-5xl lg:text-[3.4rem] lg:leading-[1.08]">
+            Incidentes de Bomberos
+            <br />
+            en Costa Rica
           </h1>
 
-          <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Consulta el mapa de emergencias activas, ubicación de estaciones y estadísticas de
-            respuesta del Cuerpo de Bomberos en todo el territorio nacional.
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            Historial de despachos, estaciones y tiempos de respuesta del Cuerpo de Bomberos.
           </p>
 
           <motion.div

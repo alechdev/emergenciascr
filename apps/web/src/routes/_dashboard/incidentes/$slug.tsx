@@ -154,7 +154,7 @@ function IncidentDetailSkeleton() {
         <VehicleResponseTimesSkeleton />
         <DispatchedStationsSkeleton />
       </div>
-      <aside className="order-2 lg:sticky lg:top-[calc(var(--app-header-height)+2rem)] lg:order-2 lg:col-span-1">
+      <aside className="incident-timeline-scroll order-2 lg:sticky lg:top-[calc(var(--app-header-height)+1rem)] lg:order-2 lg:col-span-1 lg:max-h-[calc(100dvh-var(--app-header-height)-2rem)] lg:overflow-y-auto lg:overscroll-contain">
         <IncidentTimelineSkeleton />
       </aside>
     </article>
@@ -201,7 +201,7 @@ function IncidenteDetailPage() {
           <DispatchedStations />
         </div>
         <aside
-          className="not-typography order-2 lg:sticky lg:top-[calc(var(--app-header-height)+2rem)] lg:order-2 lg:col-span-1"
+          className="incident-timeline-scroll not-typography order-2 lg:sticky lg:top-[calc(var(--app-header-height)+1rem)] lg:order-2 lg:col-span-1 lg:max-h-[calc(100dvh-var(--app-header-height)-2rem)] lg:overflow-y-auto lg:overscroll-contain"
           aria-label="Cronología del incidente">
           <IncidentTimeline />
         </aside>

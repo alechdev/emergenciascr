@@ -19,6 +19,7 @@ import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as ApiIndexRouteImport } from './routes/api/index'
 import { Route as DashboardIndexRouteImport } from './routes/_dashboard/index'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
+import { Route as DotwellKnownApiCatalogRouteImport } from './routes/[.]well-known/api-catalog'
 import { Route as IncidentsIncidentesIndexRouteImport } from './routes/_incidents/incidentes/index'
 import { Route as DashboardEstacionesIndexRouteImport } from './routes/_dashboard/estaciones/index'
 import { Route as DashboardIncidentesSlugRouteImport } from './routes/_dashboard/incidentes/$slug'
@@ -73,6 +74,11 @@ const ApiSplatRoute = ApiSplatRouteImport.update({
   path: '/api/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownApiCatalogRoute = DotwellKnownApiCatalogRouteImport.update({
+  id: '/.well-known/api-catalog',
+  path: '/.well-known/api-catalog',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IncidentsIncidentesIndexRoute =
   IncidentsIncidentesIndexRouteImport.update({
     id: '/incidentes/',
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap-stations.xml': typeof SitemapStationsDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
   '/api/$': typeof ApiSplatRoute
   '/api/': typeof ApiIndexRoute
   '/estaciones/$name': typeof DashboardEstacionesNameRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap-stations.xml': typeof SitemapStationsDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
   '/api/$': typeof ApiSplatRoute
   '/api': typeof ApiIndexRoute
   '/estaciones/$name': typeof DashboardEstacionesNameRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap-stations.xml': typeof SitemapStationsDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
   '/api/$': typeof ApiSplatRoute
   '/_dashboard/': typeof DashboardIndexRoute
   '/api/': typeof ApiIndexRoute
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/sitemap-pages.xml'
     | '/sitemap-stations.xml'
     | '/sitemap.xml'
+    | '/.well-known/api-catalog'
     | '/api/$'
     | '/api/'
     | '/estaciones/$name'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/sitemap-pages.xml'
     | '/sitemap-stations.xml'
     | '/sitemap.xml'
+    | '/.well-known/api-catalog'
     | '/api/$'
     | '/api'
     | '/estaciones/$name'
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '/sitemap-pages.xml'
     | '/sitemap-stations.xml'
     | '/sitemap.xml'
+    | '/.well-known/api-catalog'
     | '/api/$'
     | '/_dashboard/'
     | '/api/'
@@ -196,6 +208,7 @@ export interface RootRouteChildren {
   SitemapPagesDotxmlRoute: typeof SitemapPagesDotxmlRoute
   SitemapStationsDotxmlRoute: typeof SitemapStationsDotxmlRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  DotwellKnownApiCatalogRoute: typeof DotwellKnownApiCatalogRoute
   ApiSplatRoute: typeof ApiSplatRoute
   ApiIndexRoute: typeof ApiIndexRoute
 }
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/api-catalog': {
+      id: '/.well-known/api-catalog'
+      path: '/.well-known/api-catalog'
+      fullPath: '/.well-known/api-catalog'
+      preLoaderRoute: typeof DotwellKnownApiCatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_incidents/incidentes/': {
       id: '/_incidents/incidentes/'
       path: '/incidentes'
@@ -342,6 +362,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapPagesDotxmlRoute: SitemapPagesDotxmlRoute,
   SitemapStationsDotxmlRoute: SitemapStationsDotxmlRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  DotwellKnownApiCatalogRoute: DotwellKnownApiCatalogRoute,
   ApiSplatRoute: ApiSplatRoute,
   ApiIndexRoute: ApiIndexRoute,
 }

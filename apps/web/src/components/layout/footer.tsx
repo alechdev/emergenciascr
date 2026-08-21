@@ -1,4 +1,4 @@
-import { ArrowUpRightIcon, CopyrightIcon } from "@phosphor-icons/react";
+import { ArrowUpRightIcon } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
 
 import { LogoIcon } from "@/components/layout/logo-icon";
@@ -22,66 +22,60 @@ const SOCIAL_LINKS = [
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const enabledNavItems = navItems.filter((item) => item.enabled);
 
   return (
     <footer className="app-footer rail-divider-top mt-20 bg-background">
-      <div className="mx-auto w-full max-w-6xl px-8 py-12 xl:px-0">
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.75fr)_minmax(12rem,1fr)] lg:gap-8">
-          <div className="flex flex-col gap-4">
-            <Link
-              to="/"
-              className="w-fit">
-              <LogoIcon className="size-14 sm:size-16" />
-              <span className="sr-only">Emergencias CR</span>
-            </Link>
-            <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-              <span>Emergencias CR</span>
-              <CopyrightIcon
-                size={14}
-                weight="duotone"
+      <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-8 py-14 text-center xl:px-0">
+        <Link to="/">
+          <LogoIcon className="size-7" />
+          <span className="sr-only">Emergencias CR</span>
+        </Link>
+        <p className="font-serif text-xl tracking-tight text-foreground">Emergencias CR</p>
+
+        <nav className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
+          {enabledNavItems.map((item, index) => (
+            <span
+              key={item.url}
+              className="flex items-center gap-3">
+              {index > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="text-xs text-muted-foreground/50">
+                  ·
+                </span>
+              )}
+              <Link
+                to={item.url}
+                className="w-fit text-sm text-muted-foreground transition-colors hover:text-foreground">
+                {item.title}
+              </Link>
+            </span>
+          ))}
+        </nav>
+
+        <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+          {SOCIAL_LINKS.map((link) => (
+            <a
+              key={link.url}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground">
+              <span>{link.title}</span>
+              <ArrowUpRightIcon
+                className="size-3.5 shrink-0"
+                aria-hidden="true"
               />
-              <span>{currentYear}</span>
-            </p>
-            <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-              No relacionado al Benemérito Cuerpo de Bomberos de Costa Rica.
-            </p>
-          </div>
+            </a>
+          ))}
+        </nav>
 
-          <div className="flex flex-col gap-4 lg:border-l lg:pl-8">
-            <h3 className="text-sm font-semibold tracking-tight">Navegación</h3>
-            <nav className="flex flex-col gap-3">
-              {navItems
-                .filter((item) => item.enabled)
-                .map((item) => (
-                  <Link
-                    key={item.url}
-                    to={item.url}
-                    className="w-fit text-sm text-muted-foreground transition-colors hover:text-foreground">
-                    {item.title}
-                  </Link>
-                ))}
-            </nav>
-          </div>
-
-          <div className="flex flex-col gap-4 lg:border-l lg:pl-8">
-            <h3 className="text-sm font-semibold tracking-tight">Enlaces</h3>
-            <nav className="flex flex-col gap-3">
-              {SOCIAL_LINKS.map((link) => (
-                <a
-                  key={link.url}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex w-fit max-w-full items-center gap-1.5 text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground">
-                  <span>{link.title}</span>
-                  <ArrowUpRightIcon
-                    className="size-3.5 shrink-0"
-                    aria-hidden="true"
-                  />
-                </a>
-              ))}
-            </nav>
-          </div>
+        <div className="mt-2 flex w-full flex-col items-center gap-1.5 border-t pt-6">
+          <p className="font-mono text-xs text-muted-foreground">© {currentYear} Emergencias CR</p>
+          <p className="max-w-sm text-xs leading-relaxed text-muted-foreground/80">
+            No relacionado al Benemérito Cuerpo de Bomberos de Costa Rica.
+          </p>
         </div>
       </div>
     </footer>

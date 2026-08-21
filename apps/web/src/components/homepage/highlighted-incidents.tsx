@@ -50,7 +50,7 @@ export function HighlightedIncidents() {
   const incidents = data?.data ?? [];
 
   return (
-    <section className="flex flex-col py-8">
+    <section className="rail-divider-top flex flex-col py-8">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-4 max-lgx:py-2">
         <div className="flex shrink-0 items-center gap-2">
           <Popover>

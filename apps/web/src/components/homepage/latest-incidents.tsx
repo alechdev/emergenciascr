@@ -43,7 +43,7 @@ export function LatestIncidents() {
   ];
 
   return (
-    <section className="rail-divider-top flex flex-col py-8">
+    <section className="flex flex-col py-8">
       <div className="flex flex-wrap items-center gap-3 py-2 max-lgx:py-1">
         <Popover>
           <PopoverTrigger

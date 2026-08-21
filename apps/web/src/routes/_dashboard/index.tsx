@@ -110,10 +110,10 @@ function HomePage() {
       </Suspense>
       <Separator />
       <Suspense fallback={<SectionPlaceholder className="h-[560px] md:h-[620px]" />}>
-        <HighlightedIncidents />
+        <LatestIncidents />
       </Suspense>
       <Suspense fallback={<SectionPlaceholder className="h-[560px] md:h-[620px]" />}>
-        <LatestIncidents />
+        <HighlightedIncidents />
       </Suspense>
       {/* <MapCTA /> */}
       <Separator />

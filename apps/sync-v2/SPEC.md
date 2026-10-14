@@ -7,7 +7,7 @@ Status: approved, not implemented. Work happens on the `sync-v2` branch.
 1. Replace `apps/sync` (v1) with `apps/sync-v2` without regressing data quality on emergenciascr.com.
 2. Record every upstream change to an incident while it is being synced, so we can see when a field went from valid to null or invalid and why.
 3. Normalize SIGAE's inconsistent data in one tested place instead of patching it in the web app.
-4. Prove v2 is correct by running it next to v1 against a separate database, comparing results with a diff tool and visually on `beta.emergenciascr.com`.
+4. Prove v2 is correct by running it on `beta.emergenciascr.com` with its own database while prod keeps running v1 untouched, comparing the two sites through their public API and visually.
 5. Turn real edge cases into fixture-based tests that double as documentation.
 6. Move database changes from `drizzle-kit push` to committed, generated migrations applied by a dedicated migrate step.
 
@@ -20,19 +20,20 @@ Status: approved, not implemented. Work happens on the `sync-v2` branch.
 
 ## 2. Decisions
 
-| Topic                      | Decision                                                                                                                                                                                                                                 |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Shadow database            | Separate Postgres database on the same server as prod.                                                                                                                                                                                   |
-| Upstream values            | **Trust upstream, log it.** When SIGAE replaces a valid value with null, a placeholder, or another value, store what SIGAE says and record the change and an anomaly. No fallback to previous values.                                    |
-| What "trust" doesn't cover | Failed requests. Network/HTTP failures and SIGAE error envelopes are not data and are never written, with one documented exception for partial reports (section 6.1). Placeholder dates are stored as `NULL`, which is what SIGAE means. |
-| Dispatched units           | Whatever SIGAE currently reports. Units that disappear are deleted (operators often dispatch a unit by mistake and then dispatch from somewhere else). Every addition and removal is kept in the change history.                         |
-| Incident gone upstream     | If a tracked incident stops existing in SIGAE, it is deleted. No search for a "similar" incident.                                                                                                                                        |
-| Tracking after close       | Keep polling for 72 hours after SIGAE closes an incident. Coordinates, geography and vehicle times often arrive hours after closing.                                                                                                     |
-| Long-open incidents        | Hourly polling once open for more than 72h, stop after 30 days (section 8.2). The few incidents still open by then (long wildfires, incomplete records) keep whatever SIGAE last reported.                                               |
-| Partial reports            | A report answering `99` may set or change values but never clear them (section 6.1).                                                                                                                                                     |
-| Extra report times         | Store `Hora_Controlado`, `Hora_Fuego_Bajo_Control`, `Hora_Perdidas_Detenidas` and `Hora_Todo_Claro` as columns (section 5.1). The four SIGAE never fills stay only in the raw-response history.                                          |
-| Migrations                 | Generated SQL migrations, applied by a migrate app before every deploy (section 10).                                                                                                                                                     |
-| Branch and CI              | `sync-v2` branch with its own copies of the workflows, deploying to beta. `main` stays deployable independently.                                                                                                                         |
+| Topic                      | Decision                                                                                                                                                                                                                                      |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Prod isolation             | Nothing on the `sync-v2` branch changes or depends on prod: not its database, workflows, deploys or data. Prod is only read through the public website and API. Promotion to `main` is planned separately once beta is accepted (section 14). |
+| Beta database              | Separate Postgres database (`emergenciascr_v2`) on the same server, created from scratch by migrations.                                                                                                                                       |
+| Upstream values            | **Trust upstream, log it.** When SIGAE replaces a valid value with null, a placeholder, or another value, store what SIGAE says and record the change and an anomaly. No fallback to previous values.                                         |
+| What "trust" doesn't cover | Failed requests. Network/HTTP failures and SIGAE error envelopes are not data and are never written, with one documented exception for partial reports (section 6.1). Placeholder dates are stored as `NULL`, which is what SIGAE means.      |
+| Dispatched units           | Whatever SIGAE currently reports. Units that disappear are deleted (operators often dispatch a unit by mistake and then dispatch from somewhere else). Every addition and removal is kept in the change history.                              |
+| Incident gone upstream     | If a tracked incident stops existing in SIGAE, it is deleted. No search for a "similar" incident.                                                                                                                                             |
+| Tracking after close       | Keep polling for 72 hours after SIGAE closes an incident. Coordinates, geography and vehicle times often arrive hours after closing.                                                                                                          |
+| Long-open incidents        | Hourly polling once open for more than 72h, stop after 30 days (section 8.2). The few incidents still open by then (long wildfires, incomplete records) keep whatever SIGAE last reported.                                                    |
+| Partial reports            | A report answering `99` may set or change values but never clear them (section 6.1).                                                                                                                                                          |
+| Extra report times         | Store `Hora_Controlado`, `Hora_Fuego_Bajo_Control`, `Hora_Perdidas_Detenidas` and `Hora_Todo_Claro` as columns (section 5.1). The four SIGAE never fills stay only in the raw-response history.                                               |
+| Migrations                 | Generated SQL migrations, applied by a migrate app before every deploy (section 10).                                                                                                                                                          |
+| Branch and CI              | `sync-v2` branch with its own copies of the workflows, deploying only to beta. `main` and its workflows stay untouched and deployable.                                                                                                        |
 
 ## 3. Current state
 
@@ -98,7 +99,7 @@ Read-only probe of about 145 incidents (latest list plus a sample from 4–6 day
 - SIGAE strings are Costa Rica wall-clock time. `new Date("2026-10-10T20:25:19")` is parsed in the process timezone.
 - Live check: SIGAE `Hora_Aviso` for 1923918 is `2026-10-10T20:25:19`; the prod API returns `2026-10-11T02:25:19.000Z`. So v1 runs in Costa Rica time and the stored instants are correct.
 - v2 parses explicitly with a `-06:00` offset (Costa Rica has no DST), so it is correct regardless of `TZ`.
-- Prod placeholders were created by `new Date("0001-01-01T00:00:00")` in Costa Rica time, which uses the historical local mean time offset. They are year-1 values with an odd time. Anything with year ≤ 1 counts as a placeholder when reading prod data.
+- Prod placeholders were created by `new Date("0001-01-01T00:00:00")` in Costa Rica time, which uses the historical local mean time offset, so they are year-1 values with an odd time. The prod API already returns them as `null` (`toIsoStringOrNull`), so comparing through the API needs no special handling.
 
 ## 4. Architecture
 
@@ -130,7 +131,7 @@ Module layout in `packages/sync-domain`, testable without Redis or a database:
 
 ## 5. Data model changes
 
-All changes are additive or loosen constraints, so they are safe to apply to the prod database while v1 is still running. Applying them to both databases lets the same web build serve prod and beta.
+These changes apply to the beta database. How prod data gets this schema is decided at promotion (section 14).
 
 ### 5.1 Altered and new columns
 
@@ -306,19 +307,16 @@ Move from `drizzle-kit push` to committed migrations applied by a dedicated step
 - **Runner:** `packages/db/src/migrate.ts` exports `migrateDatabase(connectionString)`. It opens a small `pg` pool (max 2), takes a Postgres advisory lock with a fixed key, runs drizzle's `migrate()` and closes the pool, which releases the lock. Drizzle's migrator doesn't lock, and the web and sync can deploy at the same time. It uses the same `drizzle.__drizzle_migrations` table as `drizzle-kit migrate`, so either can run against a database the other migrated.
 - **Migrate app:** `apps/migrate` loads env, calls `migrateDatabase`, logs the outcome and exits non-zero on failure. Its own Dockerfile installs only the migrate app and `packages/db` in production mode.
 - **CI and deploy:** a migrate job builds and pushes the migrate image first; the web and sync jobs `need` it. The server's deploy scripts run the migrate image as a one-shot container before starting the new release, and abort the deploy if it fails.
-- **Baseline:** prod was built with `push`, and the existing `0000_fix-invalid-foreign-keys` is a data fix that fails on an empty database. Replace the history with a generated baseline of the current schema:
-  1. Check for drift: compare `pg_dump --schema-only` of prod against a fresh database migrated with the baseline. They must match before going further.
-  2. Fresh databases (v2 shadow, local, CI) run the baseline normally.
-  3. Prod gets the baseline marked as applied with a one-off `db:baseline` script that inserts its hash into `drizzle.__drizzle_migrations` without running it.
+- **Baseline:** the existing `0000_fix-invalid-foreign-keys` is a one-off data fix that fails on an empty database. On the branch, replace the migration history with one generated baseline of the current schema, followed by normal migrations for the section 5 changes. The beta, local and CI databases are all created from scratch by running every migration. How prod adopts this history is decided at promotion (section 14).
 - **Drizzle version:** stay on drizzle-orm 0.44 / drizzle-kit 0.31 for this rework. Drizzle 1.0 changes the relational query API used throughout the web app; upgrading is a separate project.
 
 ## 11. Web changes
 
-All must work against both databases (v1 data with placeholders, v2 data with `NULL`).
+Built and tested against the beta database.
 
 1. Handle `NULL` vehicle times: `dispatchedTime` is assumed non-null in `apps/web/api/routers/incidents.ts` (`.toISOString()`) and `apps/web/api/schemas/incidents.ts` (`z.string()`).
 2. Timeline closing event uses `closedAt ?? modifiedAt`.
-3. One shared placeholder helper (year ≤ 1970 or null) replacing the three current checks.
+3. One shared "missing date" helper replacing the three current placeholder checks.
 4. Show `vehicleInternalNumber` when `vehicle` is null.
 5. "En camino" (`isEnRoute` in `api/lib/utils/incidents/response-times.ts`) is currently true for any unit that left the scene without a base-return time. That is about 20% of units, forever. Only show it while the incident is being tracked and the departure was less than 2 hours ago; otherwise show the return time as unknown.
 6. Beta mode via env (`SITE_ENV=beta`): `X-Robots-Tag: noindex`, `robots.txt` disallow all, no sitemap, a visible "datos de sync-v2" banner, analytics off.
@@ -331,7 +329,7 @@ Unit tests in `packages/sync-domain` (pure, no DB/Redis); integration tests in `
 
 - `fixtures/<scenario>/` with ordered snapshot files (`001.json`, …; each has the four endpoint payloads) and `expected.json` (final state, changes, anomalies).
 - A capture script exports a real incident's history from `sigae_snapshots` into a fixture, already redacted.
-- Every anomaly code seen during the shadow run gets a fixture before it counts as handled.
+- Every anomaly code seen during the beta run gets a fixture before it counts as handled.
 
 ### Required cases
 
@@ -351,74 +349,71 @@ Unit tests in `packages/sync-domain` (pure, no DB/Redis); integration tests in `
 - Not found once (kept), twice (deleted, news articles detached, history kept).
 - Lifecycle intervals and transitions, including the 72h settling window and the 30-day cap.
 - Redaction: no field outside the allowlists reaches a snapshot or fixture.
-- Diff normalizer: prod year-1 placeholders (with their odd offset) compare equal to `NULL`.
+- Comparison tool: field matching, tolerance rules and classification, using recorded API responses.
 
-## 13. Shadow run
+## 13. Beta run
 
 ### Branch and workflows
 
 - Work happens on `sync-v2`. `main` keeps its own workflows untouched, so hotfixes can ship from `main` at any time.
 - `.github/workflows/build-app-beta.yaml` is a copy of `build-app.yaml` that triggers on `sync-v2`. It tags images `beta`, `beta-<version>` and `beta-sha-<sha>` so it can never overwrite a prod tag. It reads `BETA_VITE_SERVER_URL` / `BETA_VITE_SITE_URL` and calls the `emergenciascr-frontend-beta` deploy hook.
-- Added in M4 from the same template: `build-sync-v2-beta.yaml` (needs an `apps/sync-v2` Dockerfile) and `build-migrate-beta.yaml`; web and sync beta jobs depend on the migrate job.
-- Server side (manual): the beta deploy hooks, plus services for beta web, sync-v2, Redis and the migrate one-shot.
-- At merge time, fold the migrate job and sync-v2 build into the `main` workflows and delete the beta copies.
+- Added in M5 from the same template: `build-sync-v2-beta.yaml` (needs an `apps/sync-v2` Dockerfile) and `build-migrate-beta.yaml`. The web and sync beta jobs depend on the migrate job.
+- Server side (manual): the beta deploy hooks, plus services for beta web, sync-v2, Redis and the migrate one-shot, all pointed at the beta database.
 
 ### Infrastructure
 
-- Database `emergenciascr_v2` on the prod Postgres server, with its own role. v2 has no access to the prod database.
-- A read-only role on the prod database for the diff tool.
-- Redis for v2 (v1 doesn't use it).
-- Reference data comes from v2's own boot-time jobs. No historical incidents are copied; comparisons cover incidents first seen after the start.
+- Database `emergenciascr_v2` on the same Postgres server, with its own role. Nothing on the branch has credentials for the prod database.
+- Redis for sync-v2.
+- Reference data comes from v2's own boot-time jobs. No data is copied from prod; the beta site starts empty and fills up with incidents first seen after launch.
 - `beta.emergenciascr.com` runs the beta web image with `DRIZZLE_POSTGRES_URL` pointing to `emergenciascr_v2` and `SITE_ENV=beta`.
-- Upstream load roughly doubles while both syncs run.
+- SIGAE load roughly doubles while both syncs run.
 
-### Diff tool
+### Comparison tool
 
-`bun run --cwd apps/sync-v2 diff --from <date> --to <date>` with `PROD_DB_URL` (read-only) and `V2_DB_URL`.
+`bun run --cwd apps/sync-v2 compare --from <date> --to <date>`. It reads the beta database and both sites' public APIs. It never touches the prod database.
 
-- Scope: incidents in the window that are `done` in v2, so differences caused by the two syncs polling at different moments are excluded. The rest are listed as "in progress".
-- Coverage: incidents missing on either side.
-- Field-level comparison of incidents, dispatched stations (by ID) and units (by ID, per time field), after the same normalization on both sides (placeholders → `NULL`, coordinate precision, ignore `modifiedAt` and the new columns).
+- Scope: incidents in the window that are `done` in the beta database, so differences caused by the two syncs polling at different moments are excluded. The rest are listed as "in progress".
+- For each incident: `GET /api/incidents/{id}` and `GET /api/incidents/{id}/response-times` from `https://emergenciascr.com` and `https://beta.emergenciascr.com`. Requests are throttled (about 2 per second) so the comparison doesn't load the prod site.
+- Coverage: incidents that prod returns 404 for, and incidents in prod's list API that beta doesn't have.
+- Field-level comparison of incident fields, dispatched stations and units (by ID, per time field), with coordinate-precision tolerance and fields only beta has ignored.
 - Each difference is classified:
-  - **expected**: a known v2 improvement (placeholder → `NULL`, removed unit, deleted incident, responsible station `NULL` instead of `0`, late data v1 never picked up).
-  - **explained**: v2's change history shows SIGAE sent this value.
+  - **expected**: a known v2 improvement (removed unit, deleted incident, missing responsible station instead of station `0`, late data v1 never picked up, "En camino" fix).
+  - **explained**: the beta database's change history shows SIGAE sent this value.
   - **unexplained**: needs triage.
-- Output: markdown report with counts per field and category, and for each differing incident links to `https://emergenciascr.com/incidentes/<slug>` and `https://beta.emergenciascr.com/incidentes/<slug>` (using the web's slug builder), plus JSON for further analysis. Run daily and keep the reports.
+- Output: a markdown report with counts per field and category. Each differing incident links to its page on both sites (the API returns the `slug`). A JSON file is written for further analysis. Run daily and keep the reports.
 
-### Duration and exit criteria
+### Duration and acceptance
 
-At least 7 days including a weekend; 14 preferred. Cut over when:
+At least 7 days including a weekend; 14 preferred. Beta is ready to promote when:
 
 - Zero unexplained differences for the last 3 days.
-- No incidents missing from v2 that v1 has.
+- No incidents that prod has and beta is missing.
 - No incidents stuck in `failed`, no unbounded queues.
 - Every anomaly code seen has a fixture test.
-- A manual side-by-side spot check of prod and beta looks right.
+- A manual side-by-side check of prod and beta looks right.
 
-## 14. Cutover
+## 14. Promotion to main
 
-1. Merge `sync-v2` into `main`, folding the beta workflows into the main ones (section 13).
-2. Mark the baseline on prod (`db:baseline`), then deploy. The migrate step applies the section 5 migrations.
-3. Deploy the section 11 web changes.
-4. Stop v1.
-5. Point v2 at the prod database. At boot, create `incident_sync_state` rows for prod incidents that are open or closed within the last 72h, then bootstrap as usual.
-6. Keep the shadow database for a few weeks, then drop it.
-7. Optional: backfill placeholder vehicle times in prod history to `NULL`, then simplify the web placeholder helper.
+Out of scope for the branch work. Planned separately once beta is accepted, using what the beta run teaches us. Decisions to make then:
 
-Rollback: stop v2 and start the old v1 build. All schema changes are compatible with v1.
+- **Prod data:** migrate the prod database to the new schema and history, or start prod from the beta database. Prod has years of history; beta only has incidents since launch.
+- **Schema adoption:** how the prod database, built with `push`, adopts the migration history (drift check, marking the baseline as applied).
+- **Historical cleanup:** whether to rewrite old placeholder dates to `NULL` and backfill new columns.
+- **Workflows:** fold the migrate job and sync-v2 build into the `main` workflows and delete the beta copies.
+- **Switch and rollback:** order of stopping v1 and starting v2 against prod, and how to roll back.
 
 ## 15. Milestones
 
-| #   | Milestone          | Contents                                                                                                                                                                                          |
-| --- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | Verify assumptions | Mostly done (section 3.3). Remaining: unit/station responses for a brand-new incident with no units; prod schema drift check; whether partial reports ever recover to `00` (snapshots will show). |
-| M1  | Migrations         | Section 10: runner, migrate app and image, baseline, drift check.                                                                                                                                 |
-| M2  | Fix v2 foundations | Section 3.1 bugs: job IDs, error causes, envelope classification, attempt limits, boot-time reference sync, transactions, upstream-driven closing.                                                |
-| M3  | Pure core + tests  | `envelope`, `normalize`, `reconcile`, `lifecycle`, `redact` with the section 12 cases.                                                                                                            |
-| M4  | History            | Section 5 migrations, snapshots, changes, anomalies, sync state, bootstrap, gap fill, not-found deletion.                                                                                         |
-| M5  | Shadow infra       | v2 database and roles, sync-v2 Dockerfile, beta workflows, section 11 web changes, diff tool.                                                                                                     |
-| M6  | Shadow run         | 1–2 weeks, daily reports, triage, fixtures for every new anomaly.                                                                                                                                 |
-| M7  | Cutover            | Section 14.                                                                                                                                                                                       |
+| #   | Milestone          | Contents                                                                                                                                                                 |
+| --- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M0  | Verify assumptions | Mostly done (section 3.3). Remaining: unit/station responses for a brand-new incident with no units; whether partial reports ever recover to `00` (snapshots will show). |
+| M1  | Migrations         | Section 10: runner, migrate app and image, baseline for new databases.                                                                                                   |
+| M2  | Fix v2 foundations | Section 3.1 bugs: job IDs, error causes, envelope classification, attempt limits, boot-time reference sync, transactions, upstream-driven closing.                       |
+| M3  | Pure core + tests  | `envelope`, `normalize`, `reconcile`, `lifecycle`, `redact` with the section 12 cases.                                                                                   |
+| M4  | History            | Section 5 migrations, snapshots, changes, anomalies, sync state, bootstrap, gap fill, not-found deletion.                                                                |
+| M5  | Beta infra         | Beta database and role, sync-v2 Dockerfile, beta workflows, section 11 web changes, comparison tool.                                                                     |
+| M6  | Beta run           | 1–2 weeks, daily reports, triage, fixtures for every new anomaly.                                                                                                        |
+| M7  | Promotion          | Planned separately after beta is accepted (section 14).                                                                                                                  |
 
 ## 16. Open questions
 

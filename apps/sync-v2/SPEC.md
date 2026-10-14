@@ -103,7 +103,8 @@ Read-only probe of about 145 incidents (latest list plus a sample from 4–6 day
 - Drizzle 0.44's `timestamp()` writes `date.toISOString()` and reads values back with `+0000` appended. The database holds **UTC instants**, and reads don't depend on process `TZ`.
 - SIGAE strings are Costa Rica wall-clock time. `new Date("2026-10-10T20:25:19")` is parsed in the process timezone.
 - Live check: SIGAE `Hora_Aviso` for 1923918 is `2026-10-10T20:25:19`; the prod API returns `2026-10-11T02:25:19.000Z`. So v1 runs in Costa Rica time and the stored instants are correct.
-- v2 parses explicitly with a `-06:00` offset (Costa Rica has no DST), so it is correct regardless of `TZ`.
+- v2 parses explicitly with a `-06:00` offset (Costa Rica has no DST), so it is correct regardless of `TZ`. sync-v2 runs with the server's `TZ=UTC`; nothing in the sync may depend on process `TZ`.
+- The prod web runs in UTC. Server-side code that formats dates without `timeZone: "America/Costa_Rica"` shows the UTC date: slugs (`buildIncidentSlug` uses `getDate()`), the page meta description, the OG image and the markdown pages. 1923918 was reported at 20:25 on 10 October in Costa Rica, but its slug ends in `2026-10-11` and its description says "11 de octubre". This affects incidents reported from 18:00 to midnight. Stats already use an explicit `-06:00` offset.
 - Prod placeholders were created by `new Date("0001-01-01T00:00:00")` in Costa Rica time, which uses the historical local mean time offset, so they are year-1 values with an odd time. The prod API already returns them as `null` (`toIsoStringOrNull`), so comparing through the API needs no special handling.
 
 ## 4. Architecture
@@ -183,7 +184,7 @@ sigae.getIncidentReport(id);
 sigae.getDispatchedStations(id);
 sigae.getDispatchedUnits(id);
 sigae.getLatestIncidents({ count: 50 });
-sigae.getIncidentsBetween({ from, to }); // Date objects, formatted by the client
+sigae.getIncidentsBetween({ from, to }); // Date objects, sent as Costa Rica dates whatever the process TZ
 sigae.ping(); // cheapest endpoint, for boot-time checks
 // …one method per endpoint in use today
 ```

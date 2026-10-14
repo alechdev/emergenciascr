@@ -356,7 +356,7 @@ The same redaction applies to test fixtures.
 | Report `99`, the other three `00`                                            | `partial`      | Write. Fields from the partial report may **set or change** values but never **clear** them; `0`/empty in a partial report means "failed to serialize", not "SIGAE says empty". Anomaly `UPSTREAM_PARTIAL_REPORT`. |
 | Detail **and** report `03`                                                   | `not_found`    | Not-found flow (section 8.4). No write.                                                                                                                                                                            |
 | Network/HTTP error, invalid JSON, `99` on any other endpoint, any other code | `failed`       | No write. Count a failed poll.                                                                                                                                                                                     |
-| Units or stations `03` while detail and report are `00`                      | `ok`           | Treat as an empty list. Verify in M0 with a brand-new incident.                                                                                                                                                    |
+| Units or stations `03` while detail and report are `00`                      | `ok`           | Treat as an empty list. Verify in phase 6 with a brand-new incident.                                                                                                                                               |
 
 ### 6.2 Dates
 
@@ -523,7 +523,7 @@ Unit tests in `packages/sync-domain` (pure, no DB/Redis); integration tests in `
 
 - Work happens on `sync-v2`. `main` keeps its own workflows untouched, so hotfixes can ship from `main` at any time.
 - `.github/workflows/build-app-beta.yaml` is a copy of `build-app.yaml` that triggers on `sync-v2`. It tags images `beta`, `beta-<version>` and `beta-sha-<sha>` so it can never overwrite a prod tag. It reads `BETA_VITE_SERVER_URL` / `BETA_VITE_SITE_URL` and calls the `emergenciascr-frontend-beta` deploy hook.
-- Added in M5 from the same template: `build-sync-v2-beta.yaml` (needs an `apps/sync-v2` Dockerfile) and `build-migrate-beta.yaml`. The web and sync beta jobs depend on the migrate job.
+- Added in phase 8 from the same template: `build-sync-v2-beta.yaml` (needs an `apps/sync-v2` Dockerfile) and `build-migrate-beta.yaml`. The web and sync beta jobs depend on the migrate job.
 - Server side (manual): the beta deploy hooks, plus services for beta web, sync-v2, Redis and the migrate one-shot, all pointed at the beta database.
 
 ### Infrastructure
@@ -572,18 +572,9 @@ Out of scope for the branch work. Planned separately once beta is accepted, usin
 - **Alerting:** which conditions page someone (for example no SIGAE response, incidents in `failed`, queue backlog), based on what the beta dashboard shows is normal.
 - **Switch and rollback:** order of stopping v1 and starting v2 against prod, and how to roll back.
 
-## 15. Milestones
+## 15. Plan
 
-| #   | Milestone                     | Contents                                                                                                                                                                                                                                                                                                    |
-| --- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | Verify assumptions            | Mostly done (section 3.3). Remaining: unit/station responses for a brand-new incident with no units; whether partial reports ever recover to `00` (snapshots will show).                                                                                                                                    |
-| M1  | Migrations                    | Section 10: runner, migrate app and image, baseline for new databases.                                                                                                                                                                                                                                      |
-| M2  | SIGAE client + v2 foundations | Section 4.1 client with proxy support, migrating sync-v2 and the web admin to it. Section 3.1 bugs: job IDs, error causes, attempt limits, boot-time reference sync, transactions, upstream-driven closing, graceful shutdown. Section 4.2 telemetry setup, logger, SIGAE and job metrics, health endpoint. |
-| M3  | Pure core + tests             | `poll`, `normalize`, `reconcile`, `lifecycle`, `redact` with the section 12 cases.                                                                                                                                                                                                                          |
-| M4  | History                       | Section 5 migrations, snapshots, changes, anomalies, sync state, bootstrap, gap fill, not-found deletion. Poll, change, anomaly and phase metrics.                                                                                                                                                          |
-| M5  | Beta infra                    | Beta database and role, sync-v2 Dockerfile, beta workflows, OTLP endpoint and dashboard, section 11 web changes, comparison tool.                                                                                                                                                                           |
-| M6  | Beta run                      | 1–2 weeks, daily reports, triage, fixtures for every new anomaly.                                                                                                                                                                                                                                           |
-| M7  | Promotion                     | Planned separately after beta is accepted (section 14).                                                                                                                                                                                                                                                     |
+The phased plan, with tasks, dependencies and completion checks, is in `PLAN.md`.
 
 ## 16. Open questions
 

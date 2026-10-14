@@ -1,6 +1,6 @@
 # sync-v2 spec
 
-Status: draft, not implemented. Work happens on the `sync-v2` branch.
+Status: approved, not implemented. Work happens on the `sync-v2` branch.
 
 ## 1. Goals
 
@@ -30,6 +30,7 @@ Status: draft, not implemented. Work happens on the `sync-v2` branch.
 | Tracking after close       | Keep polling for 72 hours after SIGAE closes an incident. Coordinates, geography and vehicle times often arrive hours after closing.                                                                                                     |
 | Long-open incidents        | Hourly polling once open for more than 72h, stop after 30 days (section 8.2). The few incidents still open by then (long wildfires, incomplete records) keep whatever SIGAE last reported.                                               |
 | Partial reports            | A report answering `99` may set or change values but never clear them (section 6.1).                                                                                                                                                     |
+| Extra report times         | Store `Hora_Controlado`, `Hora_Fuego_Bajo_Control`, `Hora_Perdidas_Detenidas` and `Hora_Todo_Claro` as columns (section 5.1). The four SIGAE never fills stay only in the raw-response history.                                          |
 | Migrations                 | Generated SQL migrations, applied by a migrate app before every deploy (section 10).                                                                                                                                                     |
 | Branch and CI              | `sync-v2` branch with its own copies of the workflows, deploying to beta. `main` stays deployable independently.                                                                                                                         |
 
@@ -421,4 +422,4 @@ Rollback: stop v2 and start the old v1 build. All schema changes are compatible 
 
 ## 16. Open questions
 
-1. **Extra report times.** Besides the report time (`Hora_Aviso`), SIGAE's report has eight more timestamps for incident milestones. Today none of them are saved. The proposal (section 5.1) is new database columns for the four that SIGAE actually fills: `Hora_Controlado` (~96% of incidents), and `Hora_Fuego_Bajo_Control`, `Hora_Perdidas_Detenidas` and `Hora_Todo_Claro` (~3%, fires). The other four were empty in every incident checked. They would still be kept in the raw-response history, so they can become columns later if SIGAE starts filling them. The only planned use is estimating `closedAt` (section 8.3); showing them on the site is optional future work.
+None. All decisions are recorded in section 2.

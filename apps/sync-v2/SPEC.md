@@ -20,20 +20,21 @@ Status: approved, not implemented. Work happens on the `sync-v2` branch.
 
 ## 2. Decisions
 
-| Topic                      | Decision                                                                                                                                                                                                                                      |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Prod isolation             | Nothing on the `sync-v2` branch changes or depends on prod: not its database, workflows, deploys or data. Prod is only read through the public website and API. Promotion to `main` is planned separately once beta is accepted (section 14). |
-| Beta database              | Separate Postgres database (`emergenciascr_v2`) on the same server, created from scratch by migrations.                                                                                                                                       |
-| Upstream values            | **Trust upstream, log it.** When SIGAE replaces a valid value with null, a placeholder, or another value, store what SIGAE says and record the change and an anomaly. No fallback to previous values.                                         |
-| What "trust" doesn't cover | Failed requests. Network/HTTP failures and SIGAE error envelopes are not data and are never written, with one documented exception for partial reports (section 6.1). Placeholder dates are stored as `NULL`, which is what SIGAE means.      |
-| Dispatched units           | Whatever SIGAE currently reports. Units that disappear are deleted (operators often dispatch a unit by mistake and then dispatch from somewhere else). Every addition and removal is kept in the change history.                              |
-| Incident gone upstream     | If a tracked incident stops existing in SIGAE, it is deleted. No search for a "similar" incident.                                                                                                                                             |
-| Tracking after close       | Keep polling for 72 hours after SIGAE closes an incident. Coordinates, geography and vehicle times often arrive hours after closing.                                                                                                          |
-| Long-open incidents        | Hourly polling once open for more than 72h, stop after 30 days (section 8.2). The few incidents still open by then (long wildfires, incomplete records) keep whatever SIGAE last reported.                                                    |
-| Partial reports            | A report answering `99` may set or change values but never clear them (section 6.1).                                                                                                                                                          |
-| Extra report times         | Store `Hora_Controlado`, `Hora_Fuego_Bajo_Control`, `Hora_Perdidas_Detenidas` and `Hora_Todo_Claro` as columns (section 5.1). The four SIGAE never fills stay only in the raw-response history.                                               |
-| Migrations                 | Generated SQL migrations, applied by a migrate app before every deploy (section 10).                                                                                                                                                          |
-| Branch and CI              | `sync-v2` branch with its own copies of the workflows, deploying only to beta. `main` and its workflows stay untouched and deployable.                                                                                                        |
+| Topic                      | Decision                                                                                                                                                                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Prod isolation             | Nothing on the `sync-v2` branch changes or depends on prod: not its database, workflows, deploys or data. Prod is only read through the public website and API. Promotion to `main` is planned separately once beta is accepted (section 14).    |
+| Beta database              | Separate Postgres database (`emergenciascr_v2`) on the same server, created from scratch by migrations.                                                                                                                                          |
+| Upstream values            | **Trust upstream, log it.** When SIGAE replaces a valid value with null, a placeholder, or another value, store what SIGAE says and record the change and an anomaly. No fallback to previous values.                                            |
+| What "trust" doesn't cover | Failed requests. Network/HTTP failures and SIGAE error envelopes are not data and are never written, with one documented exception for partial reports (section 6.1). Placeholder dates are stored as `NULL`, which is what SIGAE means.         |
+| Dispatched units           | Whatever SIGAE currently reports. Units that disappear are deleted (operators often dispatch a unit by mistake and then dispatch from somewhere else). Every addition and removal is kept in the change history.                                 |
+| Incident gone upstream     | If a tracked incident stops existing in SIGAE, it is deleted. No search for a "similar" incident.                                                                                                                                                |
+| Tracking after close       | Keep polling for 72 hours after SIGAE closes an incident. Coordinates, geography and vehicle times often arrive hours after closing.                                                                                                             |
+| Long-open incidents        | Hourly polling once open for more than 72h, stop after 30 days (section 8.2). The few incidents still open by then (long wildfires, incomplete records) keep whatever SIGAE last reported.                                                       |
+| Partial reports            | A report answering `99` may set or change values but never clear them (section 6.1).                                                                                                                                                             |
+| Extra report times         | Store `Hora_Controlado`, `Hora_Fuego_Bajo_Control`, `Hora_Perdidas_Detenidas` and `Hora_Todo_Claro` as columns (section 5.1). The four SIGAE never fills stay only in the raw-response history.                                                  |
+| SIGAE client               | One standalone client in `packages/sigae` with native proxy support. The client owns how to talk to SIGAE (transport, timeouts, decoding); apps own what to do about the result (retries, backoff, partial and not-found handling). Section 4.1. |
+| Migrations                 | Generated SQL migrations, applied by a migrate app before every deploy (section 10).                                                                                                                                                             |
+| Branch and CI              | `sync-v2` branch with its own copies of the workflows, deploying only to beta. `main` and its workflows stay untouched and deployable.                                                                                                           |
 
 ## 3. Current state
 
@@ -47,7 +48,8 @@ Status: approved, not implemented. Work happens on the `sync-v2` branch.
 6. **SIGAE response codes are ignored** (v1 too). Error and not-found envelopes are parsed as if they were data.
 7. **Reference data only syncs on the 12h cron**, not at boot.
 8. **No transaction** around incident + dispatched stations + dispatched vehicles writes.
-9. **No tests.**
+9. **No request timeouts.** A hung SIGAE request holds a worker until BullMQ marks the job stalled (15 "job stalled" errors in `logs/error.log`). See section 4.1 for the other client issues.
+10. **No tests.**
 
 ### 3.2 Shared by v1 and v2 (same transform code)
 
@@ -118,16 +120,90 @@ fetch (4 endpoints)
   -> schedule next poll             PURE lifecycle rules -> nextPollAt | done
 ```
 
-Module layout in `packages/sync-domain`, testable without Redis or a database:
+Module layout in `packages/sync-domain`, testable without Redis or a database. It depends on the SIGAE client (section 4.1) for fetching, response decoding and date parsing.
 
-- `envelope/` — `classifyResponse`.
-- `normalize/` — `normalizeIncident`, `normalizeDispatchedVehicles`, `normalizeDispatchedStations`, `parseSigaeDate`.
+- `poll/` — `classifyPoll`: combines the four decoded responses into `ok` / `partial` / `not_found` / `failed` (section 6.1).
+- `normalize/` — `normalizeIncident`, `normalizeDispatchedVehicles`, `normalizeDispatchedStations`.
 - `reconcile/` — `diffIncidentState`, `detectAnomalies`.
 - `lifecycle/` — `nextPoll(state, normalized, now)`.
 - `redact/` — snapshot allowlists.
 - `persist/` — DB writes only, no business rules.
 
 `transform/` is replaced by `normalize/`. The incident-type lookup in `rawToIncident` moves to "resolve references" so normalization stays pure.
+
+### 4.1 SIGAE client (`packages/sigae`)
+
+**Today.** There are two clients. `packages/sigae` (v1) reads env at import time and throws. `packages/sync-domain/src/{api,fetcher,types}.ts` is used by v2 and the web admin; it uses `neverthrow` with an injected fetcher. The two type files are identical copies. Problems with the v2 client:
+
+- No timeout (section 3.1).
+- Error causes are lost: `"Network error"`, `statusText` only, `"JSON parsing error"`.
+- `Codigo` is ignored, so not-found and error responses look like data.
+- Endpoints are resolved with `new URL(path, baseUrl)`, which silently drops the last path segment when the base URL has no trailing slash.
+- Mixed argument styles (`getLatestIncidentsListApp(fetcher, n)` vs `({ fetcher, id })`), and callers cast results (`as unknown as ObtenerEstacionesAtiendeIncidente`).
+- Date formatting is left to callers. `ObtenerListaEmergenciasApp` accepts `YYYY-MM-DD` and `MM/DD/YYYY` (range inclusive on both ends), but silently reads `DD/MM/YYYY` as month/day and returns the wrong dates.
+- `sync-domain` mixes the client with DB persistence, so anything that needs the client also pulls in `@bomberoscr/db`.
+
+**Target.** One standalone client in `packages/sigae`, with no dependency on the database, env or sync logic. It ships as new entry points (`@bomberoscr/sigae/client` and friends) next to the old v1 files, which stay untouched until promotion. The client and type copies in `sync-domain` are removed; sync-v2 and the web admin use the new client.
+
+**Who owns what.**
+
+| Concern                                                    | Client                                             | Apps                                     |
+| ---------------------------------------------------------- | -------------------------------------------------- | ---------------------------------------- |
+| Credentials, base URL, request building                    | Yes                                                | Provide config from env                  |
+| Proxy                                                      | Yes                                                | Provide the proxy URL                    |
+| Timeouts                                                   | Yes: default 15s, per-call override, `AbortSignal` | Choose values                            |
+| Concurrency cap shared by every caller of one client       | Yes: mechanism, default 4                          | Choose value                             |
+| Decoding `Codigo` into typed results                       | Yes                                                | —                                        |
+| Transport errors with causes                               | Yes                                                | Log and count them                       |
+| Date formatting for requests, `parseSigaeDate` for replies | Yes                                                | —                                        |
+| Retries and backoff                                        | No                                                 | Yes: BullMQ jobs and the lifecycle (8.2) |
+| Meaning of partial and not-found results                   | No                                                 | Yes: `sync-domain` (6.1, 8.4)            |
+| Normalization, placeholder policy, persistence             | No                                                 | Yes: `sync-domain`                       |
+| Logging and metrics                                        | An `onResponse` hook only                          | Yes                                      |
+
+No retries in the client. BullMQ already retries with backoff, and the lifecycle counts consecutive failures (8.2) and not-found polls (8.4). Retrying inside the client would multiply load on SIGAE and make those counts wrong. Callers outside the sync, like the web admin's manual sync, retry by asking again.
+
+**API.**
+
+```ts
+const sigae = createSigaeClient({
+  baseUrl,
+  credentials: { user, password, systemCode, ip },
+  proxy: "http://user:pass@proxy.example:8080", // optional
+  timeoutMs: 15_000,
+  maxConcurrency: 4,
+  onResponse: (event) => {} // endpoint, durationMs, outcome, httpStatus, codigo
+});
+
+sigae.getIncidentDetails(id, { signal });
+sigae.getIncidentReport(id);
+sigae.getDispatchedStations(id);
+sigae.getDispatchedUnits(id);
+sigae.getLatestIncidents({ count: 50 });
+sigae.getIncidentsBetween({ from, to }); // Date objects, formatted by the client
+sigae.ping(); // cheapest endpoint, for boot-time checks
+// …one method per endpoint in use today
+```
+
+Every method returns `ResultAsync<SigaeResponse<T>, SigaeError>`. The success channel means "SIGAE answered"; the error channel means "nothing usable came back".
+
+- `SigaeResponse<T>` is one of:
+  - `{ kind: "ok", data: T, raw }`
+  - `{ kind: "not_found", raw }` (`Codigo` `03`)
+  - `{ kind: "upstream_error", code, description, data: Partial<T>, raw }` (any other code; keeps the partial body, section 3.3)
+- `raw` is the JSON exactly as received, for snapshots. List responses always expose `items`, whether SIGAE calls them `Items` or `items`.
+- `SigaeError` kinds: `timeout`, `network`, `proxy`, `http` (with status), `invalid_json`, `unexpected_shape`. Each keeps `cause`, endpoint and duration. Errors and hook events never include the request body, credentials or the proxy URL.
+
+**Types and validation.** Types describe the wire format honestly. Date fields are `SigaeDateString`: Costa Rica wall-clock time, where `0001-01-01T00:00:00` means missing. The fields the sync reads are validated at runtime with loose zod schemas (unknown keys pass through); error bodies use the same schemas made partial. A mismatch returns `unexpected_shape`, so a SIGAE format change shows up as an error instead of silently corrupt data.
+
+**Proxy support.** Required.
+
+- Configured per client with one HTTP(S) proxy URL, optionally with basic auth.
+- Works on Bun (the runtime) through `fetch`'s native `proxy` option, and on Node (Vitest and tooling) through `undici`'s own `fetch` with a `ProxyAgent`. Mixing a separately installed undici dispatcher with Node's global `fetch` breaks across versions.
+- Failures caused by the proxy (connection refused, `407`, `502` from the proxy) return `proxy` errors, distinct from SIGAE being down.
+- Apps read it from `SIGAE_PROXY_URL`. sync-v2 calls `ping()` at boot, so a broken proxy fails fast with a clear error.
+
+**Env.** Apps read `SIGAE_API_URL`, `SIGAE_USER`, `SIGAE_PASSWORD`, `SIGAE_COD_SYS`, `SIGAE_IP` and the optional `SIGAE_PROXY_URL`. sync-v2 currently calls the system code `SIGAE_SYSTEM_CODE`; it switches to `SIGAE_COD_SYS` like the web app.
 
 ## 5. Data model changes
 
@@ -214,7 +290,7 @@ The same redaction applies to test fixtures.
 
 ### 6.2 Dates
 
-- `parseSigaeDate(raw): Date | null` is the only way SIGAE dates are parsed.
+- `parseSigaeDate(raw): Date | null` from the SIGAE client (section 4.1) is the only way SIGAE dates are parsed.
 - `0001-01-01T00:00:00` → `NULL`. Any other year before 1971 → `NULL` plus anomaly `PLACEHOLDER_SHAPE_UNKNOWN`.
 - Strings are interpreted as Costa Rica time with an explicit `-06:00` offset. Tests run under `TZ=UTC` and `TZ=America/Costa_Rica` and must produce identical results.
 - `incidentTimestamp` = date of `Fecha` + time of `Hora_Aviso`. Fixture: an incident around midnight.
@@ -325,13 +401,24 @@ Built and tested against the beta database.
 
 Unit tests in `packages/sync-domain` (pure, no DB/Redis); integration tests in `apps/sync-v2` against a throwaway Postgres migrated with the migrate runner.
 
-### Fixtures
+### SIGAE client
+
+- Unit tests with a fake `fetch` and recorded, redacted responses for every endpoint in use.
+- Each `Codigo` (`00`, `03`, `99`, unknown), timeouts, network errors, non-200 responses, invalid JSON and shape changes.
+- `Items` / `items` normalization, request date formatting, and the concurrency cap.
+- Errors and hook events never contain credentials or the proxy URL.
+- Proxy: integration test against a local proxy on both Bun and Node, including auth failure (`407`) and an unreachable proxy.
+- One opt-in live smoke test (`SIGAE_LIVE=1`) that calls `ping()` through the configured proxy.
+
+### Sync
+
+#### Fixtures
 
 - `fixtures/<scenario>/` with ordered snapshot files (`001.json`, …; each has the four endpoint payloads) and `expected.json` (final state, changes, anomalies).
 - A capture script exports a real incident's history from `sigae_snapshots` into a fixture, already redacted.
 - Every anomaly code seen during the beta run gets a fixture before it counts as handled.
 
-### Required cases
+#### Required cases
 
 - `0001-01-01T00:00:00` → `NULL`; unknown pre-1971 date → `NULL` + anomaly.
 - Identical results under `TZ=UTC` and `TZ=America/Costa_Rica`.
@@ -364,6 +451,7 @@ Unit tests in `packages/sync-domain` (pure, no DB/Redis); integration tests in `
 
 - Database `emergenciascr_v2` on the same Postgres server, with its own role. Nothing on the branch has credentials for the prod database.
 - Redis for sync-v2.
+- `SIGAE_PROXY_URL` for every beta service that calls SIGAE: sync-v2, and the beta web for the admin's manual sync.
 - Reference data comes from v2's own boot-time jobs. No data is copied from prod; the beta site starts empty and fills up with incidents first seen after launch.
 - `beta.emergenciascr.com` runs the beta web image with `DRIZZLE_POSTGRES_URL` pointing to `emergenciascr_v2` and `SITE_ENV=beta`.
 - SIGAE load roughly doubles while both syncs run.
@@ -404,16 +492,16 @@ Out of scope for the branch work. Planned separately once beta is accepted, usin
 
 ## 15. Milestones
 
-| #   | Milestone          | Contents                                                                                                                                                                 |
-| --- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M0  | Verify assumptions | Mostly done (section 3.3). Remaining: unit/station responses for a brand-new incident with no units; whether partial reports ever recover to `00` (snapshots will show). |
-| M1  | Migrations         | Section 10: runner, migrate app and image, baseline for new databases.                                                                                                   |
-| M2  | Fix v2 foundations | Section 3.1 bugs: job IDs, error causes, envelope classification, attempt limits, boot-time reference sync, transactions, upstream-driven closing.                       |
-| M3  | Pure core + tests  | `envelope`, `normalize`, `reconcile`, `lifecycle`, `redact` with the section 12 cases.                                                                                   |
-| M4  | History            | Section 5 migrations, snapshots, changes, anomalies, sync state, bootstrap, gap fill, not-found deletion.                                                                |
-| M5  | Beta infra         | Beta database and role, sync-v2 Dockerfile, beta workflows, section 11 web changes, comparison tool.                                                                     |
-| M6  | Beta run           | 1–2 weeks, daily reports, triage, fixtures for every new anomaly.                                                                                                        |
-| M7  | Promotion          | Planned separately after beta is accepted (section 14).                                                                                                                  |
+| #   | Milestone                     | Contents                                                                                                                                                                                                    |
+| --- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | Verify assumptions            | Mostly done (section 3.3). Remaining: unit/station responses for a brand-new incident with no units; whether partial reports ever recover to `00` (snapshots will show).                                    |
+| M1  | Migrations                    | Section 10: runner, migrate app and image, baseline for new databases.                                                                                                                                      |
+| M2  | SIGAE client + v2 foundations | Section 4.1 client with proxy support, migrating sync-v2 and the web admin to it. Section 3.1 bugs: job IDs, error causes, attempt limits, boot-time reference sync, transactions, upstream-driven closing. |
+| M3  | Pure core + tests             | `poll`, `normalize`, `reconcile`, `lifecycle`, `redact` with the section 12 cases.                                                                                                                          |
+| M4  | History                       | Section 5 migrations, snapshots, changes, anomalies, sync state, bootstrap, gap fill, not-found deletion.                                                                                                   |
+| M5  | Beta infra                    | Beta database and role, sync-v2 Dockerfile, beta workflows, section 11 web changes, comparison tool.                                                                                                        |
+| M6  | Beta run                      | 1–2 weeks, daily reports, triage, fixtures for every new anomaly.                                                                                                                                           |
+| M7  | Promotion                     | Planned separately after beta is accepted (section 14).                                                                                                                                                     |
 
 ## 16. Open questions
 

@@ -33,6 +33,7 @@ Status: approved, not implemented. Work happens on the `sync-v2` branch.
 | Partial reports            | A report answering `99` may set or change values but never clear them (section 6.1).                                                                                                                                                             |
 | Extra report times         | Store `Hora_Controlado`, `Hora_Fuego_Bajo_Control`, `Hora_Perdidas_Detenidas` and `Hora_Todo_Claro` as columns (section 5.1). The four SIGAE never fills stay only in the raw-response history.                                                  |
 | SIGAE client               | One standalone client in `packages/sigae` with native proxy support. The client owns how to talk to SIGAE (transport, timeouts, decoding); apps own what to do about the result (retries, backoff, partial and not-found handling). Section 4.1. |
+| Observability              | OpenTelemetry only (traces, metrics, logs over OTLP); Sentry is removed. Beta gets dashboards, no alerts. Section 4.2.                                                                                                                           |
 | Migrations                 | Generated SQL migrations, applied by a migrate app before every deploy (section 10).                                                                                                                                                             |
 | Branch and CI              | `sync-v2` branch with its own copies of the workflows, deploying only to beta. `main` and its workflows stay untouched and deployable.                                                                                                           |
 
@@ -49,7 +50,9 @@ Status: approved, not implemented. Work happens on the `sync-v2` branch.
 7. **Reference data only syncs on the 12h cron**, not at boot.
 8. **No transaction** around incident + dispatched stations + dispatched vehicles writes.
 9. **No request timeouts.** A hung SIGAE request holds a worker until BullMQ marks the job stalled (15 "job stalled" errors in `logs/error.log`). See section 4.1 for the other client issues.
-10. **No tests.**
+10. **No graceful shutdown.** Deploys kill running jobs, which come back as stalled.
+11. **Telemetry mostly doesn't work.** Logs never reach OTel, and metrics and logs have no service name (section 4.2).
+12. **No tests.**
 
 ### 3.2 Shared by v1 and v2 (same transform code)
 
@@ -147,19 +150,19 @@ Module layout in `packages/sync-domain`, testable without Redis or a database. I
 
 **Who owns what.**
 
-| Concern                                                    | Client                                             | Apps                                     |
-| ---------------------------------------------------------- | -------------------------------------------------- | ---------------------------------------- |
-| Credentials, base URL, request building                    | Yes                                                | Provide config from env                  |
-| Proxy                                                      | Yes                                                | Provide the proxy URL                    |
-| Timeouts                                                   | Yes: default 15s, per-call override, `AbortSignal` | Choose values                            |
-| Concurrency cap shared by every caller of one client       | Yes: mechanism, default 4                          | Choose value                             |
-| Decoding `Codigo` into typed results                       | Yes                                                | —                                        |
-| Transport errors with causes                               | Yes                                                | Log and count them                       |
-| Date formatting for requests, `parseSigaeDate` for replies | Yes                                                | —                                        |
-| Retries and backoff                                        | No                                                 | Yes: BullMQ jobs and the lifecycle (8.2) |
-| Meaning of partial and not-found results                   | No                                                 | Yes: `sync-domain` (6.1, 8.4)            |
-| Normalization, placeholder policy, persistence             | No                                                 | Yes: `sync-domain`                       |
-| Logging and metrics                                        | An `onResponse` hook only                          | Yes                                      |
+| Concern                                                    | Client                                                                                                   | Apps                                     |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| Credentials, base URL, request building                    | Yes                                                                                                      | Provide config from env                  |
+| Proxy                                                      | Yes                                                                                                      | Provide the proxy URL                    |
+| Timeouts                                                   | Yes: default 15s, per-call override, `AbortSignal`                                                       | Choose values                            |
+| Concurrency cap shared by every caller of one client       | Yes: mechanism, default 4                                                                                | Choose value                             |
+| Decoding `Codigo` into typed results                       | Yes                                                                                                      | —                                        |
+| Transport errors with causes                               | Yes                                                                                                      | Log and count them                       |
+| Date formatting for requests, `parseSigaeDate` for replies | Yes                                                                                                      | —                                        |
+| Retries and backoff                                        | No                                                                                                       | Yes: BullMQ jobs and the lifecycle (8.2) |
+| Meaning of partial and not-found results                   | No                                                                                                       | Yes: `sync-domain` (6.1, 8.4)            |
+| Normalization, placeholder policy, persistence             | No                                                                                                       | Yes: `sync-domain`                       |
+| Telemetry                                                  | Spans and request metrics through `@opentelemetry/api` (no-op without an SDK), plus an `onResponse` hook | Yes: OTel setup, logs, dashboards (4.2)  |
 
 No retries in the client. BullMQ already retries with backoff, and the lifecycle counts consecutive failures (8.2) and not-found polls (8.4). Retrying inside the client would multiply load on SIGAE and make those counts wrong. Callers outside the sync, like the web admin's manual sync, retry by asking again.
 
@@ -204,6 +207,70 @@ Every method returns `ResultAsync<SigaeResponse<T>, SigaeError>`. The success ch
 - Apps read it from `SIGAE_PROXY_URL`. sync-v2 calls `ping()` at boot, so a broken proxy fails fast with a clear error.
 
 **Env.** Apps read `SIGAE_API_URL`, `SIGAE_USER`, `SIGAE_PASSWORD`, `SIGAE_COD_SYS`, `SIGAE_IP` and the optional `SIGAE_PROXY_URL`. sync-v2 currently calls the system code `SIGAE_SYSTEM_CODE`; it switches to `SIGAE_COD_SYS` like the web app.
+
+### 4.2 Observability
+
+OpenTelemetry only: traces, metrics and logs exported over OTLP. Sentry is removed. Beta gets dashboards and no alerts.
+
+**Today.** `src/config/telemetry.ts` is set up but mostly doesn't work:
+
+- **Logs never reach OTel in the built service.** `WinstonInstrumentation` patches winston when it is loaded. The service is bundled into one ESM file with winston external, and ESM loads every import before running the bundle's code, so winston is already loaded when `sdk.start()` runs. Monkey-patching auto-instrumentation is also unreliable on Bun.
+- **Metrics and logs have no `service.name`.** They use their own `MeterProvider` and `LoggerProvider`, created outside `NodeSDK` without a resource. Only traces get the service name.
+- **Two metrics in total:** job duration and incidents discovered. Nothing covers SIGAE calls, poll results, queues or lag.
+- **Endpoint handling:** with no endpoint configured, it silently exports to `localhost:4318`. It also builds `/v1/*` URLs by hand instead of using the standard OTel env vars.
+- **No shutdown handling.** On `SIGTERM` the process dies with telemetry still buffered and jobs still running. Those jobs come back as stalled.
+- **Logs** are colorized text with values interpolated into the message, written to `logs/*.log` inside the container. Errors lose their cause (section 3.1).
+- **Leftovers:** `SENTRY_DSN` is required but Sentry is never initialized. `@opentelemetry/resources` 1.x is declared next to a 2.x SDK.
+
+**Setup.**
+
+- One `NodeSDK` owns traces, metrics (`metricReader`) and logs (`logRecordProcessors`), started before the app code runs and flushed with `sdk.shutdown()` on exit.
+- No auto-instrumentation. Everything is explicit: `bullmq-otel` for jobs, spans from the SIGAE client and the poll pipeline, and the OTel winston transport added to the logger directly.
+- Configured only through standard env vars: `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`, and `OTEL_RESOURCE_ATTRIBUTES` (beta sets `deployment.environment.name=beta`). With no endpoint set, export is off and the service says so once at boot.
+- The SIGAE client depends only on `@opentelemetry/api`. Its spans and metrics are no-ops unless the app starts the SDK, so the web admin can use the client without OTel.
+- Removed: `@sentry/node`, `SENTRY_DSN`, `@opentelemetry/instrumentation-winston`, `@opentelemetry/resources` 1.x.
+
+**Logs.**
+
+- sync-v2 has its own logger. `packages/lib/logger` stays as it is, because v1 uses it.
+- JSON lines on stdout plus the OTel transport. No log files, no colors outside development.
+- Fixed fields instead of interpolated text: `incidentId`, `jobId`, `queue`, `endpoint`, `outcome`, `codigo`, `errorKind`, `durationMs`, plus trace and span IDs. Errors include the full cause chain.
+- One summary line per poll: result, number of changes, anomaly codes, next poll time.
+- Levels: a failed poll is `warn`; a job that fails its last attempt is `error`; anomalies are `info` (they are counted in metrics).
+- Never logged: raw SIGAE bodies (the report contains personal data), credentials, the proxy URL.
+
+**Metrics.** No incident IDs in metric attributes, to keep cardinality bounded. Those go in logs and spans. Durations are in seconds.
+
+| Metric                          | Type      | Attributes                                     | Source                              |
+| ------------------------------- | --------- | ---------------------------------------------- | ----------------------------------- |
+| `sigae.client.requests`         | counter   | `endpoint`, `outcome` (result or error kind)   | SIGAE client                        |
+| `sigae.client.request.duration` | histogram | `endpoint`, `outcome`                          | SIGAE client                        |
+| `sync.poll.results`             | counter   | `result` (`ok`/`partial`/`not_found`/`failed`) | Poll pipeline                       |
+| `sync.poll.lag`                 | histogram | —                                              | Poll start time minus `nextPollAt`  |
+| `sync.incidents`                | gauge     | `phase`                                        | `incident_sync_state`, every minute |
+| `sync.incidents.discovered`     | counter   | —                                              | Discovery job                       |
+| `sync.discovery.delay`          | histogram | —                                              | First seen minus SIGAE report time  |
+| `sync.changes`                  | counter   | `entity`, `field`, `kind`                      | Reconcile                           |
+| `sync.anomalies`                | counter   | `code`                                         | Reconcile                           |
+| `sync.queue.jobs`               | gauge     | `queue`, `state`                               | BullMQ job counts, every minute     |
+| `sync.job.duration`             | histogram | `queue`, `outcome`                             | Workers                             |
+| `sync.reference.last_success`   | gauge     | `kind` (stations, vehicles, …)                 | Reference jobs (Unix time)          |
+
+**Traces.** One span per job (from `bullmq-otel`) → `sync.poll` (attributes: incident ID, result, change and anomaly counts) → one span per SIGAE request and one for the database transaction. Span attributes follow the same rules as logs.
+
+**Health.** A small HTTP endpoint (`HEALTH_PORT`, internal only) for the container health check. It fails when Redis or the database is unreachable. Time since the last successful SIGAE response is reported in the body but doesn't fail the check, because restarting doesn't fix SIGAE being down.
+
+**Shutdown.** On `SIGTERM`/`SIGINT`: stop scheduling, `close()` every worker (waits for running jobs, up to 30s), close queues, Redis and the database pool, run `sdk.shutdown()`, then exit.
+
+**Dashboard.** One dashboard for beta:
+
+- SIGAE requests per minute by outcome, latency p50/p95 per endpoint, and proxy errors.
+- Poll results over time and polling lag.
+- Incidents per phase, with `failed` highlighted.
+- Queue depth and failed jobs per queue.
+- Anomalies by code, and changes by field.
+- Discovery delay.
+- Time since the last successful reference sync, per kind.
 
 ## 5. Data model changes
 
@@ -436,6 +503,8 @@ Unit tests in `packages/sync-domain` (pure, no DB/Redis); integration tests in `
 - Not found once (kept), twice (deleted, news articles detached, history kept).
 - Lifecycle intervals and transitions, including the 72h settling window and the 30-day cap.
 - Redaction: no field outside the allowlists reaches a snapshot or fixture.
+- Telemetry: a fixture poll run with in-memory OTel exporters checks span names, metric attributes (no incident IDs) and that logs contain no SIGAE bodies, credentials or proxy URL.
+- Shutdown: a running job finishes and telemetry is flushed before exit.
 - Comparison tool: field matching, tolerance rules and classification, using recorded API responses.
 
 ## 13. Beta run
@@ -451,6 +520,7 @@ Unit tests in `packages/sync-domain` (pure, no DB/Redis); integration tests in `
 
 - Database `emergenciascr_v2` on the same Postgres server, with its own role. Nothing on the branch has credentials for the prod database.
 - Redis for sync-v2.
+- An OTLP endpoint for sync-v2, with `OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=beta`.
 - `SIGAE_PROXY_URL` for every beta service that calls SIGAE: sync-v2, and the beta web for the admin's manual sync.
 - Reference data comes from v2's own boot-time jobs. No data is copied from prod; the beta site starts empty and fills up with incidents first seen after launch.
 - `beta.emergenciascr.com` runs the beta web image with `DRIZZLE_POSTGRES_URL` pointing to `emergenciascr_v2` and `SITE_ENV=beta`.
@@ -488,20 +558,21 @@ Out of scope for the branch work. Planned separately once beta is accepted, usin
 - **Schema adoption:** how the prod database, built with `push`, adopts the migration history (drift check, marking the baseline as applied).
 - **Historical cleanup:** whether to rewrite old placeholder dates to `NULL` and backfill new columns.
 - **Workflows:** fold the migrate job and sync-v2 build into the `main` workflows and delete the beta copies.
+- **Alerting:** which conditions page someone (for example no SIGAE response, incidents in `failed`, queue backlog), based on what the beta dashboard shows is normal.
 - **Switch and rollback:** order of stopping v1 and starting v2 against prod, and how to roll back.
 
 ## 15. Milestones
 
-| #   | Milestone                     | Contents                                                                                                                                                                                                    |
-| --- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | Verify assumptions            | Mostly done (section 3.3). Remaining: unit/station responses for a brand-new incident with no units; whether partial reports ever recover to `00` (snapshots will show).                                    |
-| M1  | Migrations                    | Section 10: runner, migrate app and image, baseline for new databases.                                                                                                                                      |
-| M2  | SIGAE client + v2 foundations | Section 4.1 client with proxy support, migrating sync-v2 and the web admin to it. Section 3.1 bugs: job IDs, error causes, attempt limits, boot-time reference sync, transactions, upstream-driven closing. |
-| M3  | Pure core + tests             | `poll`, `normalize`, `reconcile`, `lifecycle`, `redact` with the section 12 cases.                                                                                                                          |
-| M4  | History                       | Section 5 migrations, snapshots, changes, anomalies, sync state, bootstrap, gap fill, not-found deletion.                                                                                                   |
-| M5  | Beta infra                    | Beta database and role, sync-v2 Dockerfile, beta workflows, section 11 web changes, comparison tool.                                                                                                        |
-| M6  | Beta run                      | 1–2 weeks, daily reports, triage, fixtures for every new anomaly.                                                                                                                                           |
-| M7  | Promotion                     | Planned separately after beta is accepted (section 14).                                                                                                                                                     |
+| #   | Milestone                     | Contents                                                                                                                                                                                                                                                                                                    |
+| --- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | Verify assumptions            | Mostly done (section 3.3). Remaining: unit/station responses for a brand-new incident with no units; whether partial reports ever recover to `00` (snapshots will show).                                                                                                                                    |
+| M1  | Migrations                    | Section 10: runner, migrate app and image, baseline for new databases.                                                                                                                                                                                                                                      |
+| M2  | SIGAE client + v2 foundations | Section 4.1 client with proxy support, migrating sync-v2 and the web admin to it. Section 3.1 bugs: job IDs, error causes, attempt limits, boot-time reference sync, transactions, upstream-driven closing, graceful shutdown. Section 4.2 telemetry setup, logger, SIGAE and job metrics, health endpoint. |
+| M3  | Pure core + tests             | `poll`, `normalize`, `reconcile`, `lifecycle`, `redact` with the section 12 cases.                                                                                                                                                                                                                          |
+| M4  | History                       | Section 5 migrations, snapshots, changes, anomalies, sync state, bootstrap, gap fill, not-found deletion. Poll, change, anomaly and phase metrics.                                                                                                                                                          |
+| M5  | Beta infra                    | Beta database and role, sync-v2 Dockerfile, beta workflows, OTLP endpoint and dashboard, section 11 web changes, comparison tool.                                                                                                                                                                           |
+| M6  | Beta run                      | 1–2 weeks, daily reports, triage, fixtures for every new anomaly.                                                                                                                                                                                                                                           |
+| M7  | Promotion                     | Planned separately after beta is accepted (section 14).                                                                                                                                                                                                                                                     |
 
 ## 16. Open questions
 

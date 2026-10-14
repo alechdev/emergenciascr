@@ -28,6 +28,8 @@ Status: draft, not implemented. Work happens on the `sync-v2` branch.
 | Dispatched units           | Whatever SIGAE currently reports. Units that disappear are deleted (operators often dispatch a unit by mistake and then dispatch from somewhere else). Every addition and removal is kept in the change history.                         |
 | Incident gone upstream     | If a tracked incident stops existing in SIGAE, it is deleted. No search for a "similar" incident.                                                                                                                                        |
 | Tracking after close       | Keep polling for 72 hours after SIGAE closes an incident. Coordinates, geography and vehicle times often arrive hours after closing.                                                                                                     |
+| Long-open incidents        | Hourly polling once open for more than 72h, stop after 30 days (section 8.2). The few incidents still open by then (long wildfires, incomplete records) keep whatever SIGAE last reported.                                               |
+| Partial reports            | A report answering `99` may set or change values but never clear them (section 6.1).                                                                                                                                                     |
 | Migrations                 | Generated SQL migrations, applied by a migrate app before every deploy (section 10).                                                                                                                                                     |
 | Branch and CI              | `sync-v2` branch with its own copies of the workflows, deploying to beta. `main` stays deployable independently.                                                                                                                         |
 
@@ -419,6 +421,4 @@ Rollback: stop v2 and start the old v1 build. All schema changes are compatible 
 
 ## 16. Open questions
 
-1. **Long-open incidents:** this spec slows polling to hourly after 72h open and stops at 30 days. Acceptable?
-2. **Partial reports:** the "set or change but never clear" rule in 6.1 is the one exception to trusting upstream. Acceptable, or should partial reports be written as-is?
-3. **Extra report times:** this spec stores `Hora_Controlado` plus the three fire-related times as columns. Store all of them, or only these?
+1. **Extra report times.** Besides the report time (`Hora_Aviso`), SIGAE's report has eight more timestamps for incident milestones. Today none of them are saved. The proposal (section 5.1) is new database columns for the four that SIGAE actually fills: `Hora_Controlado` (~96% of incidents), and `Hora_Fuego_Bajo_Control`, `Hora_Perdidas_Detenidas` and `Hora_Todo_Claro` (~3%, fires). The other four were empty in every incident checked. They would still be kept in the raw-response history, so they can become columns later if SIGAE starts filling them. The only planned use is estimating `closedAt` (section 8.3); showing them on the site is optional future work.

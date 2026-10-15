@@ -1,4 +1,4 @@
-FROM oven/bun:1.3.14-alpine AS build
+FROM oven/bun:1.4.0-alpine AS build
 
 WORKDIR /app
 
@@ -24,14 +24,14 @@ RUN apk add --no-cache jq && \
   '{' \
   '  "private": true,' \
   '  "workspaces": ["apps/web", "packages/db", "packages/lib", "packages/sync-domain"],' \
-  '  "packageManager": "bun@1.3.14"' \
+  '  "packageManager": "bun@1.4.0"' \
   '}' > /tmp/root.package.json \
   && jq 'del(.devDependencies)' apps/web/package.json > /tmp/web.package.json \
   && jq 'del(.devDependencies)' packages/db/package.json > /tmp/db.package.json \
   && jq 'del(.devDependencies)' packages/lib/package.json > /tmp/lib.package.json \
   && jq 'del(.devDependencies)' packages/sync-domain/package.json > /tmp/sync-domain.package.json
 
-FROM oven/bun:1.3.14-alpine AS runner
+FROM oven/bun:1.4.0-alpine AS runner
 
 WORKDIR /app
 

@@ -1,0 +1,276 @@
+{
+  "polls": [
+    {
+      "poll": "001.json",
+      "kind": "ok",
+      "phase": "settling",
+      "nextPollAt": "2026-10-11T14:15:00.000Z",
+      "deleteIncident": false
+    },
+    {
+      "poll": "002.json",
+      "kind": "ok",
+      "phase": "settling",
+      "nextPollAt": "2026-10-11T14:30:00.000Z",
+      "deleteIncident": false
+    },
+    {
+      "poll": "003.json",
+      "kind": "ok",
+      "phase": "done",
+      "nextPollAt": null,
+      "deleteIncident": false
+    }
+  ],
+  "changes": [
+    {
+      "poll": "001.json",
+      "entity": "incident",
+      "entityId": 1900001,
+      "field": "*",
+      "kind": "added",
+      "oldValue": null,
+      "newValue": {
+        "EEConsecutive": "51234-2026",
+        "address": "SAN JOSE SAN JOSE CARMEN CALLE SINTETICA 1",
+        "importantDetails": "EDIFICIO SINTETICO",
+        "incidentTimestamp": "2026-10-11T02:25:19.000Z",
+        "provinceId": null,
+        "cantonId": null,
+        "districtId": null,
+        "incidentCode": "2.1.3",
+        "specificIncidentCode": "2.1.3.1",
+        "dispatchIncidentCode": "2.1",
+        "specificDispatchIncidentCode": "2.1.3",
+        "responsibleStation": 2,
+        "latitude": "0",
+        "longitude": "0",
+        "isOpen": false,
+        "controlledAt": "2026-10-11T03:02:40.000Z",
+        "fireUnderControlAt": null,
+        "lossesStoppedAt": null,
+        "allClearAt": null,
+        "closedAt": "2026-10-11T03:40:10.000Z",
+        "closedAtSource": "estimated"
+      }
+    },
+    {
+      "poll": "001.json",
+      "entity": "dispatched_vehicle",
+      "entityId": 5200101,
+      "field": "*",
+      "kind": "added",
+      "oldValue": null,
+      "newValue": {
+        "stationId": 2,
+        "vehicleId": 140,
+        "vehicleInternalNumber": null,
+        "dispatchedTime": "2026-10-11T02:26:02.000Z",
+        "arrivalTime": "2026-10-11T02:33:45.000Z",
+        "departureTime": "2026-10-11T03:40:10.000Z",
+        "baseReturnTime": null,
+        "attentionOnFoot": false
+      }
+    },
+    {
+      "poll": "001.json",
+      "entity": "dispatched_vehicle",
+      "entityId": 5200102,
+      "field": "*",
+      "kind": "added",
+      "oldValue": null,
+      "newValue": {
+        "stationId": 2,
+        "vehicleId": 152,
+        "vehicleInternalNumber": null,
+        "dispatchedTime": "2026-10-11T02:26:30.000Z",
+        "arrivalTime": null,
+        "departureTime": null,
+        "baseReturnTime": null,
+        "attentionOnFoot": false
+      }
+    },
+    {
+      "poll": "001.json",
+      "entity": "dispatched_station",
+      "entityId": 3400101,
+      "field": "*",
+      "kind": "added",
+      "oldValue": null,
+      "newValue": {
+        "stationId": 2,
+        "serviceTypeId": 1,
+        "attentionOnFoot": false
+      }
+    },
+    {
+      "poll": "002.json",
+      "entity": "incident",
+      "entityId": 1900001,
+      "field": "provinceId",
+      "kind": "set",
+      "oldValue": null,
+      "newValue": 1
+    },
+    {
+      "poll": "002.json",
+      "entity": "incident",
+      "entityId": 1900001,
+      "field": "cantonId",
+      "kind": "set",
+      "oldValue": null,
+      "newValue": 101
+    },
+    {
+      "poll": "002.json",
+      "entity": "incident",
+      "entityId": 1900001,
+      "field": "districtId",
+      "kind": "set",
+      "oldValue": null,
+      "newValue": 10101
+    },
+    {
+      "poll": "002.json",
+      "entity": "incident",
+      "entityId": 1900001,
+      "field": "latitude",
+      "kind": "set",
+      "oldValue": "0",
+      "newValue": "9.93512"
+    },
+    {
+      "poll": "002.json",
+      "entity": "incident",
+      "entityId": 1900001,
+      "field": "longitude",
+      "kind": "set",
+      "oldValue": "0",
+      "newValue": "-84.07716"
+    },
+    {
+      "poll": "002.json",
+      "entity": "incident",
+      "entityId": 1900001,
+      "field": "closedAt",
+      "kind": "changed",
+      "oldValue": "2026-10-11T03:40:10.000Z",
+      "newValue": "2026-10-11T03:45:00.000Z"
+    },
+    {
+      "poll": "002.json",
+      "entity": "dispatched_vehicle",
+      "entityId": 5200101,
+      "field": "departureTime",
+      "kind": "changed",
+      "oldValue": "2026-10-11T03:40:10.000Z",
+      "newValue": "2026-10-11T03:45:00.000Z"
+    },
+    {
+      "poll": "002.json",
+      "entity": "dispatched_vehicle",
+      "entityId": 5200101,
+      "field": "baseReturnTime",
+      "kind": "set",
+      "oldValue": null,
+      "newValue": "2026-10-11T04:10:00.000Z"
+    }
+  ],
+  "anomalies": [
+    {
+      "poll": "002.json",
+      "code": "VALUE_CHANGED_AFTER_SET",
+      "entity": "dispatched_vehicle",
+      "entityId": 5200101,
+      "details": {
+        "field": "departureTime",
+        "oldValue": "2026-10-11T03:40:10.000Z",
+        "newValue": "2026-10-11T03:45:00.000Z"
+      }
+    },
+    {
+      "poll": "003.json",
+      "code": "UNIT_NEVER_ARRIVED",
+      "entity": "dispatched_vehicle",
+      "entityId": 5200102,
+      "details": {
+        "dispatchedTime": "2026-10-11T02:26:30.000Z"
+      }
+    }
+  ],
+  "final": {
+    "state": {
+      "incident": {
+        "id": 1900001,
+        "EEConsecutive": "51234-2026",
+        "address": "SAN JOSE SAN JOSE CARMEN CALLE SINTETICA 1",
+        "importantDetails": "EDIFICIO SINTETICO",
+        "incidentTimestamp": "2026-10-11T02:25:19.000Z",
+        "provinceId": 1,
+        "cantonId": 101,
+        "districtId": 10101,
+        "incidentCode": "2.1.3",
+        "specificIncidentCode": "2.1.3.1",
+        "dispatchIncidentCode": "2.1",
+        "specificDispatchIncidentCode": "2.1.3",
+        "responsibleStation": 2,
+        "latitude": "9.93512",
+        "longitude": "-84.07716",
+        "isOpen": false,
+        "controlledAt": "2026-10-11T03:02:40.000Z",
+        "fireUnderControlAt": null,
+        "lossesStoppedAt": null,
+        "allClearAt": null,
+        "closedAt": "2026-10-11T03:45:00.000Z",
+        "closedAtSource": "estimated"
+      },
+      "vehicles": [
+        {
+          "id": 5200101,
+          "incidentId": 1900001,
+          "stationId": 2,
+          "vehicleId": 140,
+          "vehicleInternalNumber": null,
+          "dispatchedTime": "2026-10-11T02:26:02.000Z",
+          "arrivalTime": "2026-10-11T02:33:45.000Z",
+          "departureTime": "2026-10-11T03:45:00.000Z",
+          "baseReturnTime": "2026-10-11T04:10:00.000Z",
+          "attentionOnFoot": false
+        },
+        {
+          "id": 5200102,
+          "incidentId": 1900001,
+          "stationId": 2,
+          "vehicleId": 152,
+          "vehicleInternalNumber": null,
+          "dispatchedTime": "2026-10-11T02:26:30.000Z",
+          "arrivalTime": null,
+          "departureTime": null,
+          "baseReturnTime": null,
+          "attentionOnFoot": false
+        }
+      ],
+      "stations": [
+        {
+          "id": 3400101,
+          "incidentId": 1900001,
+          "stationId": 2,
+          "serviceTypeId": 1,
+          "attentionOnFoot": false
+        }
+      ]
+    },
+    "syncState": {
+      "incidentId": 1900001,
+      "phase": "done",
+      "nextPollAt": null,
+      "lastPolledAt": "2026-10-14T14:00:00.000Z",
+      "upstreamClosedAt": "2026-10-11T14:00:00.000Z",
+      "consecutiveFailures": 0,
+      "notFoundCount": 0,
+      "emptyUnitsCount": 0,
+      "lastError": null,
+      "firstSeenAt": "2026-10-11T14:00:00.000Z"
+    }
+  }
+}

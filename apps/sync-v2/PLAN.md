@@ -12,7 +12,7 @@ Every phase is a reviewable set of commits on `sync-v2`. A phase is done when al
 | 2     | SIGAE client           | —          | Done                            |
 | 3     | sync-v2 foundations    | 2          | Done                            |
 | 4     | Schema changes         | 1          | Done                            |
-| 5     | Pure core and fixtures | 2          | Not started                     |
+| 5     | Pure core and fixtures | 2          | Done                            |
 | 6     | Sync pipeline          | 3, 4, 5    | Not started                     |
 | 7     | Web changes            | 4          | Not started                     |
 | 8     | Beta infrastructure    | 1, 6, 7    | Not started                     |
@@ -108,18 +108,30 @@ The I/O-free core in `packages/sync-domain` (sections 4, 6, 7, 8), tested withou
 
 **Tasks**
 
-- [ ] `poll/`: `classifyPoll` for every row in section 6.1.
-- [ ] `normalize/`: incident, dispatched units and stations (sections 6.2–6.4).
-- [ ] `reconcile/`: `diffIncidentState`, `detectAnomalies` (section 7).
-- [ ] `lifecycle/`: `nextPoll`, including the 72h settling window and the 30-day cap (section 8.2).
-- [ ] `redact/`: snapshot allowlists (section 5.2).
-- [ ] Fixture format and the section 12 "Required cases". The capture script comes in phase 6, when snapshots exist.
+- [x] `poll/`: `classifyPoll` for every row in section 6.1.
+- [x] `normalize/`: incident, dispatched units and stations (sections 6.2–6.4).
+- [x] `reconcile/`: `diffIncidentState`, `detectAnomalies` (section 7).
+- [x] `lifecycle/`: `nextPoll`, including the 72h settling window and the 30-day cap (section 8.2).
+- [x] `redact/`: snapshot allowlists (section 5.2).
+- [x] Fixture format and the section 12 "Required cases". The capture script comes in phase 6, when snapshots exist.
 
 **Done when**
 
-- [ ] Every required case in section 12 has a passing test.
-- [ ] Identical results under `TZ=UTC` and `TZ=America/Costa_Rica`.
-- [ ] No module in the core imports the database, Redis, BullMQ or env.
+- [x] Every required case in section 12 that the core owns has a passing test. The rest need later phases: news articles detached on deletion and the telemetry fixture poll (phase 6), the shutdown test (phase 6 integration tests; checked by hand in phase 3), the web timezone cases (phase 7) and the comparison tool (phase 9).
+- [x] Identical results under `TZ=UTC` and `TZ=America/Costa_Rica` (`bun run --cwd packages/sync-domain test:tz`).
+- [x] No module in the core imports the database, Redis, BullMQ or env (checked by `test/purity.test.ts`).
+
+**Notes**
+
+- `processPoll` (`poll/process.ts`) chains the core for one poll: normalize, partial-report rule, incident types, the empty-units rule, lifecycle, `closedAt`, diff and anomalies. Phase 6 wraps it with fetching, snapshots, reference resolution and the transaction. `transform/` and `fetch-incident.ts` stay until phase 6 replaces them.
+- Fixtures live in `packages/sync-domain/fixtures/<scenario>/`. Each `NNN.json` holds one poll: `incidentId`, `fetchedAt` and the four endpoint payloads as redacted raw bodies (or a request error). `expected.json` holds every poll's outcome, the changes, the anomalies and the final state; `UPDATE_FIXTURES=1` rewrites it. The current fixtures are synthetic.
+- Choices the spec left open:
+  - A request failure on any endpoint makes the poll `failed`, even when detail and report answered `03`, so a flaky endpoint can't delete an incident. A `99` report without `Fecha`, `Hora_Aviso`, `Consecutivo`, `DesUbicacion`, `Direccion` or `Estado_Abierto`, or without a usable incident time, is also `failed`.
+  - Anomalies that describe a condition (`TIME_*`, `PLACEHOLDER_SHAPE_UNKNOWN`, `UNKNOWN_INCIDENT_TYPE`, `MISSING_REFERENCE`, `UPSTREAM_PARTIAL_REPORT`) are recorded once per incident, row and field, not on every poll. Phase 6 passes the keys already recorded.
+  - `TIME_IN_FUTURE` and `TIME_BEFORE_INCIDENT` allow 5 minutes. Coordinates of `0` count as missing for `set`/`cleared` changes and `VALUE_REGRESSED`.
+  - `closedAt` is `observed` only when the previous successful poll saw the incident open and happened within twice the scheduled interval (at least 15 minutes); otherwise `estimated`, recomputed on each poll as late data arrives.
+  - Failed polls back off from 3 minutes, doubling up to an hour. A second not-found poll less than 3 minutes after the first doesn't count.
+  - The empty-units rule only covers units; stations missing from a response are removed right away.
 
 ## Phase 6: Sync pipeline
 

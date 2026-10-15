@@ -5,11 +5,19 @@
   "type": "module",
   "exports": {
     "./fetch-incident": "./src/fetch-incident.ts",
+    "./lifecycle": "./src/lifecycle/index.ts",
+    "./normalize": "./src/normalize/index.ts",
     "./persist/*": "./src/persist/*.ts",
-    "./transform/*": "./src/transform/*.ts"
+    "./poll": "./src/poll/index.ts",
+    "./reconcile": "./src/reconcile/index.ts",
+    "./redact": "./src/redact/index.ts",
+    "./transform/*": "./src/transform/*.ts",
+    "./types": "./src/types.ts"
   },
   "scripts": {
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest run",
+    "test:tz": "TZ=UTC vitest run && TZ=America/Costa_Rica vitest run"
   },
   "dependencies": {
     "@bomberoscr/db": "workspace:*",
@@ -21,6 +29,7 @@
   "devDependencies": {
     "@bomberoscr/typescript-config": "workspace:*",
     "@types/node": "^20.19.1",
-    "@typescript/native-preview": "^7.0.0-dev.20260127.1"
+    "@typescript/native-preview": "^7.0.0-dev.20260127.1",
+    "vitest": "4.0.18"
   }
 }

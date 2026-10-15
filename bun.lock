@@ -244,6 +244,7 @@
         "@bomberoscr/typescript-config": "workspace:*",
         "@types/node": "^20.19.1",
         "@typescript/native-preview": "^7.0.0-dev.20260127.1",
+        "vitest": "4.0.18",
       },
     },
     "packages/typescript-config": {

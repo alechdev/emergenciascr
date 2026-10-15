@@ -20,6 +20,8 @@ export {
 export {
   SIGAE_CODE_NOT_FOUND,
   SIGAE_CODE_OK,
+  decodeBody,
+  type DecodeResult,
   type SigaeRawResponse,
   type SigaeResponse
 } from "./decode";

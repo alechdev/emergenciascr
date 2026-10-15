@@ -2,18 +2,34 @@
   "name": "@bomberoscr/sigae",
   "exports": {
     "./types": "./src/types.ts",
-    "./api": "./src/api.ts"
+    "./api": "./src/api.ts",
+    "./client": "./src/client/index.ts",
+    "./dates": "./src/client/dates.ts"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest run",
+    "test:bun": "bun --bun vitest run",
+    "test:tz": "TZ=UTC vitest run && TZ=America/Costa_Rica vitest run && TZ=UTC bun --bun vitest run && TZ=America/Costa_Rica bun --bun vitest run",
+    "test:live": "SIGAE_LIVE=1 vitest run test/live.test.ts",
+    "record-fixtures": "bun run scripts/record-fixtures.ts"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
     "dotenv": "^16.6.1",
     "dotenv-expand": "^12.0.2",
+    "neverthrow": "^8.2.0",
+    "undici": "^7.19.2",
     "zod": "^4.0.5"
   },
   "devDependencies": {
     "@bomberoscr/typescript-config": "workspace:*",
-    "typescript": "^5.8.3"
+    "@opentelemetry/sdk-metrics": "^2.1.0",
+    "@opentelemetry/sdk-trace-base": "^2.1.0",
+    "@types/node": "^20.19.1",
+    "@typescript/native-preview": "^7.0.0-dev.20260127.1",
+    "typescript": "^5.8.3",
+    "vitest": "4.0.18"
   }
 }

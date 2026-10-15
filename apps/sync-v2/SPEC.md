@@ -72,21 +72,22 @@ Read-only probe of about 145 incidents (latest list plus a sample from 4–6 day
 
 **Response codes.** Every endpoint answers HTTP 200 with `Codigo` / `Descripcion`:
 
-| `Codigo` | `Descripcion`                                                                           | Seen on                                                                                                                |
-| -------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `00`     | `Proceso realizado satisfactoriamente`                                                  | All endpoints, normal case.                                                                                            |
-| `03`     | `No se encontraron registros.`                                                          | All four incident endpoints for nonexistent IDs. The body still has every key, filled with default values.             |
-| `99`     | `Ha ocurrido un error en el web service. Detalle técnico: Specified cast is not valid.` | `ObtenerBoletaIncidente` only, for 4–18% of incidents depending on the sample. Persistent: same result on every retry. |
+| `Codigo` | `Descripcion`                                                                           | Seen on                                                                                                                                                                                                                 |
+| -------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `00`     | `Proceso realizado satisfactoriamente`                                                  | All endpoints, normal case.                                                                                                                                                                                             |
+| `03`     | `No se encontraron registros.`                                                          | All four incident endpoints for nonexistent IDs. Report and detail bodies still have every key, with `null` strings and dates and `0` IDs and coordinates; station and unit lists come back empty.                      |
+| `99`     | `Ha ocurrido un error en el web service. Detalle técnico: Specified cast is not valid.` | `ObtenerBoletaIncidente` only, for 4–18% of incidents depending on the sample. Persistent: same result on every retry.                                                                                                  |
+| `04`     | `Ha ocurrido un error con la base de datos…` / `Ha ocurrido un error en la aplicacion…` | Every endpoint, seen on 2026-10-15 with local development credentials: a SIGAE database permission error, and a decryption error for an outdated password. Lists come back empty. Handled like any other non-`00` code. |
 
 **Partial reports (`99`).** The error body still contains most fields. `Fecha`, `Hora_Aviso`, `DesUbicacion` and `Estado_Abierto` matched `ObtenerDetalleEmergencias` in every case; province/canton/district IDs were missing in half. Incident 1923918 is one of them. v1 ignores `Codigo` and uses the body, which is why these incidents appear on the site. Rejecting them would drop those incidents entirely.
 
-**Placeholder dates.** The only placeholder seen is `0001-01-01T00:00:00`. No `null`, empty strings or epoch values on any date field. Strings never carry an offset. The web's `1970` checks protect against `new Date(null)`, not against SIGAE. `Tiempo_Desplazamiento` uses `0001-01-01T…` as a duration (always zero in the sample); it is not a placeholder and is unused.
+**Placeholder dates.** The only placeholder seen is `0001-01-01T00:00:00`. No `null`, empty strings or epoch values on any date field of a `00` or `99` response (`03` bodies use `null`). Strings never carry an offset. The web's `1970` checks protect against `new Date(null)`, not against SIGAE. `Tiempo_Desplazamiento` uses `0001-01-01T…` as a duration (always zero in the sample); it is not a placeholder and is unused.
 
 **Incident time.** `Fecha` is the date at midnight; `Hora_Aviso` carries the same date and the real time (95 of 96; one differed). The list endpoints report the same timestamp as the report. Keep `date(Fecha) + time(Hora_Aviso)`.
 
 **Data arrives after closing.** 48 of the latest 50 incidents were already closed upstream. Even so, coordinates were `0` for 19%, province/canton/district IDs were `0` for 27% of successful reports, and base return time was missing for 20% of units. This confirms the 72h post-close tracking.
 
-**Units.** 10 of 118 units on closed incidents were dispatched but never arrived or left. No time-ordering violations in the sample; one dispatch earlier than the report time. Stations' `DestipoServicio` is `RESPONSABLE` or `APOYO`. Detail's per-unit `estado` was `RETIRADO` or `EN CAMINO`.
+**Units.** 10 of 118 units on closed incidents were dispatched but never arrived or left. No time-ordering violations in the sample; one dispatch earlier than the report time. Stations' `DestipoServicio` is `RESPONSABLE` or `APOYO`. Detail's per-unit `estado` was `RETIRADO` or `EN CAMINO`. In the phase 2 recordings, `NumeroInterno` was `null` on all 8 dispatched units (it is filled in `ObtenerVehiculosComboF5`); `Unidad` carries the label (`M-48`) and `UnidadCompleta` the label plus station name. Per-item `Codigo` and `Descripcion` on units and stations are `null`.
 
 **Extra report times** (closed incidents):
 
@@ -186,7 +187,7 @@ sigae.getDispatchedStations(id);
 sigae.getDispatchedUnits(id);
 sigae.getLatestIncidents({ count: 50 });
 sigae.getIncidentsBetween({ from, to }); // Date objects, sent as Costa Rica dates whatever the process TZ
-sigae.ping(); // cheapest endpoint, for boot-time checks
+sigae.ping(); // cheapest endpoint (ObtenerProvinciaLista), for boot-time checks
 // …one method per endpoint in use today
 ```
 
@@ -197,7 +198,7 @@ Every method returns `ResultAsync<SigaeResponse<T>, SigaeError>`. The success ch
   - `{ kind: "not_found", raw }` (`Codigo` `03`)
   - `{ kind: "upstream_error", code, description, data: Partial<T>, raw }` (any other code; keeps the partial body, section 3.3)
 - `raw` is the JSON exactly as received, for snapshots. List responses always expose `items`, whether SIGAE calls them `Items` or `items`.
-- `SigaeError` kinds: `timeout`, `network`, `proxy`, `http` (with status), `invalid_json`, `unexpected_shape`. Each keeps `cause`, endpoint and duration. Errors and hook events never include the request body, credentials or the proxy URL.
+- `SigaeError` kinds: `timeout`, `aborted` (the caller's `AbortSignal`), `network`, `proxy`, `http` (with status), `invalid_json`, `unexpected_shape`. Each keeps `cause`, endpoint and duration. Errors and hook events never include the request body, credentials or the proxy URL.
 
 **Types and validation.** Types describe the wire format honestly. Date fields are `SigaeDateString`: Costa Rica wall-clock time, where `0001-01-01T00:00:00` means missing. The fields the sync reads are validated at runtime with loose zod schemas (unknown keys pass through); error bodies use the same schemas made partial. A mismatch returns `unexpected_shape`, so a SIGAE format change shows up as an error instead of silently corrupt data.
 
@@ -205,7 +206,7 @@ Every method returns `ResultAsync<SigaeResponse<T>, SigaeError>`. The success ch
 
 - Configured per client with one HTTP(S) proxy URL, optionally with basic auth.
 - Works on Bun (the runtime) through `fetch`'s native `proxy` option, and on Node (Vitest and tooling) through `undici`'s own `fetch` with a `ProxyAgent`. Mixing a separately installed undici dispatcher with Node's global `fetch` breaks across versions.
-- Failures caused by the proxy (connection refused, `407`, `502` from the proxy) return `proxy` errors, distinct from SIGAE being down.
+- Failures caused by the proxy (connection refused, `407`, `502` from the proxy) return `proxy` errors, distinct from SIGAE being down. Node throws a failed `CONNECT` while Bun returns the proxy's response, so with a proxy configured every `502` counts as a proxy error.
 - Apps read it from `SIGAE_PROXY_URL`. sync-v2 calls `ping()` at boot, so a broken proxy fails fast with a clear error.
 
 **Env.** Apps read `SIGAE_API_URL`, `SIGAE_USER`, `SIGAE_PASSWORD`, `SIGAE_COD_SYS`, `SIGAE_IP` and the optional `SIGAE_PROXY_URL`. sync-v2 currently calls the system code `SIGAE_SYSTEM_CODE`; it switches to `SIGAE_COD_SYS` like the web app.
@@ -313,7 +314,7 @@ Insert only when `payloadHash` differs from the latest row for `(incidentId, end
 - `ObtenerEstacionesAtiendeIncidente`: `Codigo`, `Descripcion`, `Items[]` (`Codigo`, `Descripcion`, `AtencionAPie`, `ClaveEstacion`, `DestipoServicio`, `HoraAtencionAPie`, `IdBoletaEstacionAtiende`, `IdEstacion`, `IdTipoServicio`, `NombreEstacion`).
 - `ObtenerUnidadesDespachadasIncidente`: `Codigo`, `Descripcion`, `Items[]` (`Codigo`, `Descripcion`, `CodigoEstacion`, `CodigoUnidad`, `DespachoAlarma`, `HoraBase`, `HoraDespacho`, `HoraDevolverBase`, `HoraLLegada`, `HoraRetiro`, `HoraTraslado`, `IdBoletaServicio`, `IdBoletaUnidadDespachada`, `IdVehiculo`, `NumeroInterno`, `Traslado`, `Unidad`, `UnidadCompleta`).
 
-The same redaction applies to test fixtures.
+The same redaction applies to test fixtures. Fixtures are public, so recorded ones also replace incident addresses and coordinates with synthetic values.
 
 **`incident_changes`**: field-level facts.
 
@@ -378,7 +379,7 @@ The same redaction applies to test fixtures.
 ### 6.4 Dispatched units and stations
 
 - `Unidad === "ATENCION A PIE"` → `attentionOnFoot = true`, `vehicleId = NULL`.
-- Times via `parseSigaeDate`. `vehicleInternalNumber` from `NumeroInterno`.
+- Times via `parseSigaeDate`. `vehicleInternalNumber` from `NumeroInterno`, which is usually `null` here (section 3.3); check the beta data before relying on it.
 - Station mapping unchanged.
 - **Removal:** a unit or station in the DB but missing from an `ok`/`partial` response is deleted, with a `removed` change and `UNIT_REMOVED` anomaly. Exception: if the response has **zero** units and the DB has some, wait for 2 consecutive polls before deleting (`emptyUnitsCount`), so a single empty response can't wipe an incident.
 

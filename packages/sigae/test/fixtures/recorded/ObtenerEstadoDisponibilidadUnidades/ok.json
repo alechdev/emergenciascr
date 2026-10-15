@@ -1,0 +1,23 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerEstadoDisponibilidadUnidades",
+  "request": {},
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "Descripcion": "CUBRIENDO",
+        "IdGrupoClasificacion": 412
+      },
+      {
+        "Descripcion": "COMBUSTIBLE",
+        "IdGrupoClasificacion": 413
+      },
+      {
+        "Descripcion": "TRAMITES",
+        "IdGrupoClasificacion": 414
+      }
+    ]
+  }
+}

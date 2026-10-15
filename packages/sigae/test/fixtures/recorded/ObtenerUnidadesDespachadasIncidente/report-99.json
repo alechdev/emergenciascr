@@ -1,0 +1,73 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerUnidadesDespachadasIncidente",
+  "request": {
+    "incidentId": 1924505
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "Codigo": null,
+        "Descripcion": null,
+        "CodigoEstacion": 71,
+        "CodigoUnidad": 233,
+        "DespachoAlarma": false,
+        "HoraBase": "2026-10-15T13:33:47",
+        "HoraDespacho": "2026-10-15T13:00:34",
+        "HoraDevolverBase": "0001-01-01T00:00:00",
+        "HoraLLegada": "2026-10-15T13:09:18",
+        "HoraRetiro": "2026-10-15T13:14:40",
+        "HoraTraslado": "0001-01-01T00:00:00",
+        "IdBoletaServicio": 0,
+        "IdBoletaUnidadDespachada": 1385859,
+        "IdVehiculo": 0,
+        "NumeroInterno": null,
+        "Traslado": false,
+        "Unidad": "M-61",
+        "UnidadCompleta": "M-61 TURRIALBA 3-1"
+      },
+      {
+        "Codigo": null,
+        "Descripcion": null,
+        "CodigoEstacion": 71,
+        "CodigoUnidad": 874,
+        "DespachoAlarma": true,
+        "HoraBase": "2026-10-15T13:28:53",
+        "HoraDespacho": "2026-10-15T13:00:35",
+        "HoraDevolverBase": "0001-01-01T00:00:00",
+        "HoraLLegada": "2026-10-15T13:09:20",
+        "HoraRetiro": "2026-10-15T13:10:34",
+        "HoraTraslado": "0001-01-01T00:00:00",
+        "IdBoletaServicio": 0,
+        "IdBoletaUnidadDespachada": 1385860,
+        "IdVehiculo": 0,
+        "NumeroInterno": null,
+        "Traslado": false,
+        "Unidad": "T-15",
+        "UnidadCompleta": "T-15 TURRIALBA 3-1"
+      },
+      {
+        "Codigo": null,
+        "Descripcion": null,
+        "CodigoEstacion": 71,
+        "CodigoUnidad": 846,
+        "DespachoAlarma": true,
+        "HoraBase": "2026-10-15T13:33:50",
+        "HoraDespacho": "2026-10-15T13:00:36",
+        "HoraDevolverBase": "0001-01-01T00:00:00",
+        "HoraLLegada": "2026-10-15T13:09:22",
+        "HoraRetiro": "2026-10-15T13:14:43",
+        "HoraTraslado": "0001-01-01T00:00:00",
+        "IdBoletaServicio": 0,
+        "IdBoletaUnidadDespachada": 1385861,
+        "IdVehiculo": 0,
+        "NumeroInterno": null,
+        "Traslado": false,
+        "Unidad": "AR-15",
+        "UnidadCompleta": "AR-15 TURRIALBA 3-1"
+      }
+    ]
+  }
+}

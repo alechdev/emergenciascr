@@ -1,0 +1,51 @@
+{
+  "source": "synthetic",
+  "endpoint": "ObtenerDetalleEmergencias",
+  "request": {
+    "incidentId": 1900001
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "codigo_tipo_incidente": "2.1.3.",
+    "codigo_tipo_incidente_despacho": "2.1.",
+    "codigo_tipo_incidente_despacho_esp": "2.1.3.",
+    "codigo_tipo_incidente_esp": "2.1.3.1",
+    "consecutivo_EE": "51234-2026",
+    "direccion": "SAN JOSE SAN JOSE CARMEN 100 METROS NORTE DEL PARQUE",
+    "fecha": "2026-10-10T00:00:00",
+    "hora_incidente": "2026-10-10T20:25:19",
+    "latitud": 9.93512,
+    "longitud": -84.07716,
+    "tipo_incidente": "INCENDIO DE ESTRUCTURA",
+    "tipo_incidente_despacho": "INCENDIO",
+    "tipo_incidente_despacho_esp": "INCENDIO DE ESTRUCTURA",
+    "tipo_incidente_esp": "VIVIENDA",
+    "estaciones": [
+      {
+        "clave_estacion": "1-1",
+        "nombre": "METROPOLITANA NORTE",
+        "vehiculos": [
+          {
+            "estado": "RETIRADO",
+            "numero_interno": "M-12"
+          },
+          {
+            "estado": "RETIRADO",
+            "numero_interno": "M-20"
+          }
+        ]
+      },
+      {
+        "clave_estacion": "1-4",
+        "nombre": "PAVAS",
+        "vehiculos": [
+          {
+            "estado": "EN CAMINO",
+            "numero_interno": "M-31"
+          }
+        ]
+      }
+    ]
+  }
+}

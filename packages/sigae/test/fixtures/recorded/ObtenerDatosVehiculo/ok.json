@@ -1,0 +1,30 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerDatosVehiculo",
+  "request": {
+    "Id_Vehiculo": 787
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Canton": "SAN JOSE",
+    "Capacidad": 0,
+    "Des_clase_vehiculo": "",
+    "Des_estado_disponibilidad": "DISPONIBLE",
+    "Des_estado_operativo": "DISPONIBLE",
+    "Des_tipo_vehiculo": "EMERGENCIA",
+    "Distrito": "HOSPITAL",
+    "Id_canton": 26,
+    "Id_clase_vehiculo": 0,
+    "Id_distrito": 66,
+    "Id_estacion": 43,
+    "Id_estado_disponibilidad": 423,
+    "Id_estado_operativo": 3,
+    "Id_provincia": 1,
+    "Id_tipo_vehiculo": 281,
+    "Id_vehiculo": 787,
+    "Numero_interno": "Ambulancia-01",
+    "Placa": "341-338",
+    "Provincia": "SAN JOSE"
+  }
+}

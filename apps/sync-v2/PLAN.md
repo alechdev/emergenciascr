@@ -9,7 +9,7 @@ Every phase is a reviewable set of commits on `sync-v2`. A phase is done when al
 | Phase | Name                   | Depends on | Status                          |
 | ----- | ---------------------- | ---------- | ------------------------------- |
 | 1     | Migrations             | —          | Done                            |
-| 2     | SIGAE client           | —          | Not started                     |
+| 2     | SIGAE client           | —          | Done                            |
 | 3     | sync-v2 foundations    | 2          | Not started                     |
 | 4     | Schema changes         | 1          | Not started                     |
 | 5     | Pure core and fixtures | 2          | Not started                     |
@@ -49,19 +49,19 @@ One standalone client in `packages/sigae` with proxy support (section 4.1). The 
 
 **Tasks**
 
-- [ ] New entry point `@bomberoscr/sigae/client` with `createSigaeClient`, one method per endpoint in use, `ping()`.
-- [ ] Wire types (`SigaeDateString`, `Items`/`items`), loose zod schemas, `SigaeResponse` and `SigaeError`.
-- [ ] Timeouts, concurrency cap, `onResponse` hook, spans and request metrics through `@opentelemetry/api`.
-- [ ] Proxy on Bun (native `fetch` option) and Node (`undici` `fetch` + `ProxyAgent`).
-- [ ] Request dates sent as Costa Rica dates; `parseSigaeDate` for replies.
-- [ ] Tests from section 12 "SIGAE client", with recorded and redacted responses.
+- [x] New entry point `@bomberoscr/sigae/client` with `createSigaeClient`, one method per endpoint in use, `ping()`.
+- [x] Wire types (`SigaeDateString`, `Items`/`items`), loose zod schemas, `SigaeResponse` and `SigaeError`.
+- [x] Timeouts, concurrency cap, `onResponse` hook, spans and request metrics through `@opentelemetry/api`.
+- [x] Proxy on Bun (native `fetch` option) and Node (`undici` `fetch` + `ProxyAgent`).
+- [x] Request dates sent as Costa Rica dates; `parseSigaeDate` for replies.
+- [x] Tests from section 12 "SIGAE client", with recorded and redacted responses (`test/fixtures/recorded`, from `bun run --cwd packages/sigae record-fixtures`; the hand-written fixtures next to them cover cases SIGAE did not return).
 
 **Done when**
 
-- [ ] Unit tests pass on Bun and Node, under `TZ=UTC` and `TZ=America/Costa_Rica`.
-- [ ] Proxy integration tests pass, including `407` and an unreachable proxy.
-- [ ] `SIGAE_LIVE=1` smoke test passes through the real proxy.
-- [ ] No import of `@bomberoscr/db`, env, or sync code from the client.
+- [x] Unit tests pass on Bun and Node, under `TZ=UTC` and `TZ=America/Costa_Rica` (`bun run --cwd packages/sigae test:tz`).
+- [x] Proxy integration tests pass, including `407` and an unreachable proxy.
+- [x] `SIGAE_LIVE=1` smoke test passes through an authenticated proxy on Bun and Node. A wrong proxy password gives a `proxy` error on both.
+- [x] No import of `@bomberoscr/db`, env, or sync code from the client.
 
 ## Phase 3: sync-v2 foundations
 

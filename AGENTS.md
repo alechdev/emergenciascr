@@ -21,6 +21,7 @@ Keep API feature logic close to its boundary (`api/` route + schema + DB query).
 - `bun run format:check`: verify formatting for web.
 - `bun run --cwd apps/web test`: run web tests (Vitest).
 - `bun run --cwd apps/sync-v2 test`: run sync-v2 tests (Vitest).
+- `bun run --cwd packages/sigae test`: run SIGAE client tests (Vitest); `test:tz` runs them on Node and Bun under `TZ=UTC` and `TZ=America/Costa_Rica`.
 - Optional: `bun run --cwd apps/web dev:api` runs Hono alone (standalone) for debugging.
   For DB tasks, use `packages/db` scripts (example: `bun run --cwd packages/db drizzle:generate`).
 - Schema changes ship as committed migrations: edit `packages/db/src/schema.ts`, run

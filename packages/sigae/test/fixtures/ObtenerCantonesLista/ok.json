@@ -1,0 +1,23 @@
+{
+  "source": "synthetic",
+  "endpoint": "ObtenerCantonesLista",
+  "request": {},
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "Canton": "SAN JOSE",
+        "CodigoCanton": "101",
+        "IdCanton": 101,
+        "IdProvincia": 1
+      },
+      {
+        "Canton": "ESCAZU",
+        "CodigoCanton": "102",
+        "IdCanton": 102,
+        "IdProvincia": 1
+      }
+    ]
+  }
+}

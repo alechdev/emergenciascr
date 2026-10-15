@@ -39,12 +39,7 @@
       {
         "clave_estacion": "1-4",
         "nombre": "PAVAS",
-        "vehiculos": [
-          {
-            "estado": "EN CAMINO",
-            "numero_interno": "M-31"
-          }
-        ]
+        "vehiculos": []
       }
     ]
   }

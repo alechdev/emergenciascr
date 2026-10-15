@@ -10,9 +10,15 @@ import {
   InMemorySpanExporter,
   SimpleSpanProcessor
 } from "@opentelemetry/sdk-trace-base";
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test } from "vitest";
 
 import { CREDENTIALS, hangUntilAborted, json, loadFixture, testClient } from "./helpers";
+
+const providers: Array<{ shutdown(): Promise<void> }> = [];
+
+afterEach(async () => {
+  await Promise.all(providers.splice(0).map((provider) => provider.shutdown()));
+});
 
 function setup(handler: Parameters<typeof testClient>[0]) {
   const spans = new InMemorySpanExporter();
@@ -25,6 +31,7 @@ function setup(handler: Parameters<typeof testClient>[0]) {
     exportIntervalMillis: 60_000
   });
   const meterProvider = new MeterProvider({ readers: [reader] });
+  providers.push(tracerProvider, meterProvider);
   const { client } = testClient(handler, { tracerProvider, meterProvider, timeoutMs: 30 });
 
   async function collectMetrics() {

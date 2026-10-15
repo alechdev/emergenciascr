@@ -266,16 +266,16 @@ export interface Station {
 
 /** `ObtenerEstacionDetalle` */
 export interface StationDetails extends SigaeEnvelope {
-  CanalRadio: string;
+  CanalRadio: string | null;
   ClaveEstacion: string;
-  Direccion: string;
-  Email: string;
-  Fax: string;
+  Direccion: string | null;
+  Email: string | null;
+  Fax: string | null;
   IdEstacion: number;
   Latitud: number;
   Longitud: number;
   Nombre: string;
-  Telefono: string;
+  Telefono: string | null;
 }
 
 /** `ObtenerVehiculosComboF5` */
@@ -294,10 +294,10 @@ export interface VehicleDetails extends SigaeEnvelope {
   Canton: string;
   Capacidad: number;
   Clave_estacion_evolution: string;
-  Des_clase_vehiculo: string;
+  Des_clase_vehiculo: string | null;
   Des_estado_disponibilidad: string;
-  Des_estado_operativo: string;
-  Des_tipo_vehiculo: string;
+  Des_estado_operativo: string | null;
+  Des_tipo_vehiculo: string | null;
   Distrito: string;
   Id_Estacion_Reporte: number;
   Id_canton: number;
@@ -316,7 +316,7 @@ export interface VehicleDetails extends SigaeEnvelope {
   Ind_i_a: number;
   Numero_interno: string;
   Observaciones: string;
-  Placa: string;
+  Placa: string | null;
   Provincia: string;
   Transferido_a: string;
 }

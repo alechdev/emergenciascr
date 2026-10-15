@@ -437,7 +437,8 @@ async function main() {
     ]);
     if (!details || !report || !stationsAttending || !units) continue;
 
-    const unitCount = Array.isArray(units.raw.Items) ? units.raw.Items.length : 0;
+    const unitItems = units.raw.Items ?? units.raw.items;
+    const unitCount = Array.isArray(unitItems) ? unitItems.length : 0;
     const isOpen = report.raw.Estado_Abierto === "true";
     let scenario: string | undefined;
     if (report.kind === "upstream_error") scenario = `report-${report.code}`;
@@ -463,7 +464,13 @@ async function main() {
   ];
   for (const [endpoint, fn] of notFound) {
     const response = await run(endpoint, fn());
-    if (response) save("not-found", endpoint, { incidentId: nonexistent }, response);
+    if (!response) continue;
+    if (response.kind !== "not_found") {
+      console.error(`${endpoint}: expected not_found for ID ${nonexistent}, got ${response.kind}`);
+      process.exitCode = 1;
+      continue;
+    }
+    save("not-found", endpoint, { incidentId: nonexistent }, response);
   }
 
   console.log(JSON.stringify(summary, null, 2));

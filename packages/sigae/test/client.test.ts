@@ -610,16 +610,17 @@ describe("secrets", () => {
   test("errors and hook events never contain credentials, even when the runtime echoes them", async () => {
     const events: SigaeResponseEvent[] = [];
     const leaky = (call: { body: Record<string, unknown> }) => {
-      throw new Error(`request failed: ${JSON.stringify(call.body)}`, {
-        cause: new Error(
-          `auth ${CREDENTIALS.user}:${CREDENTIALS.password} ${CREDENTIALS.systemCode}`
-        )
-      });
+      const inner = Object.assign(
+        new Error(`auth ${CREDENTIALS.user}:${CREDENTIALS.password} ${CREDENTIALS.systemCode}`),
+        { code: `E_${CREDENTIALS.password}` }
+      );
+      inner.name = `Error from ${CREDENTIALS.ip}`;
+      throw new Error(`request failed: ${JSON.stringify(call.body)}`, { cause: inner });
     };
     const { client } = testClient(leaky, { onResponse: (event) => events.push(event) });
     const error = await expectError(client.getIncidentReport(1));
     const serialized = serializeDeep(error) + JSON.stringify(events) + String(error.stack);
-    for (const secret of SECRETS) expect(serialized).not.toContain(secret);
+    for (const secret of [...SECRETS, CREDENTIALS.ip]) expect(serialized).not.toContain(secret);
     expect(serialized).toContain("[redacted]");
   });
 
@@ -628,15 +629,18 @@ describe("secrets", () => {
     expect(() => createSigaeClient({ baseUrl: BASE_URL, credentials: CREDENTIALS, proxy })).toThrow(
       /`proxy` must be an http\(s\) URL/
     );
+    let error: unknown;
     try {
       createSigaeClient({
         baseUrl: BASE_URL,
         credentials: CREDENTIALS,
         proxy: "http://u:hunter2@ bad"
       });
-    } catch (error) {
-      expect(String(error)).not.toContain("hunter2");
+    } catch (caught) {
+      error = caught;
     }
+    expect(error).toBeInstanceOf(TypeError);
+    expect(String(error)).not.toContain("hunter2");
   });
 });
 

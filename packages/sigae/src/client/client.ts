@@ -405,8 +405,8 @@ function collectSecrets(
   proxy: URL | undefined
 ): string[] {
   const secrets = new Set<string>();
-  const add = (value: string | undefined, minLength = 1) => {
-    if (value && value.length >= minLength) secrets.add(value);
+  const add = (value: string | undefined) => {
+    if (value) secrets.add(value);
   };
   add(rawProxy);
   if (proxy) {
@@ -414,16 +414,17 @@ function collectSecrets(
     add(proxy.href.replace(/\/$/, ""));
     add(proxy.password);
     add(safeDecode(proxy.password));
-    add(proxy.username, 3);
-    add(safeDecode(proxy.username), 3);
+    add(proxy.username);
+    add(safeDecode(proxy.username));
     if (proxy.username || proxy.password) {
       const pair = `${safeDecode(proxy.username)}:${safeDecode(proxy.password)}`;
       add(Buffer.from(pair).toString("base64"));
     }
   }
   add(credentials.password);
-  add(credentials.user, 3);
-  add(credentials.systemCode, 3);
+  add(credentials.user);
+  add(credentials.systemCode);
+  add(credentials.ip);
   // Longest first, so a secret containing another is removed whole.
   return [...secrets].sort((a, b) => b.length - a.length);
 }

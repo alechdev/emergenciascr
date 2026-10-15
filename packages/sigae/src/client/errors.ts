@@ -71,11 +71,12 @@ export function sanitizeError(
   const message = scrub(source ? source.message : String(error), secrets);
   const cause = source ? sanitizeError(source.cause, secrets, depth + 1) : undefined;
   const copy = new Error(message, cause ? { cause } : undefined);
-  copy.name = source?.name ?? "NonError";
+  copy.name = source ? scrub(String(source.name), secrets) : "NonError";
 
   const code = (source as { code?: unknown } | undefined)?.code;
   if (typeof code === "string" || typeof code === "number") {
-    (copy as Error & { code?: string | number }).code = code;
+    (copy as Error & { code?: string | number }).code =
+      typeof code === "string" ? scrub(code, secrets) : code;
   }
   delete copy.stack;
   return copy;

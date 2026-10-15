@@ -198,7 +198,7 @@ Every method returns `ResultAsync<SigaeResponse<T>, SigaeError>`. The success ch
   - `{ kind: "not_found", raw }` (`Codigo` `03`)
   - `{ kind: "upstream_error", code, description, data: Partial<T>, raw }` (any other code; keeps the partial body, section 3.3)
 - `raw` is the JSON exactly as received, for snapshots. List responses always expose `items`, whether SIGAE calls them `Items` or `items`.
-- `SigaeError` kinds: `timeout`, `aborted` (the caller's `AbortSignal`), `network`, `proxy`, `http` (with status), `invalid_json`, `unexpected_shape`. Each keeps `cause`, endpoint and duration. Errors and hook events never include the request body, credentials or the proxy URL.
+- `SigaeError` kinds: `timeout`, `aborted` (the caller's `AbortSignal`), `network`, `proxy`, `http` (with status), `invalid_json`, `unexpected_shape`. Each keeps a sanitized `cause` when one is available, plus endpoint and duration. Errors and hook events never include the request body, credentials or the proxy URL.
 
 **Types and validation.** Types describe the wire format honestly. Date fields are `SigaeDateString`: Costa Rica wall-clock time, where `0001-01-01T00:00:00` means missing. The fields the sync reads are validated at runtime with loose zod schemas (unknown keys pass through); error bodies use the same schemas made partial. A mismatch returns `unexpected_shape`, so a SIGAE format change shows up as an error instead of silently corrupt data.
 

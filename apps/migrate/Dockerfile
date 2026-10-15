@@ -1,23 +1,22 @@
 FROM oven/bun:1.4.0-alpine AS manifests
 
+WORKDIR /src
+
+COPY . .
+
+# bun only accepts the monorepo lockfile with every workspace manifest present. Copying just
+# the manifests keeps the install layer cached until a manifest or bun.lock changes.
+RUN mkdir /manifests \
+  && cp package.json bun.lock /manifests/ \
+  && find apps packages -mindepth 2 -maxdepth 2 -name package.json -exec cp --parents {} /manifests/ \;
+
+FROM oven/bun:1.4.0-alpine AS deps
+
 WORKDIR /app
 
-COPY apps/migrate/package.json apps/migrate/package.json
-COPY packages/db/package.json packages/db/package.json
+COPY --from=manifests /manifests ./
 
-# Slim workspace with only the migrate app and packages/db. devDependencies are stripped so
-# bun does not need build-only workspace packages, and @bomberoscr/lib is dropped because
-# only the db query modules use it, never the migration runner.
-RUN apk add --no-cache jq && \
-  printf '%s\n' \
-  '{' \
-  '  "private": true,' \
-  '  "workspaces": ["apps/migrate", "packages/db"],' \
-  '  "packageManager": "bun@1.4.0"' \
-  '}' > /tmp/root.package.json \
-  && jq 'del(.devDependencies)' apps/migrate/package.json > /tmp/migrate.package.json \
-  && jq 'del(.devDependencies) | del(.dependencies["@bomberoscr/lib"])' packages/db/package.json \
-  > /tmp/db.package.json
+RUN bun install --frozen-lockfile --production --ignore-scripts --filter migrate
 
 FROM oven/bun:1.4.0-alpine AS runner
 
@@ -25,18 +24,19 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# No bun.lock: the slim workspace does not match the monorepo lockfile.
-COPY --from=manifests /tmp/root.package.json ./package.json
-COPY --from=manifests /tmp/migrate.package.json ./apps/migrate/package.json
-COPY --from=manifests /tmp/db.package.json ./packages/db/package.json
-
-# Sources go in before install so bun's workspace links land correctly.
+# The isolated linker uses relative symlinks, so the store and each workspace's node_modules
+# must keep their paths. packages/lib is linked by packages/db but never imported by the
+# migration runner, so only its manifest is needed.
+COPY --from=deps /app/package.json ./package.json
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/lib ./packages/lib
+COPY --from=deps /app/packages/db ./packages/db
+COPY --from=deps /app/apps/migrate ./apps/migrate
 COPY packages/db/src ./packages/db/src
 COPY packages/db/drizzle ./packages/db/drizzle
 COPY apps/migrate/src ./apps/migrate/src
 
-RUN bun install --production --ignore-scripts \
-  && bun --cwd apps/migrate -e 'import "@bomberoscr/db/migrate"; console.log("migrate deps ok")'
+RUN bun --cwd apps/migrate -e 'import "@bomberoscr/db/migrate"; console.log("migrate deps ok")'
 
 WORKDIR /app/apps/migrate
 

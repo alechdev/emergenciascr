@@ -30,24 +30,31 @@ function log(level: "info" | "error", msg: string, fields: Record<string, unknow
   console.log(JSON.stringify({ time: new Date().toISOString(), level, msg, ...fields }));
 }
 
-const connectionString = process.env.DRIZZLE_POSTGRES_URL;
-if (!connectionString) {
-  log("error", "DRIZZLE_POSTGRES_URL is not set");
-  process.exit(1);
+async function run(): Promise<number> {
+  const connectionString = process.env.DRIZZLE_POSTGRES_URL;
+  if (!connectionString) {
+    log("error", "DRIZZLE_POSTGRES_URL is not set");
+    return 1;
+  }
+
+  const startedAt = performance.now();
+  try {
+    const result = await migrateDatabase(connectionString);
+    log("info", result.applied.length > 0 ? "migrations applied" : "database up to date", {
+      applied: result.applied,
+      total: result.total,
+      durationMs: Math.round(performance.now() - startedAt)
+    });
+    return 0;
+  } catch (error) {
+    log("error", "migration failed", {
+      error: serializeError(error),
+      durationMs: Math.round(performance.now() - startedAt)
+    });
+    return 1;
+  }
 }
 
-const startedAt = performance.now();
-try {
-  const result = await migrateDatabase(connectionString);
-  log("info", result.applied.length > 0 ? "migrations applied" : "database up to date", {
-    applied: result.applied,
-    total: result.total,
-    durationMs: Math.round(performance.now() - startedAt)
-  });
-} catch (error) {
-  log("error", "migration failed", {
-    error: serializeError(error),
-    durationMs: Math.round(performance.now() - startedAt)
-  });
-  process.exit(1);
-}
+// exitCode instead of process.exit() so stdout drains before the process ends and the
+// failure record always reaches the container log.
+process.exitCode = await run();

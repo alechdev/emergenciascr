@@ -12,6 +12,8 @@ on:
       - "packages/db/**"
       - "packages/lib/**"
       - "packages/sync-domain/**"
+      - "package.json"
+      - "bun.lock"
       - ".github/workflows/build-app-beta.yaml"
 jobs:
   check-version:
@@ -21,19 +23,22 @@ jobs:
       version_changed: ${{ steps.check.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - name: Check if version changed
         id: check
+        env:
+          BEFORE: ${{ github.event.before }}
         run: |
           NEW_VERSION=$(node -p "JSON.parse(require('fs').readFileSync('apps/web/package.json', 'utf8')).version")
           echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-          if ! git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+          # Compare with the commit before the whole push, not HEAD^, so a version bump that
+          # isn't the last commit of a multi-commit push still counts.
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+            || ! git fetch --no-tags --depth=1 origin "$BEFORE" 2>/dev/null; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "No previous commit found, treating version as changed: $NEW_VERSION"
+            echo "No previous commit for this push, treating version as changed: $NEW_VERSION"
             exit 0
           fi
-          git show HEAD^:apps/web/package.json > /tmp/old-package.json 2>/dev/null || {
+          git show "$BEFORE:apps/web/package.json" > /tmp/old-package.json 2>/dev/null || {
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "No previous apps/web/package.json, treating version as changed: $NEW_VERSION"
             exit 0
@@ -49,6 +54,11 @@ jobs:
   amd64:
     needs: check-version
     if: needs.check-version.outputs.version_changed == 'true' || github.event_name == 'workflow_dispatch'
+    # Builds push the mutable "beta" tag and then deploy it, so they must not overlap. Scoped to
+    # this job: runs whose version didn't change are skipped and can't displace a pending deploy.
+    concurrency:
+      group: build-app-beta-deploy
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
       contents: read

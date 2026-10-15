@@ -19,6 +19,7 @@ const EnvSchema = z.object({
   SIGAE_PASSWORD: z.string().optional(),
   SIGAE_USER: z.string().optional(),
   SIGAE_COD_SYS: z.string().optional(),
+  SIGAE_PROXY_URL: z.string().url().optional(),
   ADMIN_TOKEN: z.string().optional(),
   MAPBOX_API_KEY: z.string(),
   INTERNAL_API_URL: z.string().url(),

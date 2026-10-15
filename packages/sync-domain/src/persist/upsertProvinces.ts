@@ -2,9 +2,9 @@ import { db } from "@bomberoscr/db/index";
 import { provinces as provincesTable } from "@bomberoscr/db/schema";
 import { conflictUpdateSetAllColumns } from "@bomberoscr/db/utils";
 
-import type { ItemObtenerProvinciaLista } from "@bomberoscr/sync-domain/types";
+import type { Province } from "@bomberoscr/sigae/client";
 
-export async function upsertProvince(provinces: ItemObtenerProvinciaLista[]) {
+export async function upsertProvince(provinces: Province[]) {
   if (provinces.length === 0) return;
 
   await Promise.all(

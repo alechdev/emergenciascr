@@ -23,12 +23,13 @@ RUN apk add --no-cache jq && \
   printf '%s\n' \
   '{' \
   '  "private": true,' \
-  '  "workspaces": ["apps/web", "packages/db", "packages/lib", "packages/sync-domain"],' \
+  '  "workspaces": ["apps/web", "packages/db", "packages/lib", "packages/sigae", "packages/sync-domain"],' \
   '  "packageManager": "bun@1.4.0"' \
   '}' > /tmp/root.package.json \
   && jq 'del(.devDependencies)' apps/web/package.json > /tmp/web.package.json \
   && jq 'del(.devDependencies)' packages/db/package.json > /tmp/db.package.json \
   && jq 'del(.devDependencies)' packages/lib/package.json > /tmp/lib.package.json \
+  && jq 'del(.devDependencies)' packages/sigae/package.json > /tmp/sigae.package.json \
   && jq 'del(.devDependencies)' packages/sync-domain/package.json > /tmp/sync-domain.package.json
 
 FROM oven/bun:1.4.0-alpine AS runner
@@ -44,12 +45,14 @@ COPY --from=build /tmp/root.package.json ./package.json
 COPY --from=build /tmp/web.package.json ./apps/web/package.json
 COPY --from=build /tmp/db.package.json ./packages/db/package.json
 COPY --from=build /tmp/lib.package.json ./packages/lib/package.json
+COPY --from=build /tmp/sigae.package.json ./packages/sigae/package.json
 COPY --from=build /tmp/sync-domain.package.json ./packages/sync-domain/package.json
 
 # Runtime sources must be present BEFORE install so workspace links land correctly.
 # Do not copy package trees after install — that wipes bun's node_modules symlinks.
 COPY --from=build /app/packages/db/src ./packages/db/src
 COPY --from=build /app/packages/lib/src ./packages/lib/src
+COPY --from=build /app/packages/sigae/src ./packages/sigae/src
 COPY --from=build /app/packages/sync-domain/src ./packages/sync-domain/src
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 COPY --from=build /app/apps/web/server.ts ./apps/web/server.ts

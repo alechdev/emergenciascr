@@ -1,76 +1,72 @@
-import logger from "@bomberoscr/lib/logger";
-import { Worker } from "bullmq";
-import { BullMQOtel } from "bullmq-otel";
+import { DelayedError, type Job } from "bullmq";
 
-import { redis } from "@/config/redis";
-import { metricsRegistry } from "@/config/telemetry";
-import { openIncidentsQueue } from "@/queues/openIncidents.queue";
+import { SyncError } from "@/lib/errors";
+import { createWorker } from "@/lib/jobs";
+import logger from "@/lib/logger";
+import { type IncidentSyncJobData, openIncidentsQueue } from "@/queues/openIncidents.queue";
 import { ERROR_MESSAGES, closeIncident, updateIncident } from "@/services/openIncidents.service";
 
-export interface IncidentSyncJobData {
-  incidentId: number;
-}
+const REQUEUE_DELAY_MS = 3 * 60 * 1000;
+/** After this many consecutive failed updates the incident is no longer polled (spec 8.2). */
+const MAX_FAILED_POLLS = 10;
 
-interface IncidentSyncJobResult {
-  incidentId: number;
-  requeue:
-    | {
-        reason: string;
+const log = logger.child({ queue: openIncidentsQueue.name });
+
+export type OpenIncidentResult = { incidentId: number; outcome: "closed" | "given_up" };
+
+/**
+ * Updates the incident and closes it once it looks finished. Otherwise the same job is moved
+ * back to delayed, so each incident has at most one pending job under `open-incident-<id>`.
+ * An incident is only closed right after a successful update, never from stale data.
+ */
+export function createOpenIncidentsWorker() {
+  return createWorker<IncidentSyncJobData, OpenIncidentResult>(
+    openIncidentsQueue.name,
+    async (job, token): Promise<OpenIncidentResult> => {
+      const { incidentId } = job.data;
+      const fields = { jobId: job.id, incidentId };
+
+      const update = await updateIncident({ id: incidentId });
+      if (update.isErr()) {
+        const failedPolls = (job.data.failedPolls ?? 0) + 1;
+        if (failedPolls >= MAX_FAILED_POLLS) {
+          log.error("incident no longer polled after failed updates", {
+            ...fields,
+            failedPolls,
+            error: update.error
+          });
+          return { incidentId, outcome: "given_up" };
+        }
+        log.warn("incident update failed", { ...fields, failedPolls, error: update.error });
+        return requeue(job, token, { failedPolls }, "Update failed");
       }
-    | false;
+
+      const close = await closeIncident({ id: incidentId });
+      if (close.isOk()) {
+        log.info("incident closed", fields);
+        return { incidentId, outcome: "closed" };
+      }
+
+      const { type, cause } = close.error;
+      if (type === "database_error") {
+        throw new SyncError(`failed to close incident ${incidentId}`, { cause });
+      }
+      return requeue(job, token, { failedPolls: 0 }, ERROR_MESSAGES[type]);
+    },
+    { concurrency: 5 }
+  );
 }
 
-const worker = new Worker(
-  "open-incidents",
-  async (job): Promise<IncidentSyncJobResult> => {
-    const start = Date.now();
-    const { incidentId } = job.data as IncidentSyncJobData;
-
-    await updateIncident({ id: incidentId }).orTee((error) => {
-      logger.error(`Error updating incident ${incidentId}: ${error.message}`);
-    });
-
-    const closeIncidentResult = await closeIncident({ id: incidentId });
-
-    if (closeIncidentResult.isErr()) {
-      await openIncidentsQueue.add(
-        "open-incident",
-        { incidentId },
-        {
-          delay: 3 * 60_000,
-          jobId: `open-incident-${incidentId}-${Date.now()}`
-        }
-      );
-      metricsRegistry.jobDurationMs.record(Date.now() - start, { job: "open-incidents" });
-      return {
-        incidentId,
-        requeue: {
-          reason: ERROR_MESSAGES[closeIncidentResult.error.type] ?? closeIncidentResult.error.type
-        }
-      };
-    }
-
-    metricsRegistry.jobDurationMs.record(Date.now() - start, { job: "open-incidents" });
-    return { incidentId, requeue: false };
-  },
-  {
-    connection: redis,
-    telemetry: new BullMQOtel("sync-v2"),
-    concurrency: 5
+async function requeue(
+  job: Job<IncidentSyncJobData>,
+  token: string | undefined,
+  data: Pick<IncidentSyncJobData, "failedPolls">,
+  reason: string
+): Promise<never> {
+  if ((job.data.failedPolls ?? 0) !== data.failedPolls) {
+    await job.updateData({ ...job.data, ...data });
   }
-);
-
-worker.on("completed", (_, returnValue: IncidentSyncJobResult) => {
-  const message = returnValue.requeue
-    ? `re-queued: ${returnValue.requeue.reason}`
-    : "synced and closed";
-  logger.info(`Incident ${returnValue.incidentId} ${message}.`);
-});
-
-worker.on("failed", (_, err) => {
-  logger.error(`Incident sync job failed: ${err.message}`);
-});
-
-worker.on("error", (err) => {
-  logger.error(`Incidents worker error: ${err.message}`);
-});
+  log.info("incident requeued", { jobId: job.id, incidentId: job.data.incidentId, reason });
+  await job.moveToDelayed(Date.now() + REQUEUE_DELAY_MS, token);
+  throw new DelayedError();
+}

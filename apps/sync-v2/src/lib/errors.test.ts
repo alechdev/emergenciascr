@@ -1,0 +1,61 @@
+import { describe, expect, it } from "vitest";
+
+import { SyncError, serializeError } from "@/lib/errors";
+
+describe("serializeError", () => {
+  it("keeps the whole cause chain and known fields", () => {
+    const pg = Object.assign(new Error("insert violates foreign key"), {
+      code: "23503",
+      constraint: "dispatched_vehicles_vehicleId_vehicles_id_fk",
+      detail: "Key (vehicleId)=(8380) is not present"
+    });
+    const error = new SyncError("failed to store incident 1", {
+      cause: new Error("Failed query", { cause: pg })
+    });
+
+    const serialized = serializeError(error);
+
+    expect(serialized).toMatchObject({
+      name: "SyncError",
+      message: "failed to store incident 1",
+      cause: {
+        name: "Error",
+        message: "Failed query",
+        cause: {
+          message: "insert violates foreign key",
+          code: "23503",
+          constraint: "dispatched_vehicles_vehicleId_vehicles_id_fk",
+          detail: "Key (vehicleId)=(8380) is not present"
+        }
+      }
+    });
+    expect(serialized.stack).toContain("SyncError");
+    expect(serialized.cause?.stack).toBeUndefined();
+  });
+
+  it("serializes aggregated errors", () => {
+    const error = new AggregateError([new Error("a"), "b"], "two failed");
+
+    expect(serializeError(error)).toMatchObject({
+      name: "AggregateError",
+      message: "two failed",
+      errors: [
+        { name: "Error", message: "a" },
+        { name: "NonError", message: "b" }
+      ]
+    });
+  });
+
+  it("stops at a fixed depth", () => {
+    let error = new Error("root");
+    for (let index = 0; index < 20; index++) error = new Error(`level ${index}`, { cause: error });
+
+    let depth = 0;
+    let current = serializeError(error);
+    while (current.cause) {
+      current = current.cause;
+      depth++;
+    }
+    expect(depth).toBe(8);
+  });
+});

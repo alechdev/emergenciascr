@@ -2,28 +2,42 @@ import { config } from "dotenv";
 import { expand } from "dotenv-expand";
 import { z } from "zod";
 
+/** Treats `KEY=` like an unset variable. */
+const optional = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((value) => (value === "" ? undefined : value), schema.optional());
+
 const EnvSchema = z.object({
-  SENTRY_DSN: z.string(),
-  REDIS_URL: z.string(),
-  SIGAE_API_URL: z.string().url(),
-  SIGAE_IP: z.string(),
-  SIGAE_USER: z.string(),
-  SIGAE_PASSWORD: z.string(),
-  SIGAE_SYSTEM_CODE: z.string(),
-  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(),
-  OTEL_SERVICE_NAME: z.string().optional()
+  NODE_ENV: z.string().default("production"),
+  LOG_LEVEL: z.enum(["error", "warn", "info", "debug"]).default("info"),
+  REDIS_URL: z.string().min(1),
+  SIGAE_API_URL: z.url(),
+  SIGAE_IP: z.string().min(1),
+  SIGAE_USER: z.string().min(1),
+  SIGAE_PASSWORD: z.string().min(1),
+  SIGAE_COD_SYS: z.string().min(1),
+  SIGAE_PROXY_URL: optional(z.url()),
+  HEALTH_PORT: z.coerce.number().int().min(1).max(65535).default(8080),
+  OTEL_EXPORTER_OTLP_ENDPOINT: optional(z.url()),
+  OTEL_SERVICE_NAME: optional(z.string())
 });
 
-export type EnvSchema = z.infer<typeof EnvSchema>;
+export type Env = z.infer<typeof EnvSchema>;
 
-expand(config());
+expand(config({ quiet: true }));
 
-function validateEnv() {
+function validateEnv(): Env {
   if (process.env.SKIP_ENV_CHECK) {
-    return process.env as unknown as EnvSchema;
+    return process.env as unknown as Env;
   }
 
-  return EnvSchema.parse(process.env);
+  const parsed = EnvSchema.safeParse(process.env);
+  if (!parsed.success) {
+    // Issue messages name the variable and the problem, never the value.
+    throw new Error(`Invalid environment:\n${z.prettifyError(parsed.error)}`);
+  }
+  return parsed.data;
 }
 
-export default validateEnv();
+const env = validateEnv();
+
+export default env;

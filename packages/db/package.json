@@ -19,6 +19,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsgo --noEmit",
     "drizzle:migrate": "drizzle-kit migrate",
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:push": "drizzle-kit push",

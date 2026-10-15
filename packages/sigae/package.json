@@ -1,5 +1,6 @@
 {
   "name": "@bomberoscr/sigae",
+  "type": "module",
   "exports": {
     "./types": "./src/types.ts",
     "./api": "./src/api.ts",

@@ -1,19 +1,17 @@
-import { Queue } from "bullmq";
-import { BullMQOtel } from "bullmq-otel";
+import { createQueue } from "@/lib/jobs";
 
-import { redis } from "@/config/redis";
+export interface IncidentSyncJobData {
+  incidentId: number;
+  /** Consecutive polls that could not update the incident. */
+  failedPolls?: number;
+}
 
-export const openIncidentsQueue = new Queue("open-incidents", {
-  connection: redis,
-  telemetry: new BullMQOtel("sync-v2"),
-  defaultJobOptions: {
-    removeOnComplete: 10,
-    removeOnFail: 5,
-    delay: 3 * 60 * 1000,
-    attempts: 3,
-    backoff: {
-      type: "exponential",
-      delay: 2000
-    }
-  }
+export const openIncidentsQueue = createQueue<IncidentSyncJobData>("open-incidents", {
+  removeOnComplete: 10,
+  removeOnFail: 50,
+  delay: 3 * 60 * 1000,
+  attempts: 3,
+  backoff: { type: "exponential", delay: 2000 }
 });
+
+export const openIncidentJobId = (incidentId: number) => `open-incident-${incidentId}`;

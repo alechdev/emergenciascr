@@ -1,19 +1,7 @@
 import env from "@api/env";
-import {
-  getIncidentDetails,
-  getIncidentReport,
-  getStationsAttendingIncident,
-  getVehiclesDispatchedToIncident
-} from "@bomberoscr/sync-domain/api";
-import { createFetcher } from "@bomberoscr/sync-domain/fetcher";
+import { type SigaeClient, createSigaeClient } from "@bomberoscr/sigae/client";
+import { fetchIncident } from "@bomberoscr/sync-domain/fetch-incident";
 import { upsertIncident } from "@bomberoscr/sync-domain/persist/upsertIncident";
-
-import type {
-  ObtenerEstacionesAtiendeIncidente,
-  ObtenerUnidadesDespachadasIncidente
-} from "@bomberoscr/sync-domain/types";
-
-type SigAEFetcher = ReturnType<typeof createFetcher>;
 
 const SIGAE_ENV_KEYS = [
   "SIGAE_API_URL",
@@ -23,10 +11,10 @@ const SIGAE_ENV_KEYS = [
   "SIGAE_COD_SYS"
 ] as const;
 
-let cachedFetcher: SigAEFetcher | null = null;
+let cachedClient: SigaeClient | null = null;
 
-function getSigAEFetcher():
-  | { ok: true; fetcher: SigAEFetcher }
+function getSigaeClient():
+  | { ok: true; client: SigaeClient }
   | { ok: false; missing: (typeof SIGAE_ENV_KEYS)[number][] } {
   const baseUrl = env.SIGAE_API_URL;
   const ip = env.SIGAE_IP;
@@ -39,19 +27,13 @@ function getSigAEFetcher():
     return { ok: false, missing };
   }
 
-  if (!cachedFetcher) {
-    cachedFetcher = createFetcher({
-      baseUrl,
-      credentials: {
-        IP: ip,
-        Password: password,
-        Usuario: user,
-        codSistema: codSys
-      }
-    });
-  }
+  cachedClient ??= createSigaeClient({
+    baseUrl,
+    credentials: { user, password, systemCode: codSys, ip },
+    proxy: env.SIGAE_PROXY_URL
+  });
 
-  return { ok: true, fetcher: cachedFetcher };
+  return { ok: true, client: cachedClient };
 }
 
 function formatMissingEnvMessage(missing: readonly string[]) {
@@ -59,44 +41,24 @@ function formatMissingEnvMessage(missing: readonly string[]) {
   return `Admin synchronization is disabled. Missing ${label}: ${missing.join(", ")}`;
 }
 
-function formatIsoDateForSIGAE(isoDate: string) {
-  const [year, month, day] = isoDate.split("-");
-  return `${month}/${day}/${year}`;
+/** Noon in Costa Rica on a `YYYY-MM-DD` date, so the client sends that same date. */
+function costaRicaDate(isoDate: string): Date {
+  return new Date(`${isoDate}T12:00:00-06:00`);
 }
 
-async function syncSingleIncident(fetcher: SigAEFetcher, incidentId: number) {
-  const results = await Promise.all([
-    getIncidentDetails({ fetcher, id: incidentId }),
-    getIncidentReport({ fetcher, id: incidentId }),
-    getStationsAttendingIncident({ fetcher, id: incidentId }),
-    getVehiclesDispatchedToIncident({ fetcher, id: incidentId })
-  ]);
-
-  const [incidentDetailsResult, incidentReportResult, stationsResult, vehiclesResult] = results;
-
-  if (incidentDetailsResult.isErr()) {
-    return { incidentId, success: false, error: "Failed to fetch incident details" };
-  }
-  if (incidentReportResult.isErr()) {
-    return { incidentId, success: false, error: "Failed to fetch incident report" };
-  }
-  if (stationsResult.isErr()) {
-    return { incidentId, success: false, error: "Failed to fetch stations" };
-  }
-  if (vehiclesResult.isErr()) {
-    return { incidentId, success: false, error: "Failed to fetch vehicles" };
+async function syncSingleIncident(client: SigaeClient, incidentId: number) {
+  const fetched = await fetchIncident(client, incidentId);
+  if (fetched.isErr()) {
+    const error = fetched.error;
+    return {
+      incidentId,
+      success: false,
+      error: error.kind === "not_found" ? "Incident not found in SIGAE" : error.message
+    };
   }
 
   try {
-    await upsertIncident({
-      incidentId,
-      incidentDetails: incidentDetailsResult.value,
-      incidentReport: incidentReportResult.value,
-      stationsAttending: (stationsResult.value as unknown as ObtenerEstacionesAtiendeIncidente)
-        .Items,
-      vehiclesDispatched: (vehiclesResult.value as unknown as ObtenerUnidadesDespachadasIncidente)
-        .Items
-    });
+    await upsertIncident(fetched.value);
     return { incidentId, success: true };
   } catch (error) {
     return {
@@ -107,5 +69,4 @@ async function syncSingleIncident(fetcher: SigAEFetcher, incidentId: number) {
   }
 }
 
-export { formatIsoDateForSIGAE, formatMissingEnvMessage, getSigAEFetcher, syncSingleIncident };
-export type { SigAEFetcher };
+export { costaRicaDate, formatMissingEnvMessage, getSigaeClient, syncSingleIncident };

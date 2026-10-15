@@ -10,7 +10,7 @@ Every phase is a reviewable set of commits on `sync-v2`. A phase is done when al
 | ----- | ---------------------- | ---------- | ------------------------------- |
 | 1     | Migrations             | —          | Done                            |
 | 2     | SIGAE client           | —          | Done                            |
-| 3     | sync-v2 foundations    | 2          | Not started                     |
+| 3     | sync-v2 foundations    | 2          | Done                            |
 | 4     | Schema changes         | 1          | Not started                     |
 | 5     | Pure core and fixtures | 2          | Not started                     |
 | 6     | Sync pipeline          | 3, 4, 5    | Not started                     |
@@ -69,21 +69,21 @@ Fix what survives the rework: client, env, jobs, telemetry, shutdown. The incide
 
 **Tasks**
 
-- [ ] sync-v2 and the web admin's manual sync use the new client. Remove `api`, `fetcher` and `types` from `sync-domain`.
-- [ ] Env: `SIGAE_COD_SYS`, `SIGAE_PROXY_URL`; remove `SENTRY_DSN`. `ping()` at boot.
-- [ ] Job IDs without colons; attempt limits on every queue; error causes kept (section 3.1 bugs 3, 4, 5).
-- [ ] Reference jobs run once at boot, then on the 12h cron, in the order from section 9.
-- [ ] Telemetry setup, sync-v2 logger, job metrics, health endpoint (section 4.2).
-- [ ] Graceful shutdown.
-- [ ] Remove `@sentry/node`, `@opentelemetry/instrumentation-winston`, `@opentelemetry/resources` 1.x.
+- [x] sync-v2 and the web admin's manual sync use the new client. Remove `api`, `fetcher` and `types` from `sync-domain`.
+- [x] Env: `SIGAE_COD_SYS`, `SIGAE_PROXY_URL`; remove `SENTRY_DSN`. `ping()` at boot.
+- [x] Job IDs without colons; attempt limits on every queue; error causes kept (section 3.1 bugs 3, 4, 5). One open-incident job per incident, moved back to delayed between polls and given up after 10 failed updates.
+- [x] Reference jobs run once at boot, then on the 12h cron, in the order from section 9.
+- [x] Telemetry setup, sync-v2 logger, job metrics, health endpoint (section 4.2).
+- [x] Graceful shutdown.
+- [x] Remove `@sentry/node`, `@opentelemetry/instrumentation-winston`, `@opentelemetry/resources` 1.x.
 
 **Done when**
 
-- [ ] sync-v2 starts locally, syncs all reference data at boot, and logs JSON with no errors.
-- [ ] Station and vehicle jobs succeed (no "Custom Id cannot contain :").
-- [ ] Traces, metrics and logs arrive at a local OTLP collector with `service.name=sync-v2`.
-- [ ] `SIGTERM` during a job: the job finishes, telemetry is flushed, and it doesn't come back as stalled.
-- [ ] The web admin's manual sync still works.
+- [x] sync-v2 starts locally, syncs all reference data at boot, and logs JSON with no errors.
+- [x] Station and vehicle jobs succeed (no "Custom Id cannot contain :").
+- [x] Traces, metrics and logs arrive at a local OTLP collector with `service.name=sync-v2` (checked with a minimal OTLP/HTTP JSON receiver, from `tsx` and from the `tsdown` build).
+- [x] `SIGTERM` during a job: the job finishes, telemetry is flushed, and it doesn't come back as stalled.
+- [x] The web admin's manual sync still works. Its router is not mounted in `api/app.ts` (on `main` either), so its handlers were called directly.
 
 ## Phase 4: Schema changes
 

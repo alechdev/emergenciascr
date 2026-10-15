@@ -1,18 +1,12 @@
-import { Queue } from "bullmq";
-import { BullMQOtel } from "bullmq-otel";
+import { createQueue } from "@/lib/jobs";
 
-import { redis } from "@/config/redis";
+import type { StationJobData } from "@/services/stations.service";
 
-export const stationsQueue = new Queue("stations", {
-  connection: redis,
-  telemetry: new BullMQOtel("sync-v2"),
-  defaultJobOptions: {
-    removeOnComplete: true,
-    removeOnFail: 5,
-    attempts: 3,
-    backoff: {
-      type: "exponential",
-      delay: 5 * 60 * 1000 // 5 minutes
-    }
-  }
+export const stationsQueue = createQueue<StationJobData>("stations", {
+  removeOnComplete: true,
+  removeOnFail: 50,
+  attempts: 3,
+  backoff: { type: "exponential", delay: 30 * 1000 }
 });
+
+export const stationJobId = (id: number) => `station-${id}`;

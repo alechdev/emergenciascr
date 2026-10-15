@@ -4,22 +4,23 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./api": "./src/api.ts",
-    "./fetcher": "./src/fetcher.ts",
+    "./fetch-incident": "./src/fetch-incident.ts",
     "./persist/*": "./src/persist/*.ts",
-    "./transform/*": "./src/transform/*.ts",
-    "./types": "./src/types.ts"
+    "./transform/*": "./src/transform/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "@bomberoscr/db": "workspace:*",
     "@bomberoscr/lib": "workspace:*",
-    "dotenv": "^16.4.7",
-    "dotenv-expand": "^11.0.1",
+    "@bomberoscr/sigae": "workspace:*",
     "neverthrow": "^8.2.0",
     "zod": "^4.0.5"
   },
   "devDependencies": {
     "@bomberoscr/typescript-config": "workspace:*",
+    "@types/node": "^20.19.1",
     "@typescript/native-preview": "^7.0.0-dev.20260127.1"
   }
 }

@@ -10,11 +10,19 @@ import { rawToDispatchedVehicles } from "@bomberoscr/sync-domain/transform/rawTo
 import { rawToIncident } from "@bomberoscr/sync-domain/transform/rawToIncident";
 
 import type {
-  ItemObtenerEstacionesAtiendeIncidente,
-  ItemObtenerUnidadesDespachadasIncidente,
-  ObtenerBoletaIncidente,
-  ObtenerDetalleEmergencias
-} from "@bomberoscr/sync-domain/types";
+  DispatchedStation,
+  DispatchedUnit,
+  IncidentDetails,
+  IncidentReport
+} from "@bomberoscr/sigae/client";
+
+export type UpsertIncidentInput = {
+  incidentId: number;
+  incidentDetails: IncidentDetails;
+  incidentReport: IncidentReport;
+  stationsAttending: DispatchedStation[];
+  vehiclesDispatched: DispatchedUnit[];
+};
 
 export async function upsertIncident({
   incidentId,
@@ -22,13 +30,7 @@ export async function upsertIncident({
   incidentReport,
   stationsAttending,
   vehiclesDispatched
-}: {
-  incidentId: number;
-  incidentDetails: ObtenerDetalleEmergencias;
-  incidentReport: ObtenerBoletaIncidente;
-  stationsAttending: ItemObtenerEstacionesAtiendeIncidente[];
-  vehiclesDispatched: ItemObtenerUnidadesDespachadasIncidente[];
-}) {
+}: UpsertIncidentInput) {
   if (!incidentDetails || !incidentReport) return;
 
   const responsibleStation =

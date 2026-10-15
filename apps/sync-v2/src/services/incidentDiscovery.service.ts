@@ -1,25 +1,29 @@
 import db, { inArray } from "@bomberoscr/db/index";
 import { incidents } from "@bomberoscr/db/schema";
-import { getLatestIncidentsListApp } from "@bomberoscr/sync-domain/api";
 import { ResultAsync, okAsync } from "neverthrow";
 
-import { fetcher } from "@/config/fetcher";
+import { sigae } from "@/config/sigae";
+import { SyncError } from "@/lib/errors";
+import { expectOk } from "@/lib/sigae";
 
-export function getNewIncidents() {
-  return getLatestIncidentsListApp(fetcher, 50).andThen((data) => {
+const LATEST_INCIDENTS = 50;
+
+/** IDs among the latest incidents in SIGAE that are not stored yet. */
+export function getNewIncidents(): ResultAsync<number[], SyncError> {
+  return expectOk(
+    sigae.getLatestIncidents({ count: LATEST_INCIDENTS }),
+    "latest incidents"
+  ).andThen((data) => {
     if (data.items.length === 0) return okAsync([]);
 
     const incidentIds = data.items.map((incident) => incident.idBoletaIncidente);
 
     return ResultAsync.fromPromise(
       db.select({ id: incidents.id }).from(incidents).where(inArray(incidents.id, incidentIds)),
-      (error) => new Error(`Database error checking existing incidents: ${error}`)
-    ).map((existingIncidents) => {
-      const existingIds = new Set(existingIncidents.map((incident) => incident.id));
-
-      const newIncidentIds = incidentIds.filter((id) => !existingIds.has(id));
-
-      return newIncidentIds;
+      (cause) => new SyncError("failed to read existing incidents", { cause })
+    ).map((existing) => {
+      const existingIds = new Set(existing.map((incident) => incident.id));
+      return incidentIds.filter((id) => !existingIds.has(id));
     });
   });
 }

@@ -5,6 +5,7 @@
     "./utils": "./src/utils.ts",
     "./index": "./src/index.ts",
     "./schema": "./src/schema.ts",
+    "./migrate": "./src/migrate.ts",
     "./queries/incidents": "./src/queries/incidents.ts",
     "./queries/stations": "./src/queries/stations.ts",
     "./queries/stats": "./src/queries/stats.ts",
@@ -30,10 +31,12 @@
     "dotenv-expand": "^12.0.2",
     "drizzle-orm": "^0.44.3",
     "drizzle-zod": "^0.8.2",
+    "pg": "^8.18.0",
     "zod": "^4.0.5"
   },
   "devDependencies": {
     "@bomberoscr/typescript-config": "workspace:*",
+    "@types/pg": "^8.6.1",
     "@typescript/native-preview": "^7.0.0-dev.20260127.1",
     "drizzle-kit": "^0.31.4"
   }

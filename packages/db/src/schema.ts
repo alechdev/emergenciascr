@@ -153,7 +153,7 @@ export const newsArticles = pgTable("news_articles", {
     .notNull()
 });
 
-const mediaType = pgEnum("media_type", ["image", "video"]);
+export const mediaType = pgEnum("media_type", ["image", "video"]);
 
 export const newsArticleMedia = pgTable("news_article_media", {
   id: text().primaryKey(),

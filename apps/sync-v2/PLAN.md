@@ -8,7 +8,7 @@ Every phase is a reviewable set of commits on `sync-v2`. A phase is done when al
 
 | Phase | Name                   | Depends on | Status                          |
 | ----- | ---------------------- | ---------- | ------------------------------- |
-| 1     | Migrations             | —          | In progress                     |
+| 1     | Migrations             | —          | Done                            |
 | 2     | SIGAE client           | —          | Not started                     |
 | 3     | sync-v2 foundations    | 2          | Not started                     |
 | 4     | Schema changes         | 1          | Not started                     |
@@ -30,18 +30,18 @@ Committed migrations applied by a dedicated migrate step (section 10).
 
 **Tasks**
 
-- [ ] `migrations.prefix: "timestamp"` in `packages/db/drizzle.config.ts`.
-- [ ] Replace `0000_fix-invalid-foreign-keys` with one generated baseline of the current schema.
-- [ ] `packages/db/src/migrate.ts`: `migrateDatabase(connectionString)` with an advisory lock and the standard `drizzle.__drizzle_migrations` table.
-- [ ] `apps/migrate`: loads env, runs `migrateDatabase`, logs the result, exits non-zero on failure. Its own Dockerfile.
-- [ ] Repository instructions: how to generate and apply a migration.
+- [x] `migrations.prefix: "timestamp"` in `packages/db/drizzle.config.ts`.
+- [x] Replace `0000_fix-invalid-foreign-keys` with one generated baseline of the current schema.
+- [x] `packages/db/src/migrate.ts`: `migrateDatabase(connectionString)` with an advisory lock and the standard `drizzle.__drizzle_migrations` table.
+- [x] `apps/migrate`: loads env, runs `migrateDatabase`, logs the result, exits non-zero on failure. Its own Dockerfile.
+- [x] Repository instructions: how to generate and apply a migration.
 
 **Done when**
 
-- [ ] An empty Postgres database migrated with `apps/migrate` matches `drizzle-kit push` output for the same schema (no diff from `drizzle-kit generate`).
-- [ ] Running the migrate app twice applies nothing the second time.
-- [ ] Two concurrent runs: one waits for the other, and both exit 0.
-- [ ] The migrate Docker image builds and migrates a database from a container.
+- [x] An empty Postgres database migrated with `apps/migrate` matches `drizzle-kit push` output for the same schema (no diff from `drizzle-kit generate`).
+- [x] Running the migrate app twice applies nothing the second time.
+- [x] Two concurrent runs: one waits for the other, and both exit 0.
+- [x] The migrate Docker image builds and migrates a database from a container.
 
 ## Phase 2: SIGAE client
 

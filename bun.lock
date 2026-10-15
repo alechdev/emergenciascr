@@ -13,6 +13,20 @@
         "oxlint-tsgolint": "0.12.0",
       },
     },
+    "apps/migrate": {
+      "name": "migrate",
+      "version": "0.1.0",
+      "dependencies": {
+        "@bomberoscr/db": "workspace:*",
+        "dotenv": "^17.2.0",
+        "dotenv-expand": "^12.0.2",
+      },
+      "devDependencies": {
+        "@bomberoscr/typescript-config": "workspace:*",
+        "@types/node": "^20.19.1",
+        "@typescript/native-preview": "^7.0.0-dev.20260127.1",
+      },
+    },
     "apps/sync": {
       "name": "sync",
       "version": "0.1.0",
@@ -90,7 +104,7 @@
     },
     "apps/web": {
       "name": "web",
-      "version": "0.1.43",
+      "version": "0.1.48",
       "dependencies": {
         "@aws-sdk/client-s3": "3.966.0",
         "@base-ui/react": "1.1.0",
@@ -172,10 +186,12 @@
         "dotenv-expand": "^12.0.2",
         "drizzle-orm": "^0.44.3",
         "drizzle-zod": "^0.8.2",
+        "pg": "^8.18.0",
         "zod": "^4.0.5",
       },
       "devDependencies": {
         "@bomberoscr/typescript-config": "workspace:*",
+        "@types/pg": "^8.6.1",
         "@typescript/native-preview": "^7.0.0-dev.20260127.1",
         "drizzle-kit": "^0.31.4",
       },
@@ -1827,6 +1843,8 @@
     "math-intrinsics": ["math-intrinsics@1.1.0", "", {}, "sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g=="],
 
     "micromatch": ["micromatch@4.0.8", "", { "dependencies": { "braces": "^3.0.3", "picomatch": "^2.3.1" } }, "sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA=="],
+
+    "migrate": ["migrate@workspace:apps/migrate"],
 
     "mime-db": ["mime-db@1.52.0", "", {}, "sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg=="],
 

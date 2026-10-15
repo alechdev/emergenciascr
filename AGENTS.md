@@ -23,6 +23,10 @@ Keep API feature logic close to its boundary (`api/` route + schema + DB query).
 - `bun run --cwd apps/sync-v2 test`: run sync-v2 tests (Vitest).
 - Optional: `bun run --cwd apps/web dev:api` runs Hono alone (standalone) for debugging.
   For DB tasks, use `packages/db` scripts (example: `bun run --cwd packages/db drizzle:generate`).
+- Schema changes ship as committed migrations: edit `packages/db/src/schema.ts`, run
+  `bun run --cwd packages/db drizzle:generate --name <change>`, and apply them with
+  `bun run --cwd apps/migrate start` (reads `DRIZZLE_POSTGRES_URL`). Keep `drizzle:push` for
+  local throwaway databases only.
 
 ## Coding Style & Naming Conventions
 

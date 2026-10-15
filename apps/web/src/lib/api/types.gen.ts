@@ -472,9 +472,9 @@ export type GetIncidentByIdResponses = {
                  */
                 type: string;
                 /**
-                 * Time when the vehicle was dispatched.
+                 * Time when the vehicle was dispatched, or null when SIGAE has none.
                  */
-                dispatchedTime: string;
+                dispatchedTime: string | null;
                 /**
                  * Time when the vehicle arrived at the scene.
                  */

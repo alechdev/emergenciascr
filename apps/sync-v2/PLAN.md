@@ -11,7 +11,7 @@ Every phase is a reviewable set of commits on `sync-v2`. A phase is done when al
 | 1     | Migrations             | —          | Done                            |
 | 2     | SIGAE client           | —          | Done                            |
 | 3     | sync-v2 foundations    | 2          | Done                            |
-| 4     | Schema changes         | 1          | Not started                     |
+| 4     | Schema changes         | 1          | Done                            |
 | 5     | Pure core and fixtures | 2          | Not started                     |
 | 6     | Sync pipeline          | 3, 4, 5    | Not started                     |
 | 7     | Web changes            | 4          | Not started                     |
@@ -91,16 +91,16 @@ The section 5 data model as migrations on top of the baseline.
 
 **Tasks**
 
-- [ ] All timestamp columns to `timestamptz`.
-- [ ] Section 5.1 columns: nullable vehicle times, `vehicleInternalNumber`, `closedAt`/`closedAtSource`, the four extra report times.
-- [ ] Section 5.2 tables: `sigae_snapshots`, `incident_changes`, `sync_anomalies`, `incident_sync_state`.
-- [ ] Web reads tolerate `NULL` vehicle times (section 11 item 1), so the web keeps working once phase 6 writes them.
+- [x] All timestamp columns to `timestamptz`. The generated migration converts with `USING ... AT TIME ZONE 'UTC'`, so it doesn't depend on the session timezone.
+- [x] Section 5.1 columns: nullable vehicle times, `vehicleInternalNumber`, `closedAt`/`closedAtSource`, the four extra report times.
+- [x] Section 5.2 tables: `sigae_snapshots`, `incident_changes`, `sync_anomalies`, `incident_sync_state`.
+- [x] Web reads tolerate `NULL` vehicle times (section 11 item 1), so the web keeps working once phase 6 writes them.
 
 **Done when**
 
-- [ ] Migrations apply cleanly to an empty database and to a database at the baseline.
-- [ ] Web tests and type checks pass against the new schema.
-- [ ] The web runs locally against a migrated database with sample data that has `NULL` vehicle times.
+- [x] Migrations apply cleanly to an empty database and to a database at the baseline (with synced data and the database timezone set to `America/Costa_Rica`, the stored instants are unchanged).
+- [x] Web tests and type checks pass against the new schema. Type checks still report three errors that are on `main` too (`/mapa` link, the health handler, a recharts `payload` prop).
+- [x] The web runs locally against a migrated database with sample data that has `NULL` vehicle times.
 
 ## Phase 5: Pure core and fixtures
 

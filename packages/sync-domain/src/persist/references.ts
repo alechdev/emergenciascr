@@ -1,13 +1,20 @@
-import { type SQL, inArray, sql } from "@bomberoscr/db/operators";
+import { type SQL, desc, eq, inArray, sql } from "@bomberoscr/db/operators";
 import {
   cantons,
   districts,
   incidentTypes,
   provinces,
   stations,
+  vehicleStationHistory,
   vehicles
 } from "@bomberoscr/db/schema";
 import { conflictUpdateSetAllColumns } from "@bomberoscr/db/utils";
+
+import {
+  type VehicleAssignment,
+  storedOperationalStatus,
+  vehicleAssignmentWrite
+} from "../reconcile/vehicle-assignment";
 
 import type { KnownReferences, ReferenceIds } from "../reconcile/references";
 import type { Executor } from "./executor";
@@ -142,11 +149,20 @@ export async function upsertListedStation(db: Executor, station: ListedStation):
     });
 }
 
-/** Stores a vehicle. Its station must exist. */
+/**
+ * Stores a vehicle and records its station and operational status in
+ * `vehicle_station_history` (spec section 9), in one transaction. Its station must exist.
+ *
+ * The upsert locks the vehicle's row until the transaction ends (a new vehicle's insert waits
+ * for a concurrent one to commit, then updates it), so writers of the same vehicle take turns
+ * and the next one reads the history row the previous one wrote: two observations of one
+ * change can't both start a new row.
+ */
 export async function upsertVehicleDetails(
   db: Executor,
   id: number,
-  details: VehicleDetails
+  details: VehicleDetails,
+  now: Date
 ): Promise<void> {
   // A `null` from SIGAE keeps the stored value; `""` only fills the column for a new vehicle.
   const nullable = {
@@ -163,17 +179,65 @@ export async function upsertVehicleDetails(
     stationId: details.Id_estacion,
     ...known
   };
-  await db
-    .insert(vehicles)
-    .values({
+  await db.transaction(async (tx) => {
+    const [stored] = await tx
+      .insert(vehicles)
+      .values({
+        id,
+        plate: "",
+        class: "",
+        descriptionType: "",
+        descriptionOperationalStatus: "",
+        ...update
+      })
+      .onConflictDoUpdate({ target: vehicles.id, set: update })
+      .returning({
+        stationId: vehicles.stationId,
+        operationalStatus: vehicles.descriptionOperationalStatus
+      });
+    if (!stored) throw new Error(`vehicle ${id} upsert returned no row`);
+    // The stored row, not the details: a `null` status from SIGAE kept the stored one.
+    await recordVehicleAssignment(
+      tx,
       id,
-      plate: "",
-      class: "",
-      descriptionType: "",
-      descriptionOperationalStatus: "",
-      ...update
+      {
+        stationId: stored.stationId,
+        operationalStatus: storedOperationalStatus(stored.operationalStatus)
+      },
+      now
+    );
+  });
+}
+
+/** Must run under the vehicle's row lock: see {@link upsertVehicleDetails}. */
+async function recordVehicleAssignment(
+  db: Executor,
+  vehicleId: number,
+  observed: VehicleAssignment,
+  now: Date
+): Promise<void> {
+  const [latest] = await db
+    .select({
+      id: vehicleStationHistory.id,
+      stationId: vehicleStationHistory.stationId,
+      operationalStatus: vehicleStationHistory.operationalStatus
     })
-    .onConflictDoUpdate({ target: vehicles.id, set: update });
+    .from(vehicleStationHistory)
+    .where(eq(vehicleStationHistory.vehicleId, vehicleId))
+    .orderBy(desc(vehicleStationHistory.lastSeenAt), desc(vehicleStationHistory.id))
+    .limit(1);
+  const write = vehicleAssignmentWrite(latest ?? null, observed, now);
+  if (write.kind === "bump") {
+    // Never back: a writer with an older clock reading may come second.
+    await db
+      .update(vehicleStationHistory)
+      .set({
+        lastSeenAt: sql`greatest(${vehicleStationHistory.lastSeenAt}, ${write.lastSeenAt.toISOString()}::timestamptz)`
+      })
+      .where(eq(vehicleStationHistory.id, write.id));
+    return;
+  }
+  await db.insert(vehicleStationHistory).values({ vehicleId, ...write.row });
 }
 
 /** Stores the incident type tree. Returns how many types it has. */

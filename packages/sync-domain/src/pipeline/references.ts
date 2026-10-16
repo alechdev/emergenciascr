@@ -114,7 +114,7 @@ export function createReferenceResolver(options: ReferenceResolverOptions): Refe
       }
     }
     try {
-      await upsertVehicleDetails(db, id, details);
+      await upsertVehicleDetails(db, id, details, now());
       return true;
     } catch (error) {
       failures.push(`vehicle ${id}: failed to store: ${describeError(error)}`);

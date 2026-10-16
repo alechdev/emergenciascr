@@ -33,6 +33,7 @@ export const stations = pgTable("stations", {
 
 export const stationsRelations = relations(stations, ({ many }) => ({
   vehicles: many(vehicles),
+  vehicleStationHistory: many(vehicleStationHistory),
   dispatchedStations: many(dispatchedStations),
   dispatchedVehicles: many(dispatchedVehicles)
 }));
@@ -50,6 +51,32 @@ export const vehicles = pgTable("vehicles", {
   class: text().notNull(),
   descriptionOperationalStatus: text().notNull()
 });
+
+/**
+ * Where each vehicle was assigned and in what operational state, over time (spec section
+ * 5.2). `vehicles` only holds the current values. A row covers consecutive observations of
+ * the same station and status: `firstSeenAt` is the first one (not the real assignment
+ * date), `lastSeenAt` the latest. Rows are never updated otherwise, nor deleted.
+ */
+export const vehicleStationHistory = pgTable(
+  "vehicle_station_history",
+  {
+    id: bigserial({ mode: "number" }).primaryKey(),
+    vehicleId: integer()
+      .notNull()
+      .references(() => vehicles.id),
+    stationId: integer()
+      .notNull()
+      .references(() => stations.id),
+    /** `Des_estado_operativo`; `NULL` while SIGAE never gave one. */
+    operationalStatus: text(),
+    firstSeenAt: timestamptz().notNull(),
+    lastSeenAt: timestamptz().notNull()
+  },
+  (table) => [
+    index("vehicle_station_history_vehicle_last_seen_idx").on(table.vehicleId, table.lastSeenAt)
+  ]
+);
 
 export const vehicleDisponibility = pgTable("vehicle_disponibility", {
   id: integer().primaryKey(),
@@ -286,7 +313,19 @@ export const vehiclesRelations = relations(vehicles, ({ one, many }) => ({
     fields: [vehicles.stationId],
     references: [stations.id]
   }),
-  dispatchedVehicles: many(dispatchedVehicles)
+  dispatchedVehicles: many(dispatchedVehicles),
+  stationHistory: many(vehicleStationHistory)
+}));
+
+export const vehicleStationHistoryRelations = relations(vehicleStationHistory, ({ one }) => ({
+  vehicle: one(vehicles, {
+    fields: [vehicleStationHistory.vehicleId],
+    references: [vehicles.id]
+  }),
+  station: one(stations, {
+    fields: [vehicleStationHistory.stationId],
+    references: [stations.id]
+  })
 }));
 
 export const vehicleDisponibilityRelations = relations(vehicleDisponibility, () => ({}));
@@ -373,3 +412,4 @@ export type SyncAnomaly = typeof syncAnomalies.$inferSelect;
 export type SyncAnomalyInsert = typeof syncAnomalies.$inferInsert;
 export type IncidentSyncState = typeof incidentSyncState.$inferSelect;
 export type IncidentSyncStateInsert = typeof incidentSyncState.$inferInsert;
+export type VehicleStationHistory = typeof vehicleStationHistory.$inferSelect;

@@ -22,6 +22,13 @@ export {
   type EmptyUnitsDecision
 } from "./removal";
 export {
+  storedOperationalStatus,
+  vehicleAssignmentWrite,
+  type VehicleAssignment,
+  type VehicleAssignmentRow,
+  type VehicleAssignmentWrite
+} from "./vehicle-assignment";
+export {
   applyKnownReferences,
   collectReferences,
   mergeReferences,

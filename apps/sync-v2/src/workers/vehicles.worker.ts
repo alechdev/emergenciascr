@@ -1,9 +1,13 @@
 import { createWorker } from "@/lib/jobs";
 import logger from "@/lib/logger";
 import { VEHICLE_JOB_NAME, vehiclesQueue } from "@/queues/vehicles.queue";
-import { type VehicleJobData, syncSingleVehicle } from "@/services/vehicles.service";
+import {
+  type VehicleJobData,
+  type VehicleSyncDeps,
+  syncSingleVehicle
+} from "@/services/vehicles.service";
 
-export function createVehiclesWorker() {
+export function createVehiclesWorker(deps?: VehicleSyncDeps) {
   return createWorker<VehicleJobData, void>(
     vehiclesQueue.name,
     async (job) => {
@@ -16,7 +20,7 @@ export function createVehiclesWorker() {
         });
         return;
       }
-      const result = await syncSingleVehicle(job.data.id);
+      const result = await syncSingleVehicle(job.data.id, deps);
       if (result.isErr()) throw result.error;
     },
     { concurrency: 4 }

@@ -5,14 +5,17 @@ import type { Queue } from "bullmq";
 
 export interface IncidentPollJobData {
   incidentId: number;
+  /** Polls in a row that threw (see `createIncidentPollWorker`); unset after one gets through. */
+  retries?: number;
 }
 
 export const INCIDENT_POLL_JOB_NAME = "incident-poll";
 
 /**
  * One job per tracked incident, moved back to delayed until its next poll. Failed polls are
- * counted by the lifecycle in `incident_sync_state`; attempts only cover errors that kept
- * the poll from saving its sync state (the database being down).
+ * counted by the lifecycle in `incident_sync_state`, and polls that couldn't save it are
+ * delayed with a backoff by the worker; attempts only cover errors moving the job itself
+ * (Redis being down).
  */
 export const incidentPollQueue = createQueue<IncidentPollJobData>("incident-poll", {
   removeOnComplete: 100,

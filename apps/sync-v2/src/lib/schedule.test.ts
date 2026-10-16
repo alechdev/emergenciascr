@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  infraRetryDelayMs,
   GAP_FILL_WINDOW_MS,
   discoveryDelaySeconds,
   gapFillRange,
@@ -89,5 +90,13 @@ describe("gap fill", () => {
       { id: 4, fecha: "0001-01-01T00:00:00", horaIncidente: "0001-01-01T00:00:00" }
     ];
     expect(withinGapFill(items, since).map((item) => item.id)).toEqual([1, 3, 4]);
+  });
+});
+
+describe("infraRetryDelayMs", () => {
+  it("doubles from 30 seconds up to 15 minutes", () => {
+    expect([1, 2, 3, 4, 5, 6, 7, 100].map(infraRetryDelayMs)).toEqual([
+      30_000, 60_000, 120_000, 240_000, 480_000, 900_000, 900_000, 900_000
+    ]);
   });
 });

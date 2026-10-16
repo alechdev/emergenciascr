@@ -1,4 +1,4 @@
-import { count, inArray } from "@bomberoscr/db/operators";
+import { and, count, inArray } from "@bomberoscr/db/operators";
 import { INCIDENT_SYNC_PHASES, incidentSyncState } from "@bomberoscr/db/schema";
 
 import type { IncidentSyncPhase } from "../types";
@@ -39,12 +39,22 @@ export interface ScheduledIncident {
   nextPollAt: Date | null;
 }
 
-/** Incidents still being polled (`active` and `settling`), to rebuild the queue from. */
-export async function listPolledIncidents(db: Executor): Promise<ScheduledIncident[]> {
+/**
+ * Incidents still being polled (`active` and `settling`), to rebuild the queue from; only
+ * among `incidentIds` when given.
+ */
+export async function listPolledIncidents(
+  db: Executor,
+  incidentIds?: readonly number[]
+): Promise<ScheduledIncident[]> {
+  if (incidentIds?.length === 0) return [];
+  const polled = inArray(incidentSyncState.phase, ["active", "settling"]);
   return db
     .select({ incidentId: incidentSyncState.incidentId, nextPollAt: incidentSyncState.nextPollAt })
     .from(incidentSyncState)
-    .where(inArray(incidentSyncState.phase, ["active", "settling"]));
+    .where(
+      incidentIds ? and(polled, inArray(incidentSyncState.incidentId, [...incidentIds])) : polled
+    );
 }
 
 /** Tracked incidents per phase, with `0` for phases that have none. */

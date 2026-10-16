@@ -215,11 +215,14 @@ describe.skipIf(!INTEGRATION)("discovery, gap fill and resume", () => {
   it("tracks new incidents from the latest list and schedules each once", async () => {
     const clock = realClock();
     const now = clock.now();
+    // 201 is tracked but lost its poll job; 204 is done.
     await modules.persist.trackNewIncidents(db, [{ incidentId: 201, firstSeenAt: now }]);
+    await modules.persist.saveSyncState(db, state(204, "done", null, now));
     const items = [
       listItem(201, new Date(now.getTime() - 30 * MINUTE)),
       listItem(202, new Date(now.getTime() - 2 * MINUTE)),
-      listItem(203, new Date(now.getTime() - MINUTE))
+      listItem(203, new Date(now.getTime() - MINUTE)),
+      listItem(204, new Date(now.getTime() - 3 * HOUR))
     ];
     const sigae = fakeSigae(({ endpoint }) =>
       endpoint === "ObtenerListaUltimasEmergenciasApp"
@@ -234,13 +237,14 @@ describe.skipIf(!INTEGRATION)("discovery, gap fill and resume", () => {
     };
 
     const first = await modules.discovery.discoverLatestIncidents(deps);
-    expect(first).toEqual({ listed: 3, discovered: [202, 203] });
+    expect(first).toEqual({ listed: 4, discovered: [202, 203], rescheduled: 1 });
     expect(sigae.calls[0]?.params).toMatchObject({ numero_registros: 50 });
     const second = await modules.discovery.discoverLatestIncidents(deps);
-    expect(second).toEqual({ listed: 3, discovered: [] });
+    expect(second).toEqual({ listed: 4, discovered: [], rescheduled: 0 });
 
     expect(await pendingPolls()).toEqual(
       new Map([
+        [201, { state: "waiting", at: null }],
         [202, { state: "waiting", at: null }],
         [203, { state: "waiting", at: null }]
       ])
@@ -249,7 +253,8 @@ describe.skipIf(!INTEGRATION)("discovery, gap fill and resume", () => {
     expect(tracked.map((row) => [row.incidentId, row.phase, row.nextPollAt]).sort()).toEqual([
       [201, "active", now],
       [202, "active", now],
-      [203, "active", now]
+      [203, "active", now],
+      [204, "done", null]
     ]);
   });
 
@@ -274,7 +279,7 @@ describe.skipIf(!INTEGRATION)("discovery, gap fill and resume", () => {
       now: clock.now
     });
 
-    expect(result).toEqual({ listed: 2, discovered: [301, 303] });
+    expect(result).toEqual({ listed: 2, discovered: [301, 303], rescheduled: 0 });
     expect(sigae.calls[0]?.params).toEqual({
       FechaDesde: formatSigaeRequestDate(new Date(now.getTime() - 6 * HOUR)),
       FechaHasta: formatSigaeRequestDate(now)

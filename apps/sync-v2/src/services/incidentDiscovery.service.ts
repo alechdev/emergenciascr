@@ -1,4 +1,8 @@
-import { listPolledIncidents, trackNewIncidents } from "@bomberoscr/sync-domain/persist";
+import {
+  type ScheduledIncident,
+  listPolledIncidents,
+  trackNewIncidents
+} from "@bomberoscr/sync-domain/persist";
 
 import { SyncError } from "@/lib/errors";
 import { discoveryDelay, incidentsDiscovered } from "@/lib/metrics";
@@ -28,6 +32,8 @@ export interface DiscoveryResult {
   listed: number;
   /** Incidents tracked for the first time. */
   discovered: number[];
+  /** Listed incidents already polled whose poll job was missing and was added again. */
+  rescheduled: number;
 }
 
 /** Every minute: the latest 50 incidents (spec section 8.1). */
@@ -62,7 +68,12 @@ export async function resumePolledIncidents(
   return { tracked: tracked.length, scheduled };
 }
 
-/** New incidents get an `incident_sync_state` row and a poll right away. */
+/**
+ * New incidents get an `incident_sync_state` row and a poll right away. Listed incidents
+ * that are already polled (`active`, `settling`) get their poll back if their job is gone
+ * (it failed for good, or Redis lost it), without waiting for the hourly resume; the ones
+ * with a pending job keep it.
+ */
 async function track(
   deps: DiscoveryDeps,
   items: readonly IncidentListItem[]
@@ -82,11 +93,24 @@ async function track(
   if (discovered.length > 0) {
     await deps.scheduler.schedule(discovered.map((incidentId) => ({ incidentId, at: null })));
   }
+  const isNew = new Set(discovered);
+  let polled: ScheduledIncident[];
+  try {
+    polled = await listPolledIncidents(
+      deps.db,
+      [...byId.keys()].filter((incidentId) => !isNew.has(incidentId))
+    );
+  } catch (cause) {
+    throw new SyncError("failed to load tracked incidents", { cause });
+  }
+  const rescheduled = await deps.scheduler.schedule(
+    polled.map((row) => ({ incidentId: row.incidentId, at: row.nextPollAt }))
+  );
   incidentsDiscovered.add(discovered.length);
   for (const incidentId of discovered) {
     const item = byId.get(incidentId);
     const delay = item ? discoveryDelaySeconds(listedIncidentTime(item), firstSeenAt) : null;
     if (delay !== null) discoveryDelay.record(delay);
   }
-  return { listed: byId.size, discovered };
+  return { listed: byId.size, discovered, rescheduled };
 }

@@ -15,7 +15,8 @@ import {
 const log = logger.child({ queue: incidentDiscoveryQueue.name });
 
 /**
- * `incident-discovery` (every minute) tracks new incidents among the latest ones.
+ * `incident-discovery` (every minute) tracks new incidents among the latest ones, and
+ * schedules listed ones that are still polled but lost their poll job.
  * `incident-gap-fill` (at boot and hourly) first schedules every tracked incident again,
  * which rebuilds the poll queue after Redis lost it, then tracks what the last 6 hours
  * have that discovery missed.
@@ -32,7 +33,8 @@ export function createIncidentDiscoveryWorker(deps: DiscoveryDeps) {
           jobId: job.id,
           listed: gap.listed,
           discovered: gap.discovered.length,
-          incidentIds: gap.discovered
+          incidentIds: gap.discovered,
+          rescheduled: gap.rescheduled
         });
         return { ...resumed, discovered: gap.discovered.length };
       }
@@ -41,12 +43,16 @@ export function createIncidentDiscoveryWorker(deps: DiscoveryDeps) {
         return {};
       }
       const latest = await discoverLatestIncidents(deps);
-      log[latest.discovered.length > 0 ? "info" : "debug"]("discovery finished", {
-        jobId: job.id,
-        discovered: latest.discovered.length,
-        incidentIds: latest.discovered
-      });
-      return { discovered: latest.discovered.length };
+      log[latest.discovered.length > 0 || latest.rescheduled > 0 ? "info" : "debug"](
+        "discovery finished",
+        {
+          jobId: job.id,
+          discovered: latest.discovered.length,
+          incidentIds: latest.discovered,
+          rescheduled: latest.rescheduled
+        }
+      );
+      return { discovered: latest.discovered.length, rescheduled: latest.rescheduled };
     },
     { concurrency: 1 }
   );

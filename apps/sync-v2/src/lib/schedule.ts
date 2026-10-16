@@ -69,3 +69,15 @@ export function withinGapFill<T extends Pick<IncidentListItem, "fecha" | "horaIn
 export function nextPollFor(state: { phase: string; nextPollAt: Date | null }): Date | null {
   return state.phase === "active" || state.phase === "settling" ? state.nextPollAt : null;
 }
+
+const INFRA_RETRY_BASE_MS = 30 * 1000;
+const INFRA_RETRY_MAX_MS = 15 * 60 * 1000;
+
+/**
+ * How long a poll job waits after its `retries`-th poll in a row that couldn't reach the
+ * database: 30 s, doubling, at most 15 minutes.
+ */
+export function infraRetryDelayMs(retries: number): number {
+  const exponent = Math.max(0, retries - 1);
+  return Math.min(INFRA_RETRY_MAX_MS, INFRA_RETRY_BASE_MS * 2 ** Math.min(exponent, 30));
+}

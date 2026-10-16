@@ -29,6 +29,12 @@ export function createQueue<Data = unknown>(
   });
 }
 
+/**
+ * Thrown after moving the job back to delayed because the work couldn't run (a backoff
+ * retry), so `sync.job.duration` tells it apart from a planned delay (`outcome: "retried"`).
+ */
+export class RetryLaterError extends DelayedError {}
+
 export type JobProcessor<Data, Result> = (job: Job<Data>, token?: string) => Promise<Result>;
 
 /**
@@ -38,7 +44,7 @@ export type JobProcessor<Data, Result> = (job: Job<Data>, token?: string) => Pro
 export function createWorker<Data, Result>(
   name: string,
   processor: JobProcessor<Data, Result>,
-  options: { concurrency: number }
+  options: { concurrency: number; maxStalledCount?: number }
 ): Worker<Data, Result> {
   const log = logger.child({ queue: name });
 
@@ -52,7 +58,9 @@ export function createWorker<Data, Result>(
         outcome = "completed";
         return result;
       } catch (error) {
-        if (error instanceof DelayedError || error instanceof WaitingChildrenError) {
+        if (error instanceof RetryLaterError) {
+          outcome = "retried";
+        } else if (error instanceof DelayedError || error instanceof WaitingChildrenError) {
           outcome = "delayed";
         }
         throw error;
@@ -63,7 +71,8 @@ export function createWorker<Data, Result>(
     {
       connection: redis,
       telemetry: new BullMQOtel(TRACER_NAME),
-      concurrency: options.concurrency
+      concurrency: options.concurrency,
+      ...(options.maxStalledCount === undefined ? {} : { maxStalledCount: options.maxStalledCount })
     }
   );
 

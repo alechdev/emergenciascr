@@ -209,4 +209,57 @@ describe.skipIf(!INTEGRATION)("incident polls through the real queue", () => {
     expect(await queue.getJobState(JOB_ID)).toBe("completed");
     expect(await pendingJobs()).toBe(0);
   });
+
+  it("delays the job with a backoff while the database is down, without spending attempts", async () => {
+    const clock = fakeClock(new Date(Math.floor(Date.now() / 1000) * 1000));
+    const sigae = scriptedSigae();
+    sigae.answers = incidentAnswers(new Date(clock.now().getTime() - MINUTE), true);
+    let down = true;
+    // Every query fails like a refused connection while `down`.
+    const flaky = new Proxy(db, {
+      get(target, property) {
+        if (down) throw new Error("connect ECONNREFUSED 127.0.0.1:5432");
+        return Reflect.get(target, property, target);
+      }
+    });
+    const references = createReferenceResolver({ db, sigae: sigae.client, now: clock.now });
+    worker = createWorker({ db: flaky, sigae: sigae.client, references, now: clock.now }) as Worker;
+    // A crash loop doesn't fail the job after the default single stall either.
+    expect(worker.opts.maxStalledCount).toBe(5);
+    await trackNewIncidents(db, [{ incidentId: INCIDENT_ID, firstSeenAt: clock.now() }]);
+    await createScheduler(queue as never, clock.now).schedule([
+      { incidentId: INCIDENT_ID, at: null }
+    ]);
+
+    /** Waits for the retry-th delayed retry, and returns how far out it was put. */
+    const retried = async (retries: number) => {
+      const before = Date.now();
+      const job = await eventually(async () => {
+        const found = await queue.getJob(JOB_ID);
+        return found?.data.retries === retries && (await found.getState()) === "delayed"
+          ? found
+          : null;
+      });
+      expect(job.attemptsMade).toBe(0);
+      return ((await delayedUntil()) ?? 0) - before;
+    };
+    const first = await retried(1);
+    expect(first).toBeGreaterThan(29_000);
+    expect(first).toBeLessThan(31_000);
+    await (await queue.getJob(JOB_ID))?.promote();
+    const second = await retried(2);
+    expect(second).toBeGreaterThan(59_000);
+    expect(second).toBeLessThan(61_000);
+    expect(await loadSyncState(db, INCIDENT_ID)).toMatchObject({ consecutiveFailures: 0 });
+
+    // Back up: the next poll goes through and the job carries no retry count anymore.
+    down = false;
+    await (await queue.getJob(JOB_ID))?.promote();
+    const { state } = await polled(clock.now());
+    expect(state).toMatchObject({ phase: "active", consecutiveFailures: 0 });
+    const job = await queue.getJob(JOB_ID);
+    expect(job?.data).toEqual({ incidentId: INCIDENT_ID });
+    expect(job?.attemptsMade).toBe(0);
+    expect(await delayedUntil()).toBe(state.nextPollAt?.getTime());
+  });
 });

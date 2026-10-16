@@ -32,7 +32,7 @@ See [`.env.example`](./.env.example). `SIGAE_PROXY_URL` is optional; when set, e
 
 ## Shutdown
 
-On `SIGTERM` or `SIGINT` the service closes every worker (running jobs get up to 30 seconds to finish), then queues, Redis, the database pool and the SIGAE client, flushes telemetry and exits. A reference job interrupted by a shutdown resumes after the restart.
+On `SIGTERM` or `SIGINT` the service closes every worker (running jobs get up to 30 seconds to finish), then queues, Redis, the database pool and the SIGAE client, flushes telemetry and exits. A shutdown still running after 45 seconds exits with code 1. A reference job interrupted by a shutdown resumes after the restart.
 
 ## Development
 
@@ -40,7 +40,7 @@ From the repository root:
 
 ```sh
 cp apps/sync-v2/.env.example apps/sync-v2/.env   # then fill in the SIGAE values
-cp apps/sync-v2/.env.example apps/migrate/.env   # migrate only reads the POSTGRES_* values
+cp apps/sync-v2/.env.example apps/migrate/.env   # migrate only reads DRIZZLE_POSTGRES_URL
 bun run --cwd apps/migrate start   # apply migrations
 bun run --cwd apps/sync-v2 dev
 ```

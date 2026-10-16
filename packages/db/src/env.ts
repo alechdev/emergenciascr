@@ -2,13 +2,9 @@ import { config } from "dotenv";
 import { expand } from "dotenv-expand";
 import { z } from "zod";
 
+/** The URL is the only connection setting; `POSTGRES_*` variables, if set, aren't read. */
 const EnvSchema = z.object({
-  POSTGRES_HOST: z.string(),
-  POSTGRES_PORT: z.string(),
-  POSTGRES_USER: z.string(),
-  POSTGRES_PASSWORD: z.string(),
-  POSTGRES_DB: z.string(),
-  DRIZZLE_POSTGRES_URL: z.string()
+  DRIZZLE_POSTGRES_URL: z.string().min(1)
 });
 
 export type EnvSchema = z.infer<typeof EnvSchema>;

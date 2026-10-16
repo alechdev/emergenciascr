@@ -21,6 +21,8 @@ import type { Telemetry } from "@/telemetry";
 import type { Queue, QueueEvents, Worker } from "bullmq";
 
 const WORKER_CLOSE_TIMEOUT_MS = 30_000;
+/** Longer than the worker grace period, so only a hung close or flush reaches it. */
+const SHUTDOWN_TIMEOUT_MS = 45_000;
 const EXIT_GRACE_MS = 1_000;
 const REFERENCE_BOOT_JOB_ID = "reference-boot";
 
@@ -136,6 +138,10 @@ function shutdown(reason: string, exitCode: number): Promise<void> {
   shuttingDown ??= (async () => {
     logger.info("shutting down", { reason });
     shutdownController.abort();
+    const deadline = setTimeout(() => {
+      logger.error("shutdown timed out, exiting", { timeoutMs: SHUTDOWN_TIMEOUT_MS });
+      exit(1);
+    }, SHUTDOWN_TIMEOUT_MS);
 
     const steps: [string, () => Promise<unknown>][] = [
       ["workers", () => Promise.all(workers.map(closeWorker))],
@@ -162,13 +168,21 @@ function shutdown(reason: string, exitCode: number): Promise<void> {
       exitCode = 1;
       logger.error("shutdown step failed", { step: "telemetry", error });
     }
-    // After the telemetry flush, so this line only reaches stdout. Exiting on its own lets
-    // the line drain; the timer only cuts off whatever still holds the event loop open.
+    clearTimeout(deadline);
+    // After the telemetry flush, so this line only reaches stdout.
     logger.info("sync-v2 stopped", { exitCode });
-    process.exitCode = exitCode;
-    setTimeout(() => process.exit(exitCode), EXIT_GRACE_MS).unref();
+    exit(exitCode);
   })();
   return shuttingDown;
+}
+
+/**
+ * Exits once the event loop is empty, which lets the last log lines drain, or after a short
+ * grace period when something still holds it open.
+ */
+function exit(code: number): void {
+  process.exitCode = code;
+  setTimeout(() => process.exit(code), EXIT_GRACE_MS).unref();
 }
 
 /** Starts the service. `telemetry` must have started before this module was imported. */

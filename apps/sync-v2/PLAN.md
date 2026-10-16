@@ -181,6 +181,10 @@ Wire the core into the workers (section 4 pipeline, section 8).
 - Reviewed and kept: the annual recap's vehicle chart doesn't key by `internalNumber`, now that it isn't unique: the query groups by `vehicles.id`, the chart's React keys use the rank, and other vehicle lists key by `vehicle.id`. Recorded anomaly keys are loaded on every poll (one indexed query per incident); gap fill keeps list items without a usable time (it can't tell how old they are, and polling an old one once is cheap).
 - Spec section 3.3 recheck on 2026-10-16 (read-only, 24 requests, aggregates only, no proxy): the three freshest incidents (10, 24 and 58 minutes old) answered `00` on all four endpoints with one station and one unit each; unit and station envelopes are `Codigo`, `Descripcion`, `Items`. No new incident appeared during about 12 minutes of relisting, so a brand-new incident with no units is still unverified.
   - The web admin manual sync calls `syncIncident` with `force`, so it also polls `done`, `deleted` and `failed` incidents and records changes and sync state like the worker (with the exceptions above for superseded, untracked and already deleted incidents).
+- 24-hour run: started 2026-10-16 with the Compose stack in `apps/sync-v2/local-run/` (the sync-v2 and migrate images, Postgres, Redis and Grafana LGTM, loopback only; see its README for commands, the checklist and the run log). The stack came up at 20:00 UTC; sync-v2 was redeployed at 20:19 UTC (14:19 Costa Rica) with the fix below, and the 24 hours count from there.
+  - Fixed during the run: at boot the first polls (concurrency 5) ran while the reference job was still on stations, met the same unknown incident type codes, and only the first one refreshed the list; the others hit the 15-minute throttle and stored `NULL` codes with `UNKNOWN_INCIDENT_TYPE` (12 anomalies on 3 incidents; the next poll filled the codes). Concurrent polls now share the refresh in flight (`createReferenceResolver`).
+  - Seen, not changed: SIGAE answers `HoraAtencionAPie` with its current time when `AtencionAPie` is `false`, so every poll stores a new `ObtenerEstacionesAtiendeIncidente` snapshot (about 3 times the other endpoints after 20 minutes). Normalization ignores the field, so no changes or anomalies come from it; whether snapshots should drop or mask it is open.
+  - Seen, not changed: a vehicle job left waiting by a shutdown can finish (and be removed, `removeOnComplete`) between the restarted reference job's `addBulk` and `waitUntilFinished`, which then rejects with `Missing key for job … isFinished`. The reference job's attempt fails with `warn` and its retry syncs the vehicles (1 of 420 after a restart mid-run).
 
 ## Phase 7: Web changes
 
@@ -210,7 +214,7 @@ Everything needed to run beta on the server (section 13).
 **Tasks**
 
 - [ ] Database `emergenciascr_v2` and its own role on the same Postgres server.
-- [ ] `apps/sync-v2` Dockerfile.
+- [x] `apps/sync-v2` Dockerfile.
 - [ ] Workflows `build-migrate-beta.yaml` and `build-sync-v2-beta.yaml`; web and sync jobs need the migrate job.
 - [ ] Server: services for beta web, sync-v2, Redis and the migrate one-shot; deploy hooks; `SIGAE_PROXY_URL`; OTLP endpoint with `deployment.environment.name=beta`.
 - [ ] Beta dashboard (section 4.2).
@@ -222,6 +226,10 @@ Everything needed to run beta on the server (section 13).
 - [ ] `beta.emergenciascr.com` shows incidents synced by sync-v2.
 - [ ] The dashboard shows live data from beta.
 - [ ] Nothing on the branch has prod database credentials.
+
+**Notes**
+
+- `apps/sync-v2/Dockerfile` follows the migrate one: the build stage installs the filtered workspace and bundles with tsdown (workspace packages, `drizzle-orm`, `pg` and `undici` end up in `dist/`), the runtime stage gets a production-only install of sync-v2's own dependencies, runs as `bun` with `bun run --no-install dist/index.mjs`, and checks `/health` on loopback. It runs on Bun 1.4 (`start` in `package.json` too): the built bundle passed the SIGTERM integration test (poll finished and stored, traces, metrics and logs flushed, exit 0) on both Bun and Node, the spec assumes Bun in deploy images, and the image needs no second runtime. The SIGAE client only loads `undici` on Node, for the proxy. The shutdown takes up to 45 seconds, so the container's stop timeout must be longer (the local stack uses 60 s). `.dockerignore` now excludes `.env` files in every directory, not just the root.
 
 ## Phase 9: Comparison tool
 

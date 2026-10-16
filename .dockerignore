@@ -12,5 +12,6 @@
 **/.nitro
 **/coverage
 
-.env
-.env.*
+# Patterns match from the context root, so `.env` alone only covers the root one.
+**/.env
+**/.env.*

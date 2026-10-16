@@ -10,6 +10,7 @@ import {
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { loadSyncState, saveSyncState } from "../../src/persist/incident-state";
+import { upsertStationDetails } from "../../src/persist/references";
 import { createReferenceResolver } from "../../src/pipeline/references";
 import { syncIncident } from "../../src/pipeline/sync-incident";
 import {
@@ -38,6 +39,8 @@ import {
   seedReferences,
   sigaeFixtureBody
 } from "./harness";
+
+import type { StationDetails } from "@bomberoscr/sigae/client";
 
 const MINUTE = 60_000;
 
@@ -213,6 +216,28 @@ describe.skipIf(!TEST_DATABASE_URL)("syncIncident against Postgres", () => {
       });
       expect(await db.select().from(dispatchedStations)).toMatchObject([{ stationId: 77 }]);
       expect(outcome.anomalies.map((anomaly) => anomaly.code)).not.toContain("MISSING_REFERENCE");
+    });
+
+    it("doesn't blank a stored station's name or key with details that lack them", async () => {
+      const details = sigaeFixtureBody("ObtenerEstacionDetalle", {
+        IdEstacion: 2,
+        Nombre: null,
+        ClaveEstacion: ""
+      }) as unknown as StationDetails;
+
+      await upsertStationDetails(db, 2, details);
+      await upsertStationDetails(db, 90, { ...details, IdEstacion: 90 });
+
+      const [kept] = await db.select().from(stations).where(eq(stations.id, 2));
+      expect(kept).toMatchObject({ name: "METROPOLITANA NORTE", stationKey: "1-1" });
+      // The details still update everything else.
+      expect(kept?.latitude).toBe(String(details.Latitud));
+      const [added] = await db.select().from(stations).where(eq(stations.id, 90));
+      expect(added).toMatchObject({ name: "", stationKey: "", isOperative: null });
+
+      await upsertStationDetails(db, 90, { ...details, Nombre: "NUEVA", ClaveEstacion: "9-1" });
+      const [named] = await db.select().from(stations).where(eq(stations.id, 90));
+      expect(named).toMatchObject({ name: "NUEVA", stationKey: "9-1" });
     });
 
     it("fails the poll with MISSING_REFERENCE while a station stays unknown", async () => {

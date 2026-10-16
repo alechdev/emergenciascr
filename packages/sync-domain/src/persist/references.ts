@@ -1,4 +1,4 @@
-import { inArray } from "@bomberoscr/db/operators";
+import { type SQL, inArray, sql } from "@bomberoscr/db/operators";
 import {
   cantons,
   districts,
@@ -76,7 +76,9 @@ export interface ListedStation {
 
 /**
  * Stores a station from its details. Values the details lack keep what is stored; `listed`
- * fills them for a new row (without it, an unknown operative state stays `NULL`).
+ * fills them for a new row (without it, an unknown operative state stays `NULL`, and the
+ * name and key are `""` until the reference job runs). An empty name or key never replaces
+ * a stored one: the reference job may have inserted the row meanwhile.
  */
 export async function upsertStationDetails(
   db: Executor,
@@ -100,7 +102,19 @@ export async function upsertStationDetails(
   await db
     .insert(stations)
     .values(row)
-    .onConflictDoUpdate({ target: stations.id, set: conflictUpdateSetAllColumns(stations) });
+    .onConflictDoUpdate({
+      target: stations.id,
+      set: {
+        ...conflictUpdateSetAllColumns(stations),
+        name: keepUnlessEmpty(stations.name),
+        stationKey: keepUnlessEmpty(stations.stationKey)
+      }
+    });
+}
+
+/** `ON CONFLICT DO UPDATE` value: the proposed one, unless it is `NULL` or `""`. */
+function keepUnlessEmpty(column: typeof stations.name | typeof stations.stationKey): SQL {
+  return sql`coalesce(nullif(excluded.${sql.identifier(column.name)}, ''), ${column})`;
 }
 
 /**

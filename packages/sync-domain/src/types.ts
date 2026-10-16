@@ -1,372 +1,144 @@
-export interface ObtenerDetalleEmergencias {
-  Codigo: string;
-  Descripcion: string;
-  DetallesImportantes: string;
-  codigo_tipo_incidente: string | null;
-  codigo_tipo_incidente_despacho: string | null;
-  codigo_tipo_incidente_despacho_esp: string | null;
-  codigo_tipo_incidente_esp: string | null;
-  consecutivo_EE: string;
-  direccion: string;
-  estaciones: EstacionesObtenerDetalleEmergencias[];
-  fecha: string;
-  hora_incidente: string;
-  latitud: number | null;
-  longitud: number | null;
-  tipo_incidente: string;
-  tipo_incidente_despacho: string;
-  tipo_incidente_despacho_esp: string;
-  tipo_incidente_esp: string;
+/**
+ * Shapes shared by the pure core (`poll/`, `normalize/`, `reconcile/`, `lifecycle/`,
+ * `redact/`). They mirror the database rows without importing the database, so the core can
+ * be tested without one.
+ */
+
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+export const SIGAE_INCIDENT_ENDPOINTS = [
+  "ObtenerBoletaIncidente",
+  "ObtenerDetalleEmergencias",
+  "ObtenerEstacionesAtiendeIncidente",
+  "ObtenerUnidadesDespachadasIncidente"
+] as const;
+export type SigaeIncidentEndpoint = (typeof SIGAE_INCIDENT_ENDPOINTS)[number];
+
+export type ClosedAtSource = "observed" | "estimated";
+
+/** An `incidents` row as the sync writes it. `modifiedAt` is set by the writer. */
+export interface IncidentRow {
+  id: number;
+  EEConsecutive: string;
+  address: string;
+  importantDetails: string;
+  incidentTimestamp: Date;
+  provinceId: number | null;
+  cantonId: number | null;
+  districtId: number | null;
+  incidentCode: string | null;
+  specificIncidentCode: string | null;
+  dispatchIncidentCode: string | null;
+  specificDispatchIncidentCode: string | null;
+  responsibleStation: number | null;
+  /** `"0"` when unknown; the web relies on it. */
+  latitude: string;
+  longitude: string;
+  isOpen: boolean;
+  controlledAt: Date | null;
+  fireUnderControlAt: Date | null;
+  lossesStoppedAt: Date | null;
+  allClearAt: Date | null;
+  closedAt: Date | null;
+  closedAtSource: ClosedAtSource | null;
 }
 
-export interface EstacionesObtenerDetalleEmergencias {
-  clave_estacion: string;
-  nombre: string;
-  vehiculos: VehiculoEstacionesObtenerDetalleEmergencias[];
+export interface DispatchedVehicleRow {
+  id: number;
+  incidentId: number;
+  stationId: number;
+  vehicleId: number | null;
+  vehicleInternalNumber: string | null;
+  dispatchedTime: Date | null;
+  arrivalTime: Date | null;
+  departureTime: Date | null;
+  baseReturnTime: Date | null;
+  /** The sync always writes a boolean, but the column is nullable. */
+  attentionOnFoot: boolean | null;
 }
 
-export interface VehiculoEstacionesObtenerDetalleEmergencias {
-  estado: string;
-  numero_interno: string;
+export interface DispatchedStationRow {
+  id: number;
+  incidentId: number;
+  stationId: number;
+  serviceTypeId: number | null;
+  attentionOnFoot: boolean;
 }
 
-export interface ObtenerBoletaIncidente {
-  Codigo: string;
-  Descripcion: string;
-  Aerolinea: number;
-  Almas_Abordo: number;
-  Anno: number;
-  Area_Afectada: number;
-  Area_Quemada_Protegida: string;
-  Bomberos_Fallecidos: number;
-  Bomberos_Heridos: number;
-  Cantidad_Dimensiones: number;
-  Cantidad_Estructuras_Involucradas: number;
-  Canton: string;
-  Capacidad: number;
-  Cedula_Avisa: string;
-  Civiles_Fallecidos: number;
-  Civiles_Heridos: number;
-  Clave: string;
-  CodigoTipoIncidenteDespacho: string;
-  CodigoTipoIncidenteReal: string;
-  Combustible: string;
-  Condiciones_Especiales: string;
-  Consecutivo: string;
-  DesConstruccion: string;
-  DesDimensionesIncidente: string;
-  DesEstrategia: string | null;
-  DesEtapaIncidente: string | null;
-  DesMetodoAviso: string | null;
-  DesUbicacion: string;
-  Descripcion_Aviso: string | null;
-  Direccion: string;
-  Distrito: string;
-  Estado_Abierto: string;
-  Fecha: string;
-  Hora_Aviso: string;
-  Hora_Controlado: string;
-  Hora_Disponible: string;
-  Hora_Fuego_Bajo_Control: string;
-  Hora_Hospital: string;
-  Hora_Paciente: string;
-  Hora_Perdidas_Detenidas: string;
-  Hora_Todo_Claro: string;
-  Hora_Traslado: string;
-  Id_Boleta_Incidente: number;
-  Id_Bombero_Mando: number;
-  Id_Canton: number;
-  Id_Construccion: number;
-  Id_Dimensiones_Incidente: number;
-  Id_Distrito: number;
-  Id_Estrategia: number;
-  Id_Etapa_Incidente: number;
-  Id_Metodo_Aviso: number;
-  Id_Provincia: number;
-  Id_Tipo_Incidente: number;
-  Id_Ubicacion: number;
-  Info_Relevante: string;
-  Marca: number;
-  Matricula: string;
-  NomBomberoMando: string;
-  NomTipoIncidenteReal: string;
-  Nombre_Avisa: string;
-  Nombre_Incidente: string;
-  Nombre_Mando: string;
-  NomtipoIncidenteDespacho: string;
-  Observaciones: string;
-  Otra_Marca: string;
-  Provincia: string;
-  Telefono_Avisa: string;
-  Tiempo_Desplazamiento: string;
-  Tiene_Poliza: boolean;
-  Tipo_Aeronave: number;
-  Tipo_Alerta: number;
-  Tipo_Problema: string;
-  Unidad_Capacidad: number;
-  Usuario: string;
-  X: number;
-  Y: number;
+/** An incident with its children: what the database holds, or what a poll says it should. */
+export interface IncidentState {
+  incident: IncidentRow;
+  vehicles: DispatchedVehicleRow[];
+  stations: DispatchedStationRow[];
 }
 
-export interface ObtenerListaEmergenciasApp {
-  Codigo: string;
-  Descripcion: string;
-  items: ItemObtenerListaEmergenciasApp[];
+export type ChangeEntity = "incident" | "dispatched_vehicle" | "dispatched_station";
+export type ChangeKind = "set" | "changed" | "cleared" | "added" | "removed";
+
+/** A field-level fact. The writer adds `incidentId`, `snapshotIds` and `detectedAt`. */
+export interface Change {
+  entity: ChangeEntity;
+  entityId: number;
+  /** Field name, or `*` for added and removed rows. */
+  field: string;
+  kind: ChangeKind;
+  oldValue: JsonValue;
+  newValue: JsonValue;
 }
 
-export interface ItemObtenerListaEmergenciasApp {
-  codigoTipoIncidente: string;
-  codigoTipoIncidenteDespacho: string;
-  consecutivoEE: string;
-  direccion: string;
-  estacionResponsable: string;
-  fecha: string;
-  horaIncidente: string;
-  idBoletaIncidente: number;
-  tipoIncidente: string;
-  tipoIncidenteDespacho: string;
+export const ANOMALY_CODES = [
+  "VALUE_REGRESSED",
+  "VALUE_CHANGED_AFTER_SET",
+  "TIME_ORDER_VIOLATION",
+  "TIME_BEFORE_INCIDENT",
+  "TIME_IN_FUTURE",
+  "PLACEHOLDER_SHAPE_UNKNOWN",
+  "UNIT_NEVER_ARRIVED",
+  "UNIT_REMOVED",
+  "COORDINATES_MISSING",
+  "COORDINATES_MOVED",
+  "UNKNOWN_INCIDENT_TYPE",
+  "MISSING_REFERENCE",
+  "REOPENED",
+  "OPEN_TOO_LONG",
+  "UPSTREAM_PARTIAL_REPORT",
+  "INCIDENT_DELETED_UPSTREAM"
+] as const;
+export type AnomalyCode = (typeof ANOMALY_CODES)[number];
+
+/** A judgment about upstream data. The writer adds `incidentId` and `detectedAt`. */
+export interface Anomaly {
+  code: AnomalyCode;
+  entity: ChangeEntity;
+  entityId: number | null;
+  details: { [key: string]: JsonValue };
 }
 
-export interface ObtenerListaUltimasEmergenciasApp {
-  Codigo: string;
-  Descripcion: string;
-  items: ItemObtenerListaUltimasEmergenciasApp[];
-  itemsFecha: ItemsFechaObtenerListaUltimasEmergenciasApp[];
+export type IncidentSyncPhase = "active" | "settling" | "done" | "deleted" | "failed";
+
+/** An `incident_sync_state` row. */
+export interface SyncState {
+  incidentId: number;
+  phase: IncidentSyncPhase;
+  nextPollAt: Date | null;
+  lastPolledAt: Date | null;
+  upstreamClosedAt: Date | null;
+  consecutiveFailures: number;
+  notFoundCount: number;
+  emptyUnitsCount: number;
+  lastError: string | null;
+  firstSeenAt: Date;
 }
 
-export interface ItemObtenerListaUltimasEmergenciasApp {
-  codigoTipoIncidente: string;
-  codigoTipoIncidenteDespacho: string;
-  consecutivoEE: string;
-  direccion: string;
-  estacionResponsable: string;
-  fecha: string;
-  horaIncidente: string;
-  idBoletaIncidente: number;
-  tipoIncidente: string;
-  tipoIncidenteDespacho: string;
-}
-
-export interface ItemsFechaObtenerListaUltimasEmergenciasApp {
-  CantidadEmergencias: number;
-  Fecha: string;
-}
-
-export interface ObtenerEstaciones {
-  Codigo: string;
-  Descripcion: string;
-  Items: ItemObtenerEstaciones[];
-}
-
-export interface ItemObtenerEstaciones {
-  ClaveEstacion: string;
-  IdEstacion: number;
-  Nombre: string;
-}
-
-export interface ObtenerEstacionLista {
-  Codigo: string;
-  Descripcion: string;
-  Items: ItemObtenerEstacionLista[];
-}
-
-export interface ItemObtenerEstacionLista {
-  ClaveEstacion: string;
-  IdEstacion: number;
-  Latitud: number;
-  Longitud: number;
-  Nombre: string;
-  Telefono: string;
-}
-
-export interface ObtenerEstacionDetalle {
-  Codigo: string;
-  Descripcion: string;
-  CanalRadio: string;
-  ClaveEstacion: string;
-  Direccion: string;
-  Email: string;
-  Fax: string;
-  IdEstacion: number;
-  Latitud: number;
-  Longitud: number;
-  Nombre: string;
-  Telefono: string;
-}
-
-export interface ObtenerEstacionesOperativas {
-  Codigo: string;
-  Descripcion: string;
-  Items: ItemObtenerEstacionesOperativas[];
-}
-
-export interface ItemObtenerEstacionesOperativas {
-  ClaveEstacion: string;
-  IdEstacion: number;
-  Nombre: string;
-}
-
-export interface ObtenerEstacionesAtiendeIncidente {
-  Codigo: string;
-  Descripcion: string;
-  Items: ItemObtenerEstacionesAtiendeIncidente[];
-}
-
-export interface ItemObtenerEstacionesAtiendeIncidente {
-  Codigo: string | null;
-  Descripcion: string | null;
-  AtencionAPie: boolean;
-  ClaveEstacion: string;
-  DestipoServicio: string;
-  HoraAtencionAPie: string;
-  IdBoletaEstacionAtiende: number;
-  IdEstacion: number;
-  IdTipoServicio: number;
-  NombreEstacion: string;
-}
-
-export interface ObtenerEstadoDisponibilidadUnidades {
-  Codigo: string;
-  Descripcion: string;
-  Items: ItemObtenerEstadoDisponibilidadUnidades[];
-}
-
-export interface ItemObtenerEstadoDisponibilidadUnidades {
-  Descripcion: string;
-  IdGrupoClasificacion: number;
-}
-
-export interface ObtenerVehiculosComboF5 {
-  Codigo: string;
-  Descripcion: string;
-  Items: ItemObtenerVehiculosComboF5[];
-}
-
-export interface ItemObtenerVehiculosComboF5 {
-  IdVehiculo: number;
-  NumeroInterno: string;
-}
-
-export interface ObtenerDatosVehiculo {
-  Codigo: string;
-  Descripcion: string;
-  Asignado_a: string;
-  Canton: string;
-  Capacidad: number;
-  Clave_estacion_evolution: string;
-  Des_clase_vehiculo: string;
-  Des_estado_disponibilidad: string;
-  Des_estado_operativo: string;
-  Des_tipo_vehiculo: string;
-  Distrito: string;
-  Id_Estacion_Reporte: number;
-  Id_canton: number;
-  Id_clase_vehiculo: number;
-  Id_distrito: number;
-  Id_estacion: number;
-  Id_estacion_transferido: number;
-  Id_estado_disponibilidad: number;
-  Id_estado_operativo: number;
-  Id_personal: number;
-  Id_personal_transferido: number;
-  Id_provincia: number;
-  Id_tipo_vehiculo: number;
-  Id_veh_evo: string;
-  Id_vehiculo: number;
-  Ind_i_a: number;
-  Numero_interno: string;
-  Observaciones: string;
-  Placa: string;
-  Provincia: string;
-  Transferido_a: string;
-}
-
-export interface ObtenerUnidadesDespachadasIncidente {
-  Codigo: string;
-  Descripcion: string;
-  Items: ItemObtenerUnidadesDespachadasIncidente[];
-}
-
-export interface ItemObtenerUnidadesDespachadasIncidente {
-  Codigo: string | null;
-  Descripcion: string | null;
-  CodigoEstacion: number;
-  CodigoUnidad: number;
-  DespachoAlarma: boolean;
-  HoraBase: string;
-  HoraDespacho: string;
-  HoraDevolverBase: string;
-  HoraLLegada: string;
-  HoraRetiro: string;
-  HoraTraslado: string;
-  IdBoletaServicio: number;
-  IdBoletaUnidadDespachada: number;
-  IdVehiculo: number;
-  NumeroInterno: string | null;
-  Traslado: boolean;
-  Unidad: string;
-  UnidadCompleta: string;
-}
-
-export interface ObtenerEstadoDisponibilidadUnidades {
-  Codigo: string;
-  Descripcion: string;
-  Items: ItemObtenerEstadoDisponibilidadUnidades[];
-}
-
-export interface ItemObtenerEstadoDisponibilidadUnidades {
-  Descripcion: string;
-  IdGrupoClasificacion: number;
-}
-
-export interface ObtenerTiposIncidente {
-  Codigo: string;
-  Descripcion: string;
-  items: ItemObtenerTiposIncidente[];
-}
-
-export interface ItemObtenerTiposIncidente {
-  codigo_tipo_incidente: string;
-  id_tipo_incidente: number;
-  items: ItemObtenerTiposIncidente[];
-  tipo_incidente: string;
-}
-
-export interface ObtenerDistritosLista {
-  Codigo: string;
-  Descripcion: string;
-  Items: ItemObtenerDistritosLista[];
-}
-
-export interface ItemObtenerDistritosLista {
-  Codigo_Distrito: string;
-  Distrito: string;
-  Id_Canton: number;
-  Id_Distrito: number;
-}
-
-export interface ObtenerCantonesLista {
-  Codigo: string;
-  Descripcion: string;
-  Items: ItemObtenerCantonesLista[];
-}
-
-export interface ItemObtenerCantonesLista {
-  Canton: string;
-  CodigoCanton: string;
-  IdCanton: number;
-  IdProvincia: number;
-}
-
-export interface ObtenerProvinciaLista {
-  Codigo: string;
-  Descripcion: string;
-  Items: ItemObtenerProvinciaLista[];
-}
-
-export interface ItemObtenerProvinciaLista {
-  CodigoProvincia: string;
-  IdProvincia: number;
-  Provincia: string;
+/** A value as stored in `incident_changes` / `sync_anomalies` JSON columns. */
+export function toJson(value: Date | string | number | boolean | null | undefined): JsonValue {
+  if (value === undefined) return null;
+  if (value instanceof Date) return value.toISOString();
+  return value;
 }

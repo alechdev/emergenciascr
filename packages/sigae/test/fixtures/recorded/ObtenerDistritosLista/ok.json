@@ -1,0 +1,29 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerDistritosLista",
+  "request": {},
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "Codigo_Distrito": "10101 ",
+        "Distrito": "CARMEN",
+        "Id_Canton": 26,
+        "Id_Distrito": 64
+      },
+      {
+        "Codigo_Distrito": "10102 ",
+        "Distrito": "MERCED",
+        "Id_Canton": 26,
+        "Id_Distrito": 65
+      },
+      {
+        "Codigo_Distrito": "10103 ",
+        "Distrito": "HOSPITAL",
+        "Id_Canton": 26,
+        "Id_Distrito": 66
+      }
+    ]
+  }
+}

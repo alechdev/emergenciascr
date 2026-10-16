@@ -1,84 +1,70 @@
 import { db } from "@bomberoscr/db/index";
 import { cantons, districts, provinces } from "@bomberoscr/db/schema";
 import { conflictUpdateSetAllColumns } from "@bomberoscr/db/utils";
-import { getCantonsList, getDistrictsList, getProvincesList } from "@bomberoscr/sync-domain/api";
 import { ResultAsync } from "neverthrow";
 
-import { fetcher } from "@/config/fetcher";
+import { sigae } from "@/config/sigae";
+import { SyncError } from "@/lib/errors";
+import { expectOk } from "@/lib/sigae";
 
-export type DistrictSyncError = {
-  type: "api_error" | "database_error";
-  resource: string;
-  error: unknown;
-};
-
-export function syncDistricts(): ResultAsync<string, DistrictSyncError> {
+/** Provinces, then cantons, then districts, in one transaction (each references the last). */
+export function syncDistricts(): ResultAsync<string, SyncError> {
   return ResultAsync.combine([
-    getProvincesList({ fetcher }).mapErr(
-      (error) => ({ type: "api_error", resource: "provinces", error }) as const
-    ),
-    getCantonsList({ fetcher }).mapErr(
-      (error) => ({ type: "api_error", resource: "cantons", error }) as const
-    ),
-    getDistrictsList({ fetcher }).mapErr(
-      (error) => ({ type: "api_error", resource: "districts", error }) as const
-    )
-  ]).andThen(([provinceList, cantonList, districtsList]) => {
-    return ResultAsync.fromPromise(
+    expectOk(sigae.getProvinces(), "provinces"),
+    expectOk(sigae.getCantons(), "cantons"),
+    expectOk(sigae.getDistricts(), "districts")
+  ]).andThen(([provinceList, cantonList, districtList]) =>
+    ResultAsync.fromPromise(
       db.transaction(async (tx) => {
-        await Promise.all([
-          ...provinceList.Items.map((province) =>
-            tx
-              .insert(provinces)
-              .values({
+        if (provinceList.items.length > 0) {
+          await tx
+            .insert(provinces)
+            .values(
+              provinceList.items.map((province) => ({
                 id: province.IdProvincia,
                 name: province.Provincia,
                 code: province.CodigoProvincia
-              })
-              .onConflictDoUpdate({
-                target: provinces.id,
-                set: conflictUpdateSetAllColumns(provinces)
-              })
-          ),
-          ...cantonList.Items.map((canton) =>
-            tx
-              .insert(cantons)
-              .values({
+              }))
+            )
+            .onConflictDoUpdate({
+              target: provinces.id,
+              set: conflictUpdateSetAllColumns(provinces)
+            });
+        }
+        if (cantonList.items.length > 0) {
+          await tx
+            .insert(cantons)
+            .values(
+              cantonList.items.map((canton) => ({
                 id: canton.IdCanton,
                 name: canton.Canton,
                 code: canton.CodigoCanton,
                 provinceId: canton.IdProvincia
-              })
-              .onConflictDoUpdate({
-                target: cantons.id,
-                set: conflictUpdateSetAllColumns(cantons)
-              })
-          ),
-          ...districtsList.Items.map((district) =>
-            tx
-              .insert(districts)
-              .values({
+              }))
+            )
+            .onConflictDoUpdate({ target: cantons.id, set: conflictUpdateSetAllColumns(cantons) });
+        }
+        if (districtList.items.length > 0) {
+          await tx
+            .insert(districts)
+            .values(
+              districtList.items.map((district) => ({
                 id: district.Id_Distrito,
                 name: district.Distrito,
                 code: district.Codigo_Distrito,
                 cantonId: district.Id_Canton
-              })
-              .onConflictDoUpdate({
-                target: districts.id,
-                set: conflictUpdateSetAllColumns(districts)
-              })
-          )
-        ]);
+              }))
+            )
+            .onConflictDoUpdate({
+              target: districts.id,
+              set: conflictUpdateSetAllColumns(districts)
+            });
+        }
       }),
-      (error) =>
-        ({
-          type: "database_error",
-          resource: "syncDistricts",
-          error
-        }) as const
+      (cause) => new SyncError("failed to store provinces, cantons and districts", { cause })
     ).map(
       () =>
-        `Synced ${provinceList.Items.length} provinces, ${cantonList.Items.length} cantons, and ${districtsList.Items.length} districts.`
-    );
-  });
+        `${provinceList.items.length} provinces, ${cantonList.items.length} cantons, ${districtList.items.length} districts`
+    )
+  );
 }

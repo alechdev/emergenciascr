@@ -1,47 +1,27 @@
-import { and, db, eq } from "@bomberoscr/db/index";
+import { and, db, eq, isNull, lt, or } from "@bomberoscr/db/index";
 import { dispatchedVehicles, incidents } from "@bomberoscr/db/schema";
-import {
-  getIncidentDetails,
-  getIncidentReport,
-  getStationsAttendingIncident,
-  getVehiclesDispatchedToIncident
-} from "@bomberoscr/sync-domain/api";
+import { fetchIncident } from "@bomberoscr/sync-domain/fetch-incident";
 import { upsertIncident } from "@bomberoscr/sync-domain/persist/upsertIncident";
 import { ResultAsync, errAsync, okAsync } from "neverthrow";
 
-import { fetcher } from "@/config/fetcher";
-
-import type {
-  ObtenerEstacionesAtiendeIncidente,
-  ObtenerUnidadesDespachadasIncidente
-} from "@bomberoscr/sync-domain/types";
+import { sigae } from "@/config/sigae";
+import { SyncError } from "@/lib/errors";
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+const FIRST_PLAUSIBLE_TIME = new Date("1971-01-01T00:00:00Z");
 
-export function updateIncident({ id }: { id: number }) {
-  return ResultAsync.combine([
-    getIncidentDetails({ fetcher, id }),
-    getIncidentReport({ fetcher, id }),
-    getStationsAttendingIncident({ fetcher, id }),
-    getVehiclesDispatchedToIncident({ fetcher, id })
-  ]).andThen(([incidentDetails, incidentReport, stationsAttending, vehiclesDispatched]) => {
-    return ResultAsync.fromPromise(
-      upsertIncident({
-        incidentId: id,
-        incidentDetails,
-        incidentReport,
-        stationsAttending: (stationsAttending as unknown as ObtenerEstacionesAtiendeIncidente)
-          .Items,
-        vehiclesDispatched: (vehiclesDispatched as unknown as ObtenerUnidadesDespachadasIncidente)
-          .Items
-      }),
-      () => new Error(`Error updating incident ${id}`)
-    );
-  });
+export function updateIncident({ id }: { id: number }): ResultAsync<void, Error> {
+  return fetchIncident(sigae, id).andThen((input) =>
+    ResultAsync.fromPromise(
+      upsertIncident(input),
+      (cause) => new SyncError(`failed to store incident ${id}`, { cause })
+    ).map(() => undefined)
+  );
 }
 
 export type CloseIncidentError = {
   type: "no_coordinates" | "vehicles_in_scene" | "not_found" | "database_error";
+  cause?: unknown;
 };
 
 export const ERROR_MESSAGES: Record<CloseIncidentError["type"], string> = {
@@ -72,7 +52,11 @@ export async function closeIncident({
   const vehiclesInSceneQuery = db.query.dispatchedVehicles.findMany({
     where: and(
       eq(dispatchedVehicles.incidentId, id),
-      eq(dispatchedVehicles.departureTime, new Date("0001-01-01T00:00:00"))
+      // No departure yet: `NULL` from the new sync, SIGAE's year-1 placeholder in older rows.
+      or(
+        isNull(dispatchedVehicles.departureTime),
+        lt(dispatchedVehicles.departureTime, FIRST_PLAUSIBLE_TIME)
+      )
     ),
     columns: {
       departureTime: true
@@ -82,11 +66,11 @@ export async function closeIncident({
   return ResultAsync.combine([
     ResultAsync.fromPromise(
       incidentQuery,
-      () => ({ type: "database_error" }) as CloseIncidentError
+      (cause) => ({ type: "database_error", cause }) as CloseIncidentError
     ),
     ResultAsync.fromPromise(
       vehiclesInSceneQuery,
-      () => ({ type: "database_error" }) as CloseIncidentError
+      (cause) => ({ type: "database_error", cause }) as CloseIncidentError
     )
   ])
     .andThen(([incident, vehiclesInScene]) => {
@@ -109,7 +93,7 @@ export async function closeIncident({
     .andThen((id) => {
       return ResultAsync.fromPromise(
         db.update(incidents).set({ isOpen: false }).where(eq(incidents.id, id)),
-        () => ({ type: "database_error" }) as CloseIncidentError
+        (cause) => ({ type: "database_error", cause }) as CloseIncidentError
       ).map(() => undefined);
     });
 }

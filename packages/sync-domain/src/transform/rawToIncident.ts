@@ -1,10 +1,7 @@
 import db, { eq } from "@bomberoscr/db/index";
 import { type incidentsInsertSchema, incidents as incidentsTable } from "@bomberoscr/db/schema";
 
-import type {
-  ObtenerBoletaIncidente,
-  ObtenerDetalleEmergencias
-} from "@bomberoscr/sync-domain/types";
+import type { IncidentDetails, IncidentReport } from "@bomberoscr/sigae/client";
 import type z from "zod";
 
 export async function rawToIncident({
@@ -15,8 +12,8 @@ export async function rawToIncident({
 }: {
   incidentId: number;
   responsibleStationId: number;
-  incidentReport: ObtenerBoletaIncidente;
-  incidentDetails: ObtenerDetalleEmergencias;
+  incidentReport: IncidentReport;
+  incidentDetails: IncidentDetails;
 }): Promise<z.infer<typeof incidentsInsertSchema>> {
   const date = incidentReport.Fecha.split("T")[0];
   const time = incidentReport.Hora_Aviso.split("T")[1];

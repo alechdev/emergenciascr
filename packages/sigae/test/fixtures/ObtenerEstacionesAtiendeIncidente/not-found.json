@@ -1,0 +1,12 @@
+{
+  "source": "synthetic",
+  "endpoint": "ObtenerEstacionesAtiendeIncidente",
+  "request": {
+    "incidentId": 1
+  },
+  "body": {
+    "Codigo": "03",
+    "Descripcion": "No se encontraron registros.",
+    "Items": []
+  }
+}

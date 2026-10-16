@@ -82,7 +82,7 @@ function buildDispatchedStations(incident: {
   dispatchedVehicles: Array<{
     id: number;
     stationId: number | null;
-    dispatchedTime: Date;
+    dispatchedTime: Date | null;
     arrivalTime: Date | null;
     departureTime: Date | null;
     baseReturnTime: Date | null;
@@ -107,7 +107,7 @@ function buildDispatchedStations(incident: {
         internalNumber: string;
         plate: string;
         type: string;
-        dispatchedTime: string;
+        dispatchedTime: string | null;
         arrivalTime: string | null;
         departureTime: string | null;
         baseReturnTime: string | null;
@@ -156,7 +156,7 @@ function buildDispatchedStations(incident: {
       internalNumber: vehicleInfo?.internalNumber ?? "N/A",
       plate: vehicleInfo?.plate ?? "N/A",
       type: vehicleInfo?.descriptionType ?? "N/A",
-      dispatchedTime: vehicle.dispatchedTime.toISOString(),
+      dispatchedTime: toIsoStringOrNull(vehicle.dispatchedTime),
       arrivalTime: toIsoStringOrNull(vehicle.arrivalTime),
       departureTime: toIsoStringOrNull(vehicle.departureTime),
       baseReturnTime: toIsoStringOrNull(vehicle.baseReturnTime)

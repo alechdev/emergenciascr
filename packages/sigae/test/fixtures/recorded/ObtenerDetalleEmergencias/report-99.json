@@ -1,0 +1,45 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerDetalleEmergencias",
+  "request": {
+    "incidentId": 1924505
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "codigo_tipo_incidente": "1",
+    "codigo_tipo_incidente_despacho": "1",
+    "codigo_tipo_incidente_despacho_esp": "1.1.5.15",
+    "codigo_tipo_incidente_esp": "1.1.8.8",
+    "consecutivo_EE": "48854-26",
+    "direccion": "DIRECCION DE PRUEBA",
+    "fecha": "2026-10-15T00:00:00",
+    "hora_incidente": "2026-10-15T12:59:31",
+    "latitud": 0,
+    "longitud": 0,
+    "tipo_incidente": "EMERGENCIAS POR FUEGO",
+    "tipo_incidente_despacho": "EMERGENCIAS POR FUEGO",
+    "tipo_incidente_despacho_esp": "OTROS COMERCIOS",
+    "tipo_incidente_esp": "CASA DE HABITACION",
+    "estaciones": [
+      {
+        "clave_estacion": "3-1",
+        "nombre": "TURRIALBA",
+        "vehiculos": [
+          {
+            "estado": "RETIRADO",
+            "numero_interno": "M-61"
+          },
+          {
+            "estado": "RETIRADO",
+            "numero_interno": "T-15"
+          },
+          {
+            "estado": "RETIRADO",
+            "numero_interno": "AR-15"
+          }
+        ]
+      }
+    ]
+  }
+}

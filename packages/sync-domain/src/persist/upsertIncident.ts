@@ -10,11 +10,19 @@ import { rawToDispatchedVehicles } from "@bomberoscr/sync-domain/transform/rawTo
 import { rawToIncident } from "@bomberoscr/sync-domain/transform/rawToIncident";
 
 import type {
-  ItemObtenerEstacionesAtiendeIncidente,
-  ItemObtenerUnidadesDespachadasIncidente,
-  ObtenerBoletaIncidente,
-  ObtenerDetalleEmergencias
-} from "@bomberoscr/sync-domain/types";
+  DispatchedStation,
+  DispatchedUnit,
+  IncidentDetails,
+  IncidentReport
+} from "@bomberoscr/sigae/client";
+
+export type UpsertIncidentInput = {
+  incidentId: number;
+  incidentDetails: IncidentDetails;
+  incidentReport: IncidentReport;
+  stationsAttending: DispatchedStation[];
+  vehiclesDispatched: DispatchedUnit[];
+};
 
 export async function upsertIncident({
   incidentId,
@@ -22,13 +30,7 @@ export async function upsertIncident({
   incidentReport,
   stationsAttending,
   vehiclesDispatched
-}: {
-  incidentId: number;
-  incidentDetails: ObtenerDetalleEmergencias;
-  incidentReport: ObtenerBoletaIncidente;
-  stationsAttending: ItemObtenerEstacionesAtiendeIncidente[];
-  vehiclesDispatched: ItemObtenerUnidadesDespachadasIncidente[];
-}) {
+}: UpsertIncidentInput) {
   if (!incidentDetails || !incidentReport) return;
 
   const responsibleStation =
@@ -52,30 +54,33 @@ export async function upsertIncident({
     incidentId
   });
 
-  await db.insert(incidentsTable).values(incident).onConflictDoUpdate({
-    set: incident,
-    target: incidentsTable.id
+  // One transaction, so a failed child insert never leaves a stored incident without them.
+  await db.transaction(async (tx) => {
+    await tx.insert(incidentsTable).values(incident).onConflictDoUpdate({
+      set: incident,
+      target: incidentsTable.id
+    });
+
+    if (dispatchedStationsData.length > 0) {
+      await tx
+        .insert(dispatchedStationsTable)
+        .values(dispatchedStationsData)
+        .onConflictDoUpdate({
+          target: dispatchedStationsTable.id,
+          set: conflictUpdateSetAllColumns(dispatchedStationsTable)
+        });
+    }
+
+    if (dispatchedVehiclesData.length > 0) {
+      await tx
+        .insert(dispatchedVehiclesTable)
+        .values(dispatchedVehiclesData)
+        .onConflictDoUpdate({
+          target: dispatchedVehiclesTable.id,
+          set: conflictUpdateSetAllColumns(dispatchedVehiclesTable)
+        });
+    }
   });
-
-  if (dispatchedStationsData.length > 0) {
-    await db
-      .insert(dispatchedStationsTable)
-      .values(dispatchedStationsData)
-      .onConflictDoUpdate({
-        target: dispatchedStationsTable.id,
-        set: conflictUpdateSetAllColumns(dispatchedStationsTable)
-      });
-  }
-
-  if (dispatchedVehiclesData.length > 0) {
-    await db
-      .insert(dispatchedVehiclesTable)
-      .values(dispatchedVehiclesData)
-      .onConflictDoUpdate({
-        target: dispatchedVehiclesTable.id,
-        set: conflictUpdateSetAllColumns(dispatchedVehiclesTable)
-      });
-  }
 
   return incident;
 }

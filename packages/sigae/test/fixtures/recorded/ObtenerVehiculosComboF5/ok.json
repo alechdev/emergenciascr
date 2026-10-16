@@ -1,0 +1,23 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerVehiculosComboF5",
+  "request": {},
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "IdVehiculo": 787,
+        "NumeroInterno": "Ambulancia-01"
+      },
+      {
+        "IdVehiculo": 10159,
+        "NumeroInterno": "Ambulancia-02"
+      },
+      {
+        "IdVehiculo": 10150,
+        "NumeroInterno": "AMBULANCIA-03"
+      }
+    ]
+  }
+}

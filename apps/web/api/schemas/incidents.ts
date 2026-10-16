@@ -164,8 +164,8 @@ export const dispatchedVehicleSchema = z
       description: "The vehicle type.",
       example: "EMERGENCIA"
     }),
-    dispatchedTime: z.string().openapi({
-      description: "Time when the vehicle was dispatched.",
+    dispatchedTime: z.string().nullable().openapi({
+      description: "Time when the vehicle was dispatched, or null when SIGAE has none.",
       example: "2025-11-23T23:19:44.000Z"
     }),
     arrivalTime: z.string().nullable().openapi({

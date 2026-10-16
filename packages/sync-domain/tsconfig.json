@@ -3,7 +3,7 @@
   "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["dist", "build", "node_modules"],
   "compilerOptions": {
-    "baseUrl": ".",
+    "types": ["node"],
     "paths": {
       "@bomberoscr/sync-domain/*": ["./src/*"]
     }

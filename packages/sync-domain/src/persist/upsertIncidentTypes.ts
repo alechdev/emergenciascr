@@ -5,12 +5,12 @@ import {
 } from "@bomberoscr/db/schema";
 import { conflictUpdateSetAllColumns } from "@bomberoscr/db/utils";
 
-import type { ItemObtenerTiposIncidente } from "@bomberoscr/sync-domain/types";
+import type { IncidentType as SigaeIncidentType } from "@bomberoscr/sigae/client";
 import type { z } from "zod";
 
 type IncidentType = z.infer<typeof incidentTypesInsertSchema>;
 
-export async function upsertIncidentType(incidentTypes: ItemObtenerTiposIncidente[]) {
+export async function upsertIncidentType(incidentTypes: SigaeIncidentType[]) {
   if (incidentTypes.length === 0) return;
 
   const incidentTypesList: IncidentType[] = getIncidentTypesRecursively(incidentTypes);
@@ -25,7 +25,7 @@ export async function upsertIncidentType(incidentTypes: ItemObtenerTiposIncident
 }
 
 function getIncidentTypesRecursively(
-  items: ItemObtenerTiposIncidente[],
+  items: SigaeIncidentType[],
   parentId?: number
 ): IncidentType[] {
   const result: IncidentType[] = [];

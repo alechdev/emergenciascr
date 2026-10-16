@@ -1,0 +1,33 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerUnidadesDespachadasIncidente",
+  "request": {
+    "incidentId": 1924515
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "Codigo": null,
+        "Descripcion": null,
+        "CodigoEstacion": 46,
+        "CodigoUnidad": 3527,
+        "DespachoAlarma": false,
+        "HoraBase": "2026-10-15T14:46:29",
+        "HoraDespacho": "2026-10-15T14:21:15",
+        "HoraDevolverBase": "0001-01-01T00:00:00",
+        "HoraLLegada": "2026-10-15T14:25:02",
+        "HoraRetiro": "2026-10-15T14:40:44",
+        "HoraTraslado": "0001-01-01T00:00:00",
+        "IdBoletaServicio": 0,
+        "IdBoletaUnidadDespachada": 1385871,
+        "IdVehiculo": 0,
+        "NumeroInterno": null,
+        "Traslado": false,
+        "Unidad": "M-46",
+        "UnidadCompleta": "M-46 DESAMPARADOS 1-4"
+      }
+    ]
+  }
+}

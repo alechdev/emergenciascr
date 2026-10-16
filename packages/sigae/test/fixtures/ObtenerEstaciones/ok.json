@@ -1,0 +1,21 @@
+{
+  "source": "synthetic",
+  "endpoint": "ObtenerEstaciones",
+  "request": {},
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "ClaveEstacion": "1-1",
+        "IdEstacion": 2,
+        "Nombre": "METROPOLITANA NORTE"
+      },
+      {
+        "ClaveEstacion": "1-4",
+        "IdEstacion": 5,
+        "Nombre": "PAVAS"
+      }
+    ]
+  }
+}

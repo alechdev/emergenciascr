@@ -25,9 +25,14 @@ import env from "./env";
 
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
-export const db: NodePgDatabase<typeof schema> = drizzle(env.DRIZZLE_POSTGRES_URL, {
-  schema
-});
+const database = drizzle(env.DRIZZLE_POSTGRES_URL, { schema });
+
+export const db: NodePgDatabase<typeof schema> = database;
+
+/** Ends the connection pool, for a clean shutdown. */
+export function closeDb(): Promise<void> {
+  return database.$client.end();
+}
 
 export type Db = typeof db;
 

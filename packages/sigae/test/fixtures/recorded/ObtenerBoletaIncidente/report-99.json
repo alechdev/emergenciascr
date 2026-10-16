@@ -1,0 +1,42 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerBoletaIncidente",
+  "request": {
+    "incidentId": 1924505
+  },
+  "body": {
+    "Codigo": "99",
+    "Descripcion": "Ha ocurrido un error en el web service. Detalle técnico: Specified cast is not valid.",
+    "Id_Boleta_Incidente": 1924505,
+    "Consecutivo": "48854-2026",
+    "Fecha": "2026-10-15T00:00:00",
+    "Hora_Aviso": "2026-10-15T12:59:31",
+    "Hora_Controlado": "2026-10-15T13:13:04",
+    "Hora_Disponible": "0001-01-01T00:00:00",
+    "Hora_Fuego_Bajo_Control": "2026-10-15T13:13:12",
+    "Hora_Hospital": "0001-01-01T00:00:00",
+    "Hora_Paciente": "0001-01-01T00:00:00",
+    "Hora_Perdidas_Detenidas": "2026-10-15T13:14:19",
+    "Hora_Todo_Claro": "2026-10-15T13:14:18",
+    "Hora_Traslado": "0001-01-01T00:00:00",
+    "Estado_Abierto": "false",
+    "DesUbicacion": "UBICACION DE PRUEBA",
+    "Direccion": "DIRECCION DE PRUEBA",
+    "Id_Provincia": 0,
+    "Id_Canton": 0,
+    "Id_Distrito": 0,
+    "Provincia": "",
+    "Canton": "",
+    "Distrito": "",
+    "CodigoTipoIncidenteDespacho": "1.1.5.15",
+    "CodigoTipoIncidenteReal": "1.1.8.8",
+    "NomtipoIncidenteDespacho": "OTROS COMERCIOS",
+    "NomTipoIncidenteReal": "CASA DE HABITACION",
+    "Id_Etapa_Incidente": 271,
+    "DesEtapaIncidente": null,
+    "Civiles_Heridos": 0,
+    "Civiles_Fallecidos": 0,
+    "Bomberos_Heridos": 0,
+    "Bomberos_Fallecidos": 0
+  }
+}

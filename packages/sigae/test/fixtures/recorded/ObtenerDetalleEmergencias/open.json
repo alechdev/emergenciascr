@@ -1,0 +1,37 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerDetalleEmergencias",
+  "request": {
+    "incidentId": 1924523
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "codigo_tipo_incidente": "6",
+    "codigo_tipo_incidente_despacho": "6",
+    "codigo_tipo_incidente_despacho_esp": "6.2.1",
+    "codigo_tipo_incidente_esp": "6.2.1",
+    "consecutivo_EE": "48872-26",
+    "direccion": "DIRECCION DE PRUEBA",
+    "fecha": "2026-10-15T00:00:00",
+    "hora_incidente": "2026-10-15T15:32:59",
+    "latitud": 0,
+    "longitud": 0,
+    "tipo_incidente": "RESCATES Y RECUPERACIONES",
+    "tipo_incidente_despacho": "RESCATES Y RECUPERACIONES",
+    "tipo_incidente_despacho_esp": "CANINO",
+    "tipo_incidente_esp": "CANINO",
+    "estaciones": [
+      {
+        "clave_estacion": "1-5",
+        "nombre": "PAVAS",
+        "vehiculos": [
+          {
+            "estado": "EN CAMINO",
+            "numero_interno": "M-132"
+          }
+        ]
+      }
+    ]
+  }
+}

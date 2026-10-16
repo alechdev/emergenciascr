@@ -1,56 +1,31 @@
 import { db } from "@bomberoscr/db/index";
-import {
-  type vehicleDisponibilityInsertSchema,
-  vehicleDisponibility as vehicleDisponibilityTable
-} from "@bomberoscr/db/schema";
+import { vehicleDisponibility as vehicleDisponibilityTable } from "@bomberoscr/db/schema";
 import { conflictUpdateSetAllColumns } from "@bomberoscr/db/utils";
-import { getVehicleDisponibilityStates } from "@bomberoscr/sync-domain/api";
-import { ResultAsync } from "neverthrow";
+import { ResultAsync, okAsync } from "neverthrow";
 
-import { fetcher } from "@/config/fetcher";
+import { sigae } from "@/config/sigae";
+import { SyncError } from "@/lib/errors";
+import { expectOk } from "@/lib/sigae";
 
-import type { z } from "zod";
-
-export type VehicleDisponibilitySyncError = {
-  type: "api_error" | "database_error";
-  resource: string;
-  error: unknown;
-};
-
-type VehicleDisponibilityType = z.infer<typeof vehicleDisponibilityInsertSchema>;
-
-export function syncVehicleDisponibility(): ResultAsync<string, VehicleDisponibilitySyncError> {
-  return getVehicleDisponibilityStates({ fetcher })
-    .mapErr(
-      (error) =>
-        ({
-          type: "api_error",
-          resource: "vehicle_disponibility_states",
-          error
-        }) as const
-    )
-    .andThen((vehicleDisponibilityStates) => {
-      const vehicleDisponibility: VehicleDisponibilityType[] = vehicleDisponibilityStates.Items.map(
-        (state) => ({
-          id: state.IdGrupoClasificacion,
-          description: state.Descripcion
-        })
-      );
+export function syncVehicleDisponibility(): ResultAsync<string, SyncError> {
+  return expectOk(sigae.getVehicleAvailabilityStates(), "vehicle availability states").andThen(
+    (response) => {
+      const rows = response.items.map((state) => ({
+        id: state.IdGrupoClasificacion,
+        description: state.Descripcion
+      }));
+      if (rows.length === 0) return okAsync("0 vehicle availability states");
 
       return ResultAsync.fromPromise(
         db
           .insert(vehicleDisponibilityTable)
-          .values(vehicleDisponibility)
+          .values(rows)
           .onConflictDoUpdate({
             target: vehicleDisponibilityTable.id,
             set: conflictUpdateSetAllColumns(vehicleDisponibilityTable)
           }),
-        (error) =>
-          ({
-            type: "database_error",
-            resource: "syncVehicleDisponibility",
-            error
-          }) as const
-      ).map(() => `Synced ${vehicleDisponibility.length} vehicle disponibility states.`);
-    });
+        (cause) => new SyncError("failed to store vehicle availability states", { cause })
+      ).map(() => `${rows.length} vehicle availability states`);
+    }
+  );
 }

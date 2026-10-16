@@ -1,0 +1,37 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerDetalleEmergencias",
+  "request": {
+    "incidentId": 1924515
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "codigo_tipo_incidente": "5",
+    "codigo_tipo_incidente_despacho": "5",
+    "codigo_tipo_incidente_despacho_esp": "5.2.2.3.1",
+    "codigo_tipo_incidente_esp": "5.2.2.3.1",
+    "consecutivo_EE": "48864-26",
+    "direccion": "DIRECCION DE PRUEBA",
+    "fecha": "2026-10-15T00:00:00",
+    "hora_incidente": "2026-10-15T14:16:04",
+    "latitud": 0,
+    "longitud": 0,
+    "tipo_incidente": "EMERGENCIAS FISICOQUIMICAS",
+    "tipo_incidente_despacho": "EMERGENCIAS FISICOQUIMICAS",
+    "tipo_incidente_despacho_esp": "ESCAPE LPG EN ESTRUCTURA",
+    "tipo_incidente_esp": "ESCAPE LPG EN ESTRUCTURA",
+    "estaciones": [
+      {
+        "clave_estacion": "1-4",
+        "nombre": "DESAMPARADOS",
+        "vehiculos": [
+          {
+            "estado": "RETIRADO",
+            "numero_interno": "M-46"
+          }
+        ]
+      }
+    ]
+  }
+}

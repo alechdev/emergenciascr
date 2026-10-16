@@ -2,9 +2,9 @@ import { db } from "@bomberoscr/db/index";
 import { districts as districtsTable } from "@bomberoscr/db/schema";
 import { conflictUpdateSetAllColumns } from "@bomberoscr/db/utils";
 
-import type { ItemObtenerDistritosLista } from "@bomberoscr/sync-domain/types";
+import type { District } from "@bomberoscr/sigae/client";
 
-export async function upsertDistrict(districts: ItemObtenerDistritosLista[]) {
+export async function upsertDistrict(districts: District[]) {
   if (districts.length === 0) return;
 
   await Promise.all(

@@ -1,5 +1,5 @@
 import type { dispatchedVehiclesInsertSchema } from "@bomberoscr/db/schema";
-import type { ItemObtenerUnidadesDespachadasIncidente } from "@bomberoscr/sync-domain/types";
+import type { DispatchedUnit } from "@bomberoscr/sigae/client";
 import type { z } from "zod";
 
 export function rawToDispatchedVehicles({
@@ -7,7 +7,7 @@ export function rawToDispatchedVehicles({
   dispatchedVehicles
 }: {
   incidentId: number;
-  dispatchedVehicles: ItemObtenerUnidadesDespachadasIncidente[];
+  dispatchedVehicles: DispatchedUnit[];
 }): z.infer<typeof dispatchedVehiclesInsertSchema>[] {
   return dispatchedVehicles.map((vehicle) => ({
     id: vehicle.IdBoletaUnidadDespachada,

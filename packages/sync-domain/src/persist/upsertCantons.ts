@@ -2,9 +2,9 @@ import { db } from "@bomberoscr/db/index";
 import { cantons as cantonsTable } from "@bomberoscr/db/schema";
 import { conflictUpdateSetAllColumns } from "@bomberoscr/db/utils";
 
-import type { ItemObtenerCantonesLista } from "@bomberoscr/sync-domain/types";
+import type { Canton } from "@bomberoscr/sigae/client";
 
-export async function upsertCanton(cantons: ItemObtenerCantonesLista[]) {
+export async function upsertCanton(cantons: Canton[]) {
   if (cantons.length === 0) return;
 
   await Promise.all(

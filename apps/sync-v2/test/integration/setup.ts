@@ -4,12 +4,17 @@
  * (or an unreachable loopback port) first. dotenv never overrides a variable that is already
  * set, and dotenv-expand replaces empty ones, so every value here is non-empty.
  */
-import { FAKE_CREDENTIALS, FAKE_SIGAE_URL, assertThrowaway } from "./harness";
+import {
+  FAKE_CREDENTIALS,
+  FAKE_SIGAE_URL,
+  assertTestDatabaseUrl,
+  assertTestRedisUrl
+} from "./harness";
 
 const redisUrl = process.env.TEST_REDIS_URL || undefined;
 const databaseUrl = process.env.TEST_DATABASE_URL || undefined;
-if (redisUrl) assertThrowaway(redisUrl, "TEST_REDIS_URL", ["REDIS_URL"]);
-if (databaseUrl) assertThrowaway(databaseUrl, "TEST_DATABASE_URL", ["DRIZZLE_POSTGRES_URL"]);
+if (redisUrl) assertTestRedisUrl(redisUrl);
+if (databaseUrl) assertTestDatabaseUrl(databaseUrl);
 
 const UNREACHABLE = "127.0.0.1:9";
 Object.assign(process.env, {

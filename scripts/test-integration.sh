@@ -36,7 +36,8 @@ done
 docker exec "$pg" pg_isready -U test -d sync_test -h 127.0.0.1 >/dev/null
 
 export TEST_DATABASE_URL="postgres://test:test@127.0.0.1:$(port "$pg" 5432)/sync_test"
-export TEST_REDIS_URL="redis://127.0.0.1:$(port "$redis" 6379)"
+# The harness refuses Redis database 0 and database names without "test".
+export TEST_REDIS_URL="redis://127.0.0.1:$(port "$redis" 6379)/15"
 
 for tz in UTC America/Costa_Rica; do
   echo "== TZ=$tz"

@@ -75,7 +75,7 @@ describe.skipIf(!INTEGRATION)("incident polls through the real queue", () => {
   beforeEach(async () => {
     await worker?.close();
     worker = undefined;
-    await redis.flushall();
+    await redis.flushdb();
     await resetDatabase(db);
     await seedReferences(db);
   });

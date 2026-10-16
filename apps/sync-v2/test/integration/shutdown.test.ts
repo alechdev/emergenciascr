@@ -95,7 +95,7 @@ describe.skipIf(!INTEGRATION)("graceful shutdown", () => {
   });
 
   it("finishes the running poll and flushes telemetry on SIGTERM", async () => {
-    await redis.flushall();
+    await redis.flushdb();
     await resetDatabase(db);
     await seedReferences(db);
     const { trackNewIncidents, loadSyncState } = await import("@bomberoscr/sync-domain/persist");

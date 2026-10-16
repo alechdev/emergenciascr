@@ -4,7 +4,8 @@
  * fixture replay through `syncIncident`.
  *
  * The database comes only from `TEST_DATABASE_URL`, never from `DRIZZLE_POSTGRES_URL` or a
- * `.env`, and must be on loopback, so the suites can't touch a real database.
+ * `.env`; it must be on loopback, have `test` in its name, and be empty or marked by the
+ * harness (see `guards.ts`), so the suites can't touch a real database.
  */
 import { createDatabase, type Database } from "@bomberoscr/db/client";
 import { migrateDatabase } from "@bomberoscr/db/migrate";
@@ -39,51 +40,75 @@ import {
   snapshotFiles,
   toPlainJson
 } from "../fixture-runner";
+import { TEST_DATABASE_MARKER, assertTestDatabaseUrl, isThrowawayDatabase } from "./guards";
 
 import type { SigaeIncidentEndpoint } from "../../src/types";
 
+export {
+  TEST_DATABASE_MARKER,
+  assertTestDatabaseUrl,
+  assertTestRedisUrl,
+  assertThrowaway
+} from "./guards";
 export { FIXTURES_DIR, listScenarios, readSnapshot, snapshotFiles } from "../fixture-runner";
 export type { FixtureOutcome, FixtureSnapshot } from "../fixture-runner";
 
 export const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || undefined;
 
-const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
-
-/** Refuses anything but a loopback URL that isn't the app's own configured one. */
-export function assertThrowaway(url: string, variable: string, appVariables: string[]): void {
-  const host = new URL(url).hostname;
-  if (!LOOPBACK_HOSTS.has(host)) {
-    throw new Error(`${variable} must point at a throwaway server on loopback, not ${host}`);
-  }
-  for (const name of appVariables) {
-    if (process.env[name] && process.env[name] === url && name !== variable) {
-      throw new Error(`${variable} must not be the same as ${name}`);
-    }
-  }
-}
-
 export type TestDatabase = ReturnType<typeof createDatabase>;
 
 let migrated: Promise<unknown> | undefined;
 
-/** A pool on the test database, migrated once per process. */
+/**
+ * A pool on the test database, migrated once per process. The database must be empty the
+ * first time; the harness then marks it, and refuses any database with tables but no mark.
+ */
 export async function openTestDatabase(): Promise<TestDatabase> {
   const url = TEST_DATABASE_URL;
   if (!url) throw new Error("TEST_DATABASE_URL is not set");
-  assertThrowaway(url, "TEST_DATABASE_URL", ["DRIZZLE_POSTGRES_URL"]);
-  migrated ??= migrateDatabase(url);
+  assertTestDatabaseUrl(url);
+  migrated ??= prepareDatabase(url);
   await migrated;
   return createDatabase(url);
 }
 
-/** Empties every application table. */
-export async function resetDatabase(db: Database): Promise<void> {
+async function prepareDatabase(url: string): Promise<void> {
+  const db = createDatabase(url);
+  try {
+    await assertMarked(db);
+    // Marked before migrating, so a run that stops halfway leaves a database it may reuse.
+    await db.execute(
+      sql`create table if not exists ${sql.identifier(TEST_DATABASE_MARKER)} (marked_at timestamptz not null default now())`
+    );
+    await migrateDatabase(url);
+  } finally {
+    await db.$client.end();
+  }
+}
+
+async function publicTables(db: Database): Promise<string[]> {
   const tables = await db.execute<{ tablename: string }>(
     sql`select tablename from pg_tables where schemaname = 'public'`
   );
-  if (tables.rows.length === 0) return;
+  return tables.rows.map((row) => row.tablename);
+}
+
+async function assertMarked(db: Database): Promise<void> {
+  if (!isThrowawayDatabase(await publicTables(db))) {
+    throw new Error(
+      `TEST_DATABASE_URL has tables but no ${TEST_DATABASE_MARKER}: not a database the tests created`
+    );
+  }
+}
+
+/** Empties every application table, in a database the harness marked. */
+export async function resetDatabase(db: Database): Promise<void> {
+  const tables = await publicTables(db);
+  if (!tables.includes(TEST_DATABASE_MARKER)) {
+    throw new Error(`refusing to empty a database without ${TEST_DATABASE_MARKER}`);
+  }
   const list = sql.join(
-    tables.rows.map((row) => sql.identifier(row.tablename)),
+    tables.map((table) => sql.identifier(table)),
     sql.raw(", ")
   );
   await db.execute(sql`truncate ${list} restart identity cascade`);

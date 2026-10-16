@@ -115,7 +115,7 @@ describe.skipIf(!INTEGRATION)("poll telemetry", () => {
     db = await openTestDatabase();
     ({ redis, closeRedis } = await import("@/config/redis"));
     queue = (await import("@/queues/incidentPoll.queue")).incidentPollQueue as Queue;
-    await redis.flushall();
+    await redis.flushdb();
     await resetDatabase(db);
     await seedReferences(db);
   });

@@ -76,7 +76,7 @@ describe.skipIf(!INTEGRATION)("discovery, gap fill and resume", () => {
   beforeEach(async () => {
     await Promise.all(workers.map((worker) => worker.close()));
     workers = [];
-    await redis.flushall();
+    await redis.flushdb();
     await resetDatabase(db);
   });
 
@@ -172,7 +172,7 @@ describe.skipIf(!INTEGRATION)("discovery, gap fill and resume", () => {
     await modules.poll
       .createPollScheduler(pollQueue as never, clock.now)
       .schedule(rows.map((row) => ({ incidentId: row.incidentId, at: row.nextPollAt })));
-    await redis.flushall();
+    await redis.flushdb();
     expect(await pendingPolls()).toEqual(new Map());
 
     const first = await boot(sigae, clock.now);

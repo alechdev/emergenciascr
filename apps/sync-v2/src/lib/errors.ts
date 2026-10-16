@@ -1,3 +1,5 @@
+import { redactQueryMessage } from "@bomberoscr/sync-domain/pipeline";
+
 /** An error raised by the sync itself. Always pass the underlying error as `cause`. */
 export class SyncError extends Error {
   override readonly name = "SyncError";
@@ -51,7 +53,10 @@ export function serializeError(error: unknown, depth = 0): SerializedError {
     return { name: "NonError", message: String(error) };
   }
 
-  const serialized: SerializedError = { name: error.name, message: error.message };
+  const serialized: SerializedError = {
+    name: error.name,
+    message: redactQueryMessage(error.message)
+  };
   const source = error as unknown as Record<string, unknown>;
   for (const field of FIELDS) {
     const value = source[field];

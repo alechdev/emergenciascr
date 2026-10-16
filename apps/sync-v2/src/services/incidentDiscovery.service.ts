@@ -1,29 +1,92 @@
-import db, { inArray } from "@bomberoscr/db/index";
-import { incidents } from "@bomberoscr/db/schema";
-import { ResultAsync, okAsync } from "neverthrow";
+import { listPolledIncidents, trackNewIncidents } from "@bomberoscr/sync-domain/persist";
 
-import { sigae } from "@/config/sigae";
 import { SyncError } from "@/lib/errors";
+import { discoveryDelay, incidentsDiscovered } from "@/lib/metrics";
+import {
+  discoveryDelaySeconds,
+  gapFillRange,
+  listedIncidentTime,
+  withinGapFill
+} from "@/lib/schedule";
 import { expectOk } from "@/lib/sigae";
+
+import type { PollScheduler } from "@/queues/incidentPoll.queue";
+import type { Database } from "@bomberoscr/db/client";
+import type { IncidentListItem, SigaeClient } from "@bomberoscr/sigae/client";
 
 const LATEST_INCIDENTS = 50;
 
-/** IDs among the latest incidents in SIGAE that are not stored yet. */
-export function getNewIncidents(): ResultAsync<number[], SyncError> {
-  return expectOk(
-    sigae.getLatestIncidents({ count: LATEST_INCIDENTS }),
+export interface DiscoveryDeps {
+  db: Database;
+  sigae: Pick<SigaeClient, "getLatestIncidents" | "getIncidentsBetween">;
+  scheduler: PollScheduler;
+  now: () => Date;
+}
+
+export interface DiscoveryResult {
+  /** Incidents in the SIGAE list. */
+  listed: number;
+  /** Incidents tracked for the first time. */
+  discovered: number[];
+}
+
+/** Every minute: the latest 50 incidents (spec section 8.1). */
+export async function discoverLatestIncidents(deps: DiscoveryDeps): Promise<DiscoveryResult> {
+  const list = await expectOk(
+    deps.sigae.getLatestIncidents({ count: LATEST_INCIDENTS }),
     "latest incidents"
-  ).andThen((data) => {
-    if (data.items.length === 0) return okAsync([]);
+  );
+  if (list.isErr()) throw list.error;
+  return track(deps, list.value.items);
+}
 
-    const incidentIds = data.items.map((incident) => incident.idBoletaIncidente);
+/** At boot and hourly: incidents reported in the last 6 hours (spec section 8.1). */
+export async function fillDiscoveryGap(deps: DiscoveryDeps): Promise<DiscoveryResult> {
+  const { from, to, since } = gapFillRange(deps.now());
+  const list = await expectOk(deps.sigae.getIncidentsBetween({ from, to }), "incidents between");
+  if (list.isErr()) throw list.error;
+  return track(deps, withinGapFill(list.value.items, since));
+}
 
-    return ResultAsync.fromPromise(
-      db.select({ id: incidents.id }).from(incidents).where(inArray(incidents.id, incidentIds)),
-      (cause) => new SyncError("failed to read existing incidents", { cause })
-    ).map((existing) => {
-      const existingIds = new Set(existing.map((incident) => incident.id));
-      return incidentIds.filter((id) => !existingIds.has(id));
-    });
-  });
+/**
+ * Schedules a poll for every `active` and `settling` incident, so losing Redis never loses a
+ * tracked incident (spec section 8.1). Incidents that still have a pending job keep it.
+ */
+export async function resumePolledIncidents(
+  deps: Pick<DiscoveryDeps, "db" | "scheduler">
+): Promise<{ tracked: number; scheduled: number }> {
+  const tracked = await listPolledIncidents(deps.db);
+  const scheduled = await deps.scheduler.schedule(
+    tracked.map((row) => ({ incidentId: row.incidentId, at: row.nextPollAt }))
+  );
+  return { tracked: tracked.length, scheduled };
+}
+
+/** New incidents get an `incident_sync_state` row and a poll right away. */
+async function track(
+  deps: DiscoveryDeps,
+  items: readonly IncidentListItem[]
+): Promise<DiscoveryResult> {
+  const firstSeenAt = deps.now();
+  const byId = new Map(items.map((item) => [item.idBoletaIncidente, item]));
+  let discovered: number[];
+  try {
+    discovered = await trackNewIncidents(
+      deps.db,
+      [...byId.keys()].map((incidentId) => ({ incidentId, firstSeenAt }))
+    );
+  } catch (cause) {
+    throw new SyncError("failed to store discovered incidents", { cause });
+  }
+
+  if (discovered.length > 0) {
+    await deps.scheduler.schedule(discovered.map((incidentId) => ({ incidentId, at: null })));
+  }
+  incidentsDiscovered.add(discovered.length);
+  for (const incidentId of discovered) {
+    const item = byId.get(incidentId);
+    const delay = item ? discoveryDelaySeconds(listedIncidentTime(item), firstSeenAt) : null;
+    if (delay !== null) discoveryDelay.record(delay);
+  }
+  return { listed: byId.size, discovered };
 }

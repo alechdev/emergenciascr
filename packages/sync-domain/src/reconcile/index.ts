@@ -21,3 +21,10 @@ export {
   applyEmptyUnitsRule,
   type EmptyUnitsDecision
 } from "./removal";
+export {
+  applyKnownReferences,
+  collectReferences,
+  type AppliedReferences,
+  type KnownReferences,
+  type ReferenceIds
+} from "./references";

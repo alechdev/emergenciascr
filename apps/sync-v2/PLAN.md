@@ -13,7 +13,7 @@ Every phase is a reviewable set of commits on `sync-v2`. A phase is done when al
 | 3     | sync-v2 foundations    | 2          | Done                            |
 | 4     | Schema changes         | 1          | Done                            |
 | 5     | Pure core and fixtures | 2          | Done                            |
-| 6     | Sync pipeline          | 3, 4, 5    | Not started                     |
+| 6     | Sync pipeline          | 3, 4, 5    | In progress                     |
 | 7     | Web changes            | 4          | Not started                     |
 | 8     | Beta infrastructure    | 1, 6, 7    | Not started                     |
 | 9     | Comparison tool        | 8          | Not started                     |
@@ -123,7 +123,7 @@ The I/O-free core in `packages/sync-domain` (sections 4, 6, 7, 8), tested withou
 
 **Notes**
 
-- `processPoll` (`poll/process.ts`) chains the core for one poll: normalize, partial-report rule, incident types, the empty-units rule, lifecycle, `closedAt`, diff and anomalies. Phase 6 wraps it with fetching, snapshots, reference resolution and the transaction. `transform/` and `fetch-incident.ts` stay until phase 6 replaces them.
+- `processPoll` (`poll/process.ts`) chains the core for one poll: normalize, partial-report rule, incident types, the empty-units rule, lifecycle, `closedAt`, diff and anomalies. Phase 6 wraps it with fetching, snapshots, reference resolution and the transaction.
 - Fixtures live in `packages/sync-domain/fixtures/<scenario>/`. Each `NNN.json` holds one poll: `incidentId`, `fetchedAt` and the four endpoint payloads as redacted raw bodies (or a request error). `expected.json` holds every poll's outcome, the changes, the anomalies and the final state; `UPDATE_FIXTURES=1` rewrites it. The current fixtures are synthetic.
 - Choices the spec left open:
   - A request failure on any endpoint makes the poll `failed`, even when detail and report answered `03`, so a flaky endpoint can't delete an incident. A `99` report without `Fecha`, `Hora_Aviso`, `Consecutivo`, `DesUbicacion`, `Direccion` or `Estado_Abierto`, or without a usable incident time, is also `failed`.
@@ -139,13 +139,13 @@ Wire the core into the workers (section 4 pipeline, section 8).
 
 **Tasks**
 
-- [ ] Poll worker: fetch, classify, snapshot (only if changed), normalize, diff, anomalies, resolve references, one transaction, schedule the next poll.
-- [ ] `persist/`: upserts, unit and station removal, changes, anomalies and sync state in one transaction.
-- [ ] Closing driven by `Estado_Abierto`; `closedAt` and its source (section 8.3).
-- [ ] Discovery, gap fill and bootstrap from `incident_sync_state` (section 8.1).
-- [ ] Not-found deletion (section 8.4).
-- [ ] On-demand reference resolution (section 9).
-- [ ] Poll, change, anomaly and phase metrics (section 4.2).
+- [x] Poll worker: fetch, classify, snapshot (only if changed), normalize, diff, anomalies, resolve references, one transaction, schedule the next poll.
+- [x] `persist/`: upserts, unit and station removal, changes, anomalies and sync state in one transaction.
+- [x] Closing driven by `Estado_Abierto`; `closedAt` and its source (section 8.3).
+- [x] Discovery, gap fill and bootstrap from `incident_sync_state` (section 8.1).
+- [x] Not-found deletion (section 8.4).
+- [x] On-demand reference resolution (section 9).
+- [x] Poll, change, anomaly and phase metrics (section 4.2).
 - [ ] Fixture capture script from `sigae_snapshots`.
 - [ ] Integration tests against a throwaway Postgres migrated with the migrate runner.
 
@@ -155,6 +155,17 @@ Wire the core into the workers (section 4 pipeline, section 8).
 - [ ] sync-v2 runs locally against SIGAE for 24 hours: no stuck or `failed` incidents, queues don't grow, and incidents move through `active` → `settling` → `done`.
 - [ ] Deleting the Redis data and restarting resumes every tracked incident.
 - [ ] Remaining checks from spec section 3.3: units and stations responses for a brand-new incident with no units.
+
+**Notes**
+
+- `syncIncident` (`packages/sync-domain/src/pipeline/`) runs one poll: fetch, snapshots, `processPoll`, reference resolution, the transaction (`persist/`) and the next poll time. It takes the database, the SIGAE client, a reference resolver and a clock as arguments, so the poll worker and the web admin manual sync share it. `transform/`, `fetch-incident.ts` and the old `persist/upsert*` files are gone; `@bomberoscr/db/client` builds a database without reading env.
+- The poll worker runs one `incident-poll-<id>` job per incident (concurrency 5) and moves it back to delayed until the next poll; the job completes when the incident is `done`, `deleted` or `failed`. Discovery calls `trackNewIncidents` and schedules an immediate poll. Gap fill (`incident-gap-fill`, at boot as `incident-gap-fill-boot` and hourly at `:30`) first reschedules every `active` and `settling` incident from `incident_sync_state`, then lists the last 6 hours.
+- Choices the spec left open:
+  - The lifecycle `failed` phase (10 consecutive failed polls) replaces the old worker rule of the same name. A database error after the sync state is loaded also counts as a failed poll; only a failure to save the sync state fails the job, which BullMQ retries.
+  - Snapshots are stored before and outside the transaction, so they survive a failed poll; each endpoint is stored only when its hash differs from its latest snapshot. Incident data and `modifiedAt` are written only when the poll has changes.
+  - An unknown station or vehicle is fetched from SIGAE and upserted before the transaction; unknown incident types refresh the type list. The resolver caches misses for 15 minutes and refreshes incident types at most every 15 minutes. A station created this way has `isOperative` `NULL` until the reference job runs.
+  - Still unknown after that: a vehicle is stored with `vehicleId` `NULL`; a province, canton or district (never fetched on demand) is stored as `NULL`; a station fails the poll. Each records `MISSING_REFERENCE` once.
+  - The web admin manual sync calls `syncIncident` with `force`, so it also polls `done`, `deleted` and `failed` incidents and records changes and sync state like the worker.
 
 ## Phase 7: Web changes
 

@@ -11,3 +11,4 @@ export {
   type ReportIssue
 } from "./classify";
 export { processPoll, type ProcessPollInput, type ProcessPollResult } from "./process";
+export { pollReferences } from "./references";

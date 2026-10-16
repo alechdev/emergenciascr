@@ -133,6 +133,7 @@ Module layout in `packages/sync-domain`, testable without Redis or a database. I
 - `lifecycle/` — `nextPoll(state, normalized, now)`.
 - `redact/` — snapshot allowlists.
 - `persist/` — DB writes only, no business rules.
+- `pipeline/` — `syncIncident`: the I/O shell above for one incident, with the database, SIGAE client, reference resolver and clock passed in, so the worker and the web admin sync share it.
 
 `transform/` is replaced by `normalize/`. The incident-type lookup in `rawToIncident` moves to "resolve references" so normalization stays pure.
 

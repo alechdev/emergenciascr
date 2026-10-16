@@ -1,18 +1,25 @@
 import { closeDb, db, sql } from "@bomberoscr/db/index";
+import { countIncidentsByPhase } from "@bomberoscr/sync-domain/persist";
 
 import env from "@/config/env";
+import { referenceResolver } from "@/config/pipeline";
 import { closeRedis, redis } from "@/config/redis";
 import { lastSigaeSuccessAt, sigae } from "@/config/sigae";
 import { type HealthServer, startHealthServer } from "@/lib/health";
 import { removeFinishedJob } from "@/lib/jobs";
 import logger from "@/lib/logger";
-import { observeQueues } from "@/lib/metrics";
+import { observeIncidentPhases, observeQueues } from "@/lib/metrics";
 import { expectOk } from "@/lib/sigae";
-import { incidentDiscoveryQueue } from "@/queues/incidentDiscovery.queue";
+import {
+  DISCOVERY_JOB_NAME,
+  GAP_FILL_JOB_NAME,
+  incidentDiscoveryQueue
+} from "@/queues/incidentDiscovery.queue";
+import { createPollScheduler } from "@/queues/incidentPoll.queue";
 import { allQueues } from "@/queues/index";
 import { referenceQueue } from "@/queues/reference.queue";
 import { createIncidentDiscoveryWorker } from "@/workers/incidentDiscovery.worker";
-import { createOpenIncidentsWorker } from "@/workers/openIncidents.worker";
+import { createIncidentPollWorker } from "@/workers/incidentPoll.worker";
 import { createReferenceWorker } from "@/workers/reference.worker";
 import { createStationsWorker } from "@/workers/stations.worker";
 import { createVehiclesWorker } from "@/workers/vehicles.worker";
@@ -25,6 +32,7 @@ const WORKER_CLOSE_TIMEOUT_MS = 30_000;
 const SHUTDOWN_TIMEOUT_MS = 45_000;
 const EXIT_GRACE_MS = 1_000;
 const REFERENCE_BOOT_JOB_ID = "reference-boot";
+const GAP_FILL_BOOT_JOB_ID = "incident-gap-fill-boot";
 
 interface Scheduler {
   id: string;
@@ -37,7 +45,10 @@ const SCHEDULERS = new Map<Queue, Scheduler[]>([
   [referenceQueue, [{ id: "reference", pattern: "0 */12 * * *", name: "reference" }]],
   [
     incidentDiscoveryQueue,
-    [{ id: "incident-discovery", pattern: "* * * * *", name: "incident-discovery" }]
+    [
+      { id: "incident-discovery", pattern: "* * * * *", name: DISCOVERY_JOB_NAME },
+      { id: "incident-gap-fill", pattern: "30 * * * *", name: GAP_FILL_JOB_NAME }
+    ]
   ]
 ]);
 
@@ -46,6 +57,7 @@ const workers: Worker[] = [];
 const queueEvents: QueueEvents[] = [];
 let health: HealthServer | undefined;
 let stopObservingQueues: (() => void) | undefined;
+let stopObservingPhases: (() => void) | undefined;
 let telemetry: Telemetry | undefined;
 
 async function main(): Promise<void> {
@@ -74,19 +86,21 @@ async function main(): Promise<void> {
   logger.info("health endpoint listening", { host: env.HEALTH_HOST, port: health.port });
 
   stopObservingQueues = observeQueues(allQueues);
+  stopObservingPhases = observeIncidentPhases(() => countIncidentsByPhase(db));
 
   // Before any worker runs, so a leftover scheduler can't start one more periodic job.
   await syncSchedulers();
   // A shutdown that started meanwhile has already closed the queues.
   if (shutdownController.signal.aborted) return;
 
+  const now = () => new Date();
   const reference = createReferenceWorker({ signal: shutdownController.signal });
   workers.push(
     reference.worker,
     createStationsWorker(),
     createVehiclesWorker(),
-    createIncidentDiscoveryWorker(),
-    createOpenIncidentsWorker()
+    createIncidentDiscoveryWorker({ db, sigae, scheduler: createPollScheduler(), now }),
+    createIncidentPollWorker({ db, sigae, references: referenceResolver, now })
   );
   queueEvents.push(...reference.queueEvents);
 
@@ -94,6 +108,11 @@ async function main(): Promise<void> {
   // previous shutdown is still delayed, and adding the same ID again leaves it as is.
   await removeFinishedJob(referenceQueue, REFERENCE_BOOT_JOB_ID);
   await referenceQueue.add("reference", {}, { jobId: REFERENCE_BOOT_JOB_ID });
+
+  // Bootstrap (spec section 8.1): every tracked incident gets its poll back, then the gap
+  // fill catches what was reported while the sync was down.
+  await removeFinishedJob(incidentDiscoveryQueue, GAP_FILL_BOOT_JOB_ID);
+  await incidentDiscoveryQueue.add(GAP_FILL_JOB_NAME, {}, { jobId: GAP_FILL_BOOT_JOB_ID });
 
   logger.info("sync-v2 started");
 }
@@ -146,6 +165,7 @@ function shutdown(reason: string, exitCode: number): Promise<void> {
     const steps: [string, () => Promise<unknown>][] = [
       ["workers", () => Promise.all(workers.map(closeWorker))],
       ["queue metrics", async () => stopObservingQueues?.()],
+      ["phase metrics", async () => stopObservingPhases?.()],
       ["queue events", () => Promise.all(queueEvents.map((events) => events.close()))],
       ["queues", () => Promise.all(allQueues.map((queue) => queue.close()))],
       ["health endpoint", async () => health?.close()],

@@ -1,7 +1,12 @@
 import env from "@api/env";
+import { db } from "@bomberoscr/db/index";
 import { type SigaeClient, createSigaeClient } from "@bomberoscr/sigae/client";
-import { fetchIncident } from "@bomberoscr/sync-domain/fetch-incident";
-import { upsertIncident } from "@bomberoscr/sync-domain/persist/upsertIncident";
+import {
+  type ReferenceResolver,
+  createReferenceResolver,
+  describeError,
+  syncIncident
+} from "@bomberoscr/sync-domain/pipeline";
 
 const SIGAE_ENV_KEYS = [
   "SIGAE_API_URL",
@@ -12,6 +17,7 @@ const SIGAE_ENV_KEYS = [
 ] as const;
 
 let cachedClient: SigaeClient | null = null;
+const resolvers = new WeakMap<SigaeClient, ReferenceResolver>();
 
 function getSigaeClient():
   | { ok: true; client: SigaeClient }
@@ -46,26 +52,42 @@ function costaRicaDate(isoDate: string): Date {
   return new Date(`${isoDate}T12:00:00-06:00`);
 }
 
+/**
+ * Polls one incident through the sync pipeline, as sync-v2 does: snapshots, changes,
+ * anomalies and the sync state are recorded too. It runs even for incidents sync-v2 no
+ * longer polls; one that ends up `active` or `settling` is picked up by sync-v2's next
+ * hourly resume.
+ */
 async function syncSingleIncident(client: SigaeClient, incidentId: number) {
-  const fetched = await fetchIncident(client, incidentId);
-  if (fetched.isErr()) {
-    const error = fetched.error;
-    return {
-      incidentId,
-      success: false,
-      error: error.kind === "not_found" ? "Incident not found in SIGAE" : error.message
-    };
+  let references = resolvers.get(client);
+  if (!references) {
+    references = createReferenceResolver({ db, sigae: client });
+    resolvers.set(client, references);
   }
 
   try {
-    await upsertIncident(fetched.value);
-    return { incidentId, success: true };
-  } catch (error) {
-    return {
+    const outcome = await syncIncident(
+      { db, sigae: client, references, now: () => new Date() },
       incidentId,
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error"
-    };
+      { force: true }
+    );
+    switch (outcome.kind) {
+      case "ok":
+      case "partial":
+        return { incidentId, success: true };
+      case "not_found":
+        return {
+          incidentId,
+          success: false,
+          error: outcome.deleted
+            ? "Incident not found in SIGAE; deleted"
+            : "Incident not found in SIGAE"
+        };
+      default:
+        return { incidentId, success: false, error: outcome.reason ?? "Sync failed" };
+    }
+  } catch (error) {
+    return { incidentId, success: false, error: describeError(error) };
   }
 }
 

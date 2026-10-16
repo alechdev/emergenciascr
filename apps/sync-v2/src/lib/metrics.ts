@@ -21,6 +21,52 @@ export const incidentsDiscovered = meter.createCounter("sync.incidents.discovere
   description: "Incidents seen for the first time by discovery"
 });
 
+export const discoveryDelay = meter.createHistogram("sync.discovery.delay", {
+  description: "Time from the SIGAE incident time to the sync first seeing it",
+  unit: "s",
+  advice: { explicitBucketBoundaries: [15, 30, 60, 120, 300, 600, 1800, 3600, 21600, 86400] }
+});
+
+export const pollResults = meter.createCounter("sync.poll.results", {
+  description: "Incident polls by result (ok, partial, not_found, failed)"
+});
+
+export const pollLag = meter.createHistogram("sync.poll.lag", {
+  description: "Poll start time minus its scheduled time",
+  unit: "s",
+  advice: { explicitBucketBoundaries: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 900, 3600] }
+});
+
+export const changesDetected = meter.createCounter("sync.changes", {
+  description: "Field-level changes to synced data, by entity, field and kind"
+});
+
+export const anomaliesDetected = meter.createCounter("sync.anomalies", {
+  description: "Anomalies recorded, by code"
+});
+
+/**
+ * Reports tracked incidents per phase (from `incident_sync_state`) on every metric
+ * collection. Call the returned function before closing the database.
+ */
+export function observeIncidentPhases(
+  countByPhase: () => Promise<Record<string, number>>
+): () => void {
+  const gauge = meter.createObservableGauge("sync.incidents", {
+    description: "Tracked incidents by sync phase"
+  });
+  const callback: ObservableCallback = async (result) => {
+    try {
+      const counts = await countByPhase();
+      for (const [phase, value] of Object.entries(counts)) result.observe(value, { phase });
+    } catch {
+      // Database unavailable: skip this collection; the health check reports it.
+    }
+  };
+  gauge.addCallback(callback);
+  return () => gauge.removeCallback(callback);
+}
+
 const referenceLastSuccess = new Map<string, number>();
 
 meter

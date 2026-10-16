@@ -5,6 +5,7 @@ import { resolveIncidentTypes } from "../normalize/incident-types";
 import { normalizePoll } from "../normalize/index";
 import { dedupeAnomalies, detectAnomalies, placeholderAnomalies } from "../reconcile/anomalies";
 import { diffIncidentState, removalChanges } from "../reconcile/diff";
+import { type KnownReferences, applyKnownReferences } from "../reconcile/references";
 import { applyEmptyUnitsRule } from "../reconcile/removal";
 
 import type { Anomaly, Change, IncidentState, SyncState } from "../types";
@@ -18,6 +19,11 @@ export interface ProcessPollInput {
   syncState: SyncState;
   /** Codes in `incident_types`. */
   knownIncidentTypes: ReadonlySet<string>;
+  /**
+   * Stations, vehicles and geography the database has, after the on-demand fetch. Omitted:
+   * every reference counts as known (fixtures).
+   */
+  knownReferences?: KnownReferences;
   /** `anomalyKey`s already recorded for the incident. */
   recordedAnomalies: ReadonlySet<string>;
   now: Date;
@@ -109,14 +115,34 @@ export function processPoll(input: ProcessPollInput): ProcessPollResult {
     now
   });
 
-  const next: IncidentState = {
+  const built: IncidentState = {
     incident: { ...types.incident, ...closed },
     vehicles: units.vehicles,
     stations: normalized.stations
   };
+  const references = input.knownReferences
+    ? applyKnownReferences(built, input.knownReferences)
+    : { state: built, anomalies: [], missingStations: [] };
+  if (references.missingStations.length > 0) {
+    // Stations are required foreign keys: nothing can be stored until they are known.
+    const failure = nextPoll(
+      syncState,
+      {
+        kind: "failed",
+        reason: `MISSING_REFERENCE: unknown stations ${references.missingStations.join(", ")}`
+      },
+      now
+    );
+    return idle("failed", failure.state, [
+      ...dedupeAnomalies(references.anomalies, input.recordedAnomalies),
+      ...failure.anomalies
+    ]);
+  }
+  const next = references.state;
   const anomalies = dedupeAnomalies(
     [
       ...types.anomalies,
+      ...references.anomalies,
       ...detectAnomalies(current, next, {
         now,
         partialReport:

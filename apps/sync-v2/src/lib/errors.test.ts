@@ -68,4 +68,12 @@ describe("serializeError", () => {
     }
     expect(depth).toBe(8);
   });
+
+  it("drops the parameters of failed database queries", () => {
+    const error = new Error(
+      'Failed query: insert into "incidents" ("id", "address") values ($1, $2)\nparams: 1,CALLE 1'
+    );
+
+    expect(serializeError(error).message).toBe('Failed query: insert into "incidents" ("id", …');
+  });
 });

@@ -4,6 +4,8 @@
   "exports": {
     "./utils": "./src/utils.ts",
     "./index": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./operators": "./src/operators.ts",
     "./schema": "./src/schema.ts",
     "./migrate": "./src/migrate.ts",
     "./queries/incidents": "./src/queries/incidents.ts",

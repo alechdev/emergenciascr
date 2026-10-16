@@ -1,5 +1,5 @@
 import { db } from "@bomberoscr/db/index";
-import { vehicles as vehiclesTable } from "@bomberoscr/db/schema";
+import { upsertVehicleDetails } from "@bomberoscr/sync-domain/persist";
 import { ResultAsync } from "neverthrow";
 
 import { sigae } from "@/config/sigae";
@@ -17,37 +17,10 @@ export function listVehicles(): ResultAsync<VehicleJobData[], SyncError> {
 }
 
 export function syncSingleVehicle(id: number): ResultAsync<void, SyncError> {
-  return expectOk(sigae.getVehicleDetails(id), `vehicle ${id} details`).andThen((details) => {
-    // A `null` from SIGAE keeps the stored value; `""` only fills the column for a new vehicle.
-    const nullable = {
-      plate: details.Placa,
-      class: details.Des_clase_vehiculo,
-      descriptionType: details.Des_tipo_vehiculo,
-      descriptionOperationalStatus: details.Des_estado_operativo
-    };
-    const known = Object.fromEntries(
-      Object.entries(nullable).filter(([, value]) => value !== null)
-    ) as Partial<Record<keyof typeof nullable, string>>;
-    const update = {
-      internalNumber: details.Numero_interno,
-      stationId: details.Id_estacion,
-      ...known
-    };
-    const row = {
-      id,
-      plate: "",
-      class: "",
-      descriptionType: "",
-      descriptionOperationalStatus: "",
-      ...update
-    };
-
-    return ResultAsync.fromPromise(
-      db.insert(vehiclesTable).values(row).onConflictDoUpdate({
-        target: vehiclesTable.id,
-        set: update
-      }),
+  return expectOk(sigae.getVehicleDetails(id), `vehicle ${id} details`).andThen((details) =>
+    ResultAsync.fromPromise(
+      upsertVehicleDetails(db, id, details),
       (cause) => new SyncError(`failed to store vehicle ${id}`, { cause })
-    ).map(() => undefined);
-  });
+    )
+  );
 }

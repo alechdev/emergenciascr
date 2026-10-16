@@ -1,5 +1,5 @@
 import { incidentDiscoveryQueue } from "@/queues/incidentDiscovery.queue";
-import { openIncidentsQueue } from "@/queues/openIncidents.queue";
+import { incidentPollQueue } from "@/queues/incidentPoll.queue";
 import { referenceQueue } from "@/queues/reference.queue";
 import { stationsQueue } from "@/queues/stations.queue";
 import { vehiclesQueue } from "@/queues/vehicles.queue";
@@ -11,5 +11,5 @@ export const allQueues: readonly Queue[] = [
   stationsQueue,
   vehiclesQueue,
   incidentDiscoveryQueue,
-  openIncidentsQueue
+  incidentPollQueue
 ];

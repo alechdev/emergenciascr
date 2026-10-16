@@ -4,14 +4,13 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./fetch-incident": "./src/fetch-incident.ts",
     "./lifecycle": "./src/lifecycle/index.ts",
     "./normalize": "./src/normalize/index.ts",
-    "./persist/*": "./src/persist/*.ts",
+    "./persist": "./src/persist/index.ts",
+    "./pipeline": "./src/pipeline/index.ts",
     "./poll": "./src/poll/index.ts",
     "./reconcile": "./src/reconcile/index.ts",
     "./redact": "./src/redact/index.ts",
-    "./transform/*": "./src/transform/*.ts",
     "./types": "./src/types.ts"
   },
   "scripts": {

@@ -146,14 +146,14 @@ Wire the core into the workers (section 4 pipeline, section 8).
 - [x] Not-found deletion (section 8.4).
 - [x] On-demand reference resolution (section 9).
 - [x] Poll, change, anomaly and phase metrics (section 4.2).
-- [ ] Fixture capture script from `sigae_snapshots`.
-- [ ] Integration tests against a throwaway Postgres migrated with the migrate runner.
+- [x] Fixture capture script from `sigae_snapshots` (`bun run --cwd packages/sync-domain capture-fixture`).
+- [x] Integration tests against a throwaway Postgres migrated with the migrate runner.
 
 **Done when**
 
-- [ ] Integration tests pass.
+- [x] Integration tests pass (`bun run test:integration`, both time zones).
 - [ ] sync-v2 runs locally against SIGAE for 24 hours: no stuck or `failed` incidents, queues don't grow, and incidents move through `active` → `settling` → `done`.
-- [ ] Deleting the Redis data and restarting resumes every tracked incident.
+- [x] Deleting the Redis data and restarting resumes every tracked incident. Checked against a throwaway Postgres and Redis (`apps/sync-v2/test/integration/discovery.test.ts`); repeat it during the 24-hour run.
 - [ ] Remaining checks from spec section 3.3: units and stations responses for a brand-new incident with no units.
 
 **Notes**
@@ -162,9 +162,17 @@ Wire the core into the workers (section 4 pipeline, section 8).
 - The poll worker runs one `incident-poll-<id>` job per incident (concurrency 5) and moves it back to delayed until the next poll; the job completes when the incident is `done`, `deleted` or `failed`. Discovery calls `trackNewIncidents` and schedules an immediate poll. Gap fill (`incident-gap-fill`, at boot as `incident-gap-fill-boot` and hourly at `:30`) first reschedules every `active` and `settling` incident from `incident_sync_state`, then lists the last 6 hours.
 - Choices the spec left open:
   - The lifecycle `failed` phase (10 consecutive failed polls) replaces the old worker rule of the same name. A database error after the sync state is loaded also counts as a failed poll; only a failure to save the sync state fails the job, which BullMQ retries.
-  - Snapshots are stored before and outside the transaction, so they survive a failed poll; each endpoint is stored only when its hash differs from its latest snapshot. Incident data and `modifiedAt` are written only when the poll has changes.
+  - Snapshots are stored before and outside the poll transaction (in their own, under the incident lock), so they survive a failed poll; each endpoint is stored only when its hash differs from its latest snapshot. Incident data and `modifiedAt` are written only when the poll has changes.
   - An unknown station or vehicle is fetched from SIGAE and upserted before the transaction; unknown incident types refresh the type list. The resolver caches misses for 15 minutes and refreshes incident types at most every 15 minutes. A station created this way has `isOperative` `NULL` until the reference job runs.
   - Still unknown after that: a vehicle is stored with `vehicleId` `NULL`; a province, canton or district (never fetched on demand) is stored as `NULL`; a station fails the poll. Each records `MISSING_REFERENCE` once.
+  - The references resolved before a poll include the ones the stored state keeps: a first empty unit list keeps the stored units and a partial report keeps the stored geography, so those count as known instead of becoming `NULL` or failing the poll.
+  - Polls of one incident are serialized with a transaction-scoped advisory lock (`lockIncident`, key space `5302026`): the worker and a web admin manual sync can overlap. Under the lock the poll reloads the sync state and the stored state; a poll without `force` that finds a newer poll stored (or the incident finished) is `skipped` with a reason and writes nothing. SIGAE requests and reference fetches stay outside the lock.
+  - `vehicles.internalNumber` is no longer unique (migration `vehicles-internal-number-not-unique`): SIGAE reassigns internal numbers, and the on-demand upsert of the new vehicle failed while the old one still had the number. Nothing reads it as a key. On 2026-10-16 all 420 vehicles had distinct numbers, so the conflict only shows over time.
+  - The poll scheduler only adds incidents without a pending job and returns how many it added (BullMQ's `addBulk` returns existing jobs as if added), so gap fill reports real counts.
+- Integration tests (`bun run test:integration` from the root, Docker): `scripts/test-integration.sh` starts `postgres:17-alpine` and `redis:7-alpine` on random loopback ports and runs `test:integration` in `packages/sync-domain` and `apps/sync-v2` under `TZ=UTC` and `TZ=America/Costa_Rica`. The tests only read `TEST_DATABASE_URL` and `TEST_REDIS_URL` (loopback only, never the app's URLs) and skip without them. They cover: every fixture replayed through `syncIncident` against `expected.json`; transaction rollback; not-found deletion; on-demand stations, vehicles and incident types; concurrent and superseded polls; manual sync with `force`; the real queue through `active` → `settling` → `done`, the 72h and 30-day caps and the failure backoff; discovery, gap fill and the resume after a Redis flush; the capture script; telemetry with in-memory exporters (span names, no incident IDs in metric attributes, no SIGAE data or credentials in logs); and SIGTERM on the real service in a child process (the running poll finishes and is stored, telemetry is flushed over OTLP, exit code 0).
+- The capture script reads `sigae_snapshots` through `CAPTURE_DATABASE_URL` only, on a read-only session, and writes one poll per distinct snapshot time with every endpoint's latest snapshot. It redacts again with the current allowlists, replaces addresses with numbered `DIRECCION DE PRUEBA n` and coordinates with a synthetic point that keeps their offsets (so changes and moves survive), and checks the result before writing. Snapshots are only stored when a payload changes and failed requests aren't stored, so a capture can't show repeated identical answers (the second not-found, the second empty unit list) or failed requests; add those polls by hand. Then `UPDATE_FIXTURES=1` creates `expected.json`; the fixture runner treats every station and vehicle as known and uses the synthetic incident type list.
+- Reviewed and kept: recorded anomaly keys are loaded on every poll (one indexed query per incident); gap fill keeps list items without a usable time (it can't tell how old they are, and polling an old one once is cheap).
+- Spec section 3.3 recheck on 2026-10-16 (read-only, 24 requests, aggregates only, no proxy): the three freshest incidents (10, 24 and 58 minutes old) answered `00` on all four endpoints with one station and one unit each; unit and station envelopes are `Codigo`, `Descripcion`, `Items`. No new incident appeared during about 12 minutes of relisting, so a brand-new incident with no units is still unverified.
   - The web admin manual sync calls `syncIncident` with `force`, so it also polls `done`, `deleted` and `failed` incidents and records changes and sync state like the worker.
 
 ## Phase 7: Web changes

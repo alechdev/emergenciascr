@@ -23,6 +23,7 @@ Keep API feature logic close to its boundary (`api/` route + schema + DB query).
 - `bun run --cwd apps/sync-v2 test`: run sync-v2 tests (Vitest).
 - `bun run --cwd packages/sigae test`: run SIGAE client tests (Vitest); `test:tz` runs them on Node and Bun under `TZ=UTC` and `TZ=America/Costa_Rica`.
 - `bun run --cwd packages/sync-domain test`: run the pure sync core and fixture tests (Vitest); `test:tz` runs them under `TZ=UTC` and `TZ=America/Costa_Rica`.
+- `bun run test:integration`: run the sync-domain and sync-v2 integration tests against throwaway Postgres and Redis containers (needs Docker), under both time zones.
 - Optional: `bun run --cwd apps/web dev:api` runs Hono alone (standalone) for debugging.
   For DB tasks, use `packages/db` scripts (example: `bun run --cwd packages/db drizzle:generate`).
 - Schema changes ship as committed migrations: edit `packages/db/src/schema.ts`, run

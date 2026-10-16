@@ -18,7 +18,8 @@ Reference data runs as one `reference` job, in order: provinces, cantons and dis
 ## How it works
 
 - Discovery tracks new incidents in `incident_sync_state` and adds one `incident-poll-<id>` job per incident. Gap fill reschedules every `active` and `settling` incident from `incident_sync_state` (so deleting the Redis data loses nothing), then lists the last 6 hours to catch incidents discovery missed.
-- Each poll runs `syncIncident` from [`packages/sync-domain`](../../packages/sync-domain): fetch the four endpoints, store changed snapshots, normalize, diff, detect anomalies, resolve unknown stations, vehicles and incident types on demand, write everything in one transaction and compute the next poll. The job then moves itself back to delayed until that time, so an incident has at most one pending job. It completes when the incident is `done` (settled after closing), `deleted` (not found upstream three times) or `failed` (10 consecutive failed polls).
+- Each poll runs `syncIncident` from [`packages/sync-domain`](../../packages/sync-domain): fetch the four endpoints, store changed snapshots, normalize, diff, detect anomalies, resolve unknown stations, vehicles and incident types on demand, write everything in one transaction and compute the next poll. The job then moves itself back to delayed until that time, so an incident has at most one pending job. It completes when the incident is `done` (settled after closing), `deleted` (not found upstream twice) or `failed` (10 consecutive failed polls).
+- Polls of one incident never write at the same time (the worker and a web admin manual sync can overlap): the transaction holds a Postgres advisory lock on the incident, and a worker poll that finds a newer one already stored is skipped (`incident poll superseded`). A manual sync always writes.
 - Every poll logs one summary line and records the `sync.poll.*`, `sync.changes` and `sync.anomalies` metrics. Discovery records `sync.discovery.delay`, and `sync.incidents` counts incidents by phase every minute.
 - Every queue has an attempt limit. Failed attempts are logged as `warn`, the last one as `error`, with the full cause chain.
 
@@ -46,3 +47,11 @@ cp apps/sync-v2/.env.example apps/migrate/.env   # migrate only reads DRIZZLE_PO
 bun run --cwd apps/migrate start   # apply migrations
 bun run --cwd apps/sync-v2 dev
 ```
+
+## Tests
+
+- `bun run --cwd apps/sync-v2 test`: unit tests, no servers needed.
+- `bun run test:integration` (from the repository root, needs Docker): starts a throwaway Postgres and Redis on random loopback ports, runs the integration tests of `packages/sync-domain` and `apps/sync-v2` under `TZ=UTC` and `TZ=America/Costa_Rica`, and removes both containers.
+- `bun run --cwd apps/sync-v2 test:integration` runs them against servers you started yourself, given `TEST_DATABASE_URL` and `TEST_REDIS_URL` (loopback only; never the app's `DRIZZLE_POSTGRES_URL` or `REDIS_URL`). Without both, every suite is skipped. The tests empty the database and flush Redis.
+
+The integration tests cover the real queue and lifecycle schedule, discovery, gap fill and the resume after losing Redis, the fixtures replayed through `syncIncident`, on-demand references, concurrent polls, telemetry with in-memory exporters and a graceful shutdown of the real service in a child process.

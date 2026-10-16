@@ -172,7 +172,7 @@ describe.skipIf(!INTEGRATION)("poll telemetry", () => {
     worker = undefined;
     await telemetry.shutdown();
 
-    // Traces: one `sync.poll` per poll, with the SIGAE requests and the transaction inside.
+    // Traces: one `sync.poll` per poll, with the SIGAE requests and each database step inside.
     const polls = finished.filter((span) => span.name === "sync.poll");
     expect(polls.map((span) => span.attributes)).toEqual([
       expect.objectContaining({ "sync.incident_id": INCIDENT_ID, "sync.poll.result": "ok" }),
@@ -189,6 +189,8 @@ describe.skipIf(!INTEGRATION)("poll telemetry", () => {
           "sigae ObtenerDetalleEmergencias",
           "sigae ObtenerEstacionesAtiendeIncidente",
           "sigae ObtenerUnidadesDespachadasIncidente",
+          "sync.poll.references",
+          "sync.poll.snapshots",
           "sync.poll.transaction"
         ])
       );

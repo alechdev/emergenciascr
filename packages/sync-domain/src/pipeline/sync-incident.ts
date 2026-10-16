@@ -163,13 +163,17 @@ export async function syncIncident(
   try {
     // Every write below holds the incident's lock, so a manual sync and the worker polling
     // the same incident can't both see "no snapshot yet" or diff against the same state.
-    snapshots = await db.transaction(async (tx) => {
-      await lockIncident(tx, incidentId);
-      return storeSnapshots(tx, incidentId, polledAt, snapshotInputs(responses));
-    });
+    snapshots = await span("sync.poll.snapshots", () =>
+      db.transaction(async (tx) => {
+        await lockIncident(tx, incidentId);
+        return storeSnapshots(tx, incidentId, polledAt, snapshotInputs(responses));
+      })
+    );
     // Fetching references from SIGAE happens outside the lock; the upserts are idempotent.
-    references = await deps.references.resolve(
-      pollReferences(incidentId, classification, await loadIncidentState(db, incidentId))
+    references = await span("sync.poll.references", async () =>
+      deps.references.resolve(
+        pollReferences(incidentId, classification, await loadIncidentState(db, incidentId))
+      )
     );
     const snapshotIds = Object.values(snapshots.ids).sort((a, b) => a - b);
 

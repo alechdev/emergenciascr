@@ -20,8 +20,8 @@ export type PollDeps = Omit<SyncIncidentDeps, "span"> & {
 
 /**
  * One poll with its telemetry (spec section 4.2): a `sync.poll` span around the SIGAE
- * requests and the database transaction, poll, change and anomaly metrics, and one summary
- * log line. Incident IDs go in the span and the log, never in metric attributes.
+ * requests and the database steps (`sync.poll.snapshots`, `sync.poll.references`,
+ * `sync.poll.transaction`), poll, change and anomaly metrics, and one summary log line. Incident IDs go in the span and the log, never in metric attributes.
  */
 export async function pollIncident(
   deps: PollDeps,

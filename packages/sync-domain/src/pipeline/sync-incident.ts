@@ -6,7 +6,7 @@ import {
   lockIncident,
   saveSyncState
 } from "../persist/incident-state";
-import { writePollResult } from "../persist/poll-result";
+import { insertAnomalies, writePollResult } from "../persist/poll-result";
 import { findKnownReferences } from "../persist/references";
 import { type SnapshotInput, type StoredSnapshots, storeSnapshots } from "../persist/snapshots";
 import { classifyPoll, type IncidentPollResponses, type PollKind } from "../poll/classify";
@@ -58,15 +58,19 @@ export const FINISHED_PHASES: ReadonlySet<IncidentSyncPhase> = new Set([
 export interface SyncIncidentOutcome {
   incidentId: number;
   /**
-   * `skipped`: without `force`, the incident is no longer polled, or a newer poll was stored
-   * while this one ran; nothing was written.
+   * `skipped`, with nothing written: without `force`, the incident is no longer polled; a
+   * newer poll was stored while this one ran (`reason`: "superseded by a newer poll"); or a
+   * `deleted` incident is still not found ("already deleted").
    */
   kind: PollKind | "skipped";
   /** Why the poll failed (`lastError`), or why it was skipped. */
   reason: string | null;
   changes: Change[];
   anomalies: Anomaly[];
-  /** The sync state after the poll. */
+  /**
+   * The sync state after the poll. Not stored when a forced poll of an incident without a
+   * sync state didn't succeed: see {@link syncIncident}.
+   */
   syncState: SyncState;
   /** When the poll was due (`nextPollAt` before it), for polling lag. */
   scheduledAt: Date | null;
@@ -95,8 +99,14 @@ const ENDPOINT_KEYS = {
  * from `syncState.nextPollAt`.
  *
  * Polls of the same incident are serialized by a per-incident lock from the snapshot write
- * on. A poll without `force` that finds a newer poll stored meanwhile, or the incident
- * finished, writes nothing and returns `skipped`.
+ * on. A poll that finds a newer poll stored meanwhile writes nothing and returns `skipped`;
+ * so does one without `force` that finds the incident finished.
+ *
+ * Only tracked incidents are polled on a schedule (spec section 8.4), so a forced poll (a
+ * manual sync) of an incident without a sync state row only creates one when it succeeds
+ * (`ok` or `partial`). A not-found or failed result stores its snapshots and anomalies but
+ * no sync state, so it neither starts polling the incident nor counts toward deleting it.
+ * Without `force`, the caller tracks the incident: a missing row starts as a new one.
  *
  * SIGAE failures are failed polls. So are database errors after the sync state was read:
  * the failure is counted in the sync state, and only an error saving it is thrown.
@@ -169,6 +179,9 @@ export async function syncIncident(
         const latest = await loadSyncState(tx, incidentId);
         const superseded = supersededBy(latest, polledAt, options);
         if (superseded) return superseded;
+        if (latest?.phase === "deleted" && classification.kind === "not_found") {
+          return { skip: latest, reason: "already deleted" };
+        }
 
         const [current, recorded] = await Promise.all([
           loadIncidentState(tx, incidentId),
@@ -188,6 +201,10 @@ export async function syncIncident(
           recordedAnomalies: new Set(recorded.map(anomalyKey)),
           now: polledAt
         });
+        if (!latest && options.force && result.kind !== "ok" && result.kind !== "partial") {
+          await insertAnomalies(tx, incidentId, result.anomalies, polledAt);
+          return { result };
+        }
         await writePollResult(tx, {
           incidentId,
           next: result.next,
@@ -225,7 +242,7 @@ export async function syncIncident(
       if (superseded) return superseded;
       const decision = nextPoll(latest ?? previous, { kind: "failed", reason }, polledAt);
       const syncState: SyncState = { ...decision.state, emptyUnitsCount: 0 };
-      await saveSyncState(tx, syncState);
+      if (latest || !options.force) await saveSyncState(tx, syncState);
       return { syncState };
     });
     if ("skip" in failed) return { ...skipped(failed.skip, failed.reason), error };
@@ -243,17 +260,18 @@ export async function syncIncident(
 }
 
 /**
- * Whether the state stored meanwhile makes this poll's result moot: without `force`, another
- * poll (a manual sync) finished the incident or stored a newer poll while this one waited
- * for SIGAE or the lock. A forced poll always writes; the lock keeps it consistent.
+ * Whether the state stored meanwhile makes this poll's result moot: another poll stored a
+ * newer answer while this one waited for SIGAE or the lock (writing older data would move
+ * `lastPolledAt` back and could reopen or re-close the incident), or, without `force`, the
+ * incident finished.
  */
 function supersededBy(
   latest: SyncState | null,
   polledAt: Date,
   options: SyncIncidentOptions
 ): { skip: SyncState; reason: string | null } | null {
-  if (!latest || options.force) return null;
-  if (FINISHED_PHASES.has(latest.phase)) return { skip: latest, reason: null };
+  if (!latest) return null;
+  if (!options.force && FINISHED_PHASES.has(latest.phase)) return { skip: latest, reason: null };
   if (latest.lastPolledAt !== null && latest.lastPolledAt > polledAt) {
     return { skip: latest, reason: "superseded by a newer poll" };
   }

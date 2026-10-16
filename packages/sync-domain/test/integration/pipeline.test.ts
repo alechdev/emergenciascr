@@ -171,6 +171,15 @@ describe.skipIf(!TEST_DATABASE_URL)("syncIncident against Postgres", () => {
       clock.advance(3 * MINUTE);
       const after = await syncIncident(deps, INCIDENT_ID);
       expect(after.kind).toBe("skipped");
+
+      // A manual sync that still finds nothing has nothing to delete or count.
+      const deletedState = await loadSyncState(db, INCIDENT_ID);
+      const forced = await syncIncident(deps, INCIDENT_ID, { force: true });
+      expect(forced).toMatchObject({ kind: "skipped", reason: "already deleted", deleted: false });
+      expect(await loadSyncState(db, INCIDENT_ID)).toEqual(deletedState);
+      const final = await loadHistory(db, INCIDENT_ID);
+      expect(final.changes).toHaveLength(history.changes.length);
+      expect(final.anomalies).toHaveLength(history.anomalies.length);
     });
   });
 
@@ -401,6 +410,70 @@ describe.skipIf(!TEST_DATABASE_URL)("syncIncident against Postgres", () => {
       expect(outcome.kind).toBe("ok");
       expect(await db.select().from(incidentSyncState)).toHaveLength(1);
     });
+
+    it("doesn't start tracking an incident it doesn't find", async () => {
+      const { deps, sigae, clock } = pipelineHarness(db);
+      sigae.answers = NOT_FOUND_ANSWERS;
+
+      for (let poll = 0; poll < 3; poll += 1) {
+        const outcome = await syncIncident(deps, INCIDENT_ID, { force: true });
+        expect(outcome).toMatchObject({ kind: "not_found", deleted: false });
+        clock.advance(3 * MINUTE);
+      }
+
+      expect(await db.select().from(incidentSyncState)).toEqual([]);
+      expect((await loadHistory(db, INCIDENT_ID)).snapshots.length).toBeGreaterThan(0);
+    });
+
+    it("doesn't start tracking an incident whose poll fails", async () => {
+      const { deps, sigae } = pipelineHarness(db);
+      sigae.answers = { ...answers(), ObtenerDetalleEmergencias: { status: 500 } };
+      const upstream = await syncIncident(deps, INCIDENT_ID, { force: true });
+      expect(upstream.kind).toBe("failed");
+
+      sigae.answers = answers({ stations: [station({ IdEstacion: 78 })] });
+      const missing = await syncIncident(deps, INCIDENT_ID, { force: true });
+      expect(missing).toMatchObject({
+        kind: "failed",
+        reason: "MISSING_REFERENCE: unknown stations 78"
+      });
+      // The anomalies are still recorded.
+      const { anomalies } = await loadHistory(db, INCIDENT_ID);
+      expect(anomalies.map((row) => row.code)).toContain("MISSING_REFERENCE");
+
+      sigae.answers = answers();
+      await db.execute(sql`
+        create or replace function integration_fail_insert() returns trigger
+        language plpgsql as $$ begin raise exception 'injected failure'; end $$`);
+      await db.execute(sql`
+        create trigger integration_fail_changes before insert on incident_changes
+        for each statement execute function integration_fail_insert()`);
+      try {
+        const internal = await syncIncident(deps, INCIDENT_ID, { force: true });
+        expect(internal.reason).toMatch(/^internal error: /);
+      } finally {
+        await db.execute(sql`drop trigger integration_fail_changes on incident_changes`);
+        await db.execute(sql`drop function integration_fail_insert()`);
+      }
+
+      expect(await db.select().from(incidentSyncState)).toEqual([]);
+      expect(await db.select().from(incidents)).toEqual([]);
+    });
+
+    it("counts a manual sync's not-found toward deletion once the incident is tracked", async () => {
+      const { deps, sigae, clock } = pipelineHarness(db);
+      sigae.answers = answers();
+      await syncIncident(deps, INCIDENT_ID, { force: true });
+
+      sigae.answers = NOT_FOUND_ANSWERS;
+      clock.advance(3 * MINUTE);
+      await syncIncident(deps, INCIDENT_ID, { force: true });
+      clock.advance(3 * MINUTE);
+      const second = await syncIncident(deps, INCIDENT_ID, { force: true });
+
+      expect(second).toMatchObject({ kind: "not_found", deleted: true });
+      expect(await db.select().from(incidents)).toEqual([]);
+    });
   });
 
   describe("concurrent polls of one incident", () => {
@@ -437,18 +510,19 @@ describe.skipIf(!TEST_DATABASE_URL)("syncIncident against Postgres", () => {
       expect((await loadSyncState(db, INCIDENT_ID))?.consecutiveFailures).toBe(2);
     });
 
-    it("skip the write of a worker poll that a newer manual sync overtook", async () => {
+    /** A SIGAE whose first poll's four answers wait for `release()`. */
+    function gatedPipeline() {
       const clock = fakeClock();
       let release: () => void = () => {};
       const gate = new Promise<void>((resolve) => {
         release = resolve;
       });
-      let gated = 0;
+      const state = { gated: 0 };
       const sigae = fakeSigae(async (call) => {
         const answer = answers()[call.endpoint as keyof IncidentAnswers];
         if (!answer) return { body: { ...NOT_FOUND } };
-        if (gated < 4) {
-          gated += 1;
+        if (state.gated < 4) {
+          state.gated += 1;
           await gate;
         }
         return answer;
@@ -459,23 +533,36 @@ describe.skipIf(!TEST_DATABASE_URL)("syncIncident against Postgres", () => {
         references: createReferenceResolver({ db, sigae: sigae.client, now: clock.now }),
         now: clock.now
       };
+      return { deps, clock, state, release: () => release() };
+    }
 
-      const worker = syncIncident(deps, INCIDENT_ID);
-      await vi.waitFor(() => expect(gated).toBe(4));
-      clock.advance(MINUTE);
-      const manual = await syncIncident(deps, INCIDENT_ID, { force: true });
-      expect(manual.kind).toBe("ok");
-      // The worker's SIGAE answers arrived before the manual sync's.
-      clock.advance(-MINUTE / 2);
-      release();
-      const overtaken = await worker;
+    for (const [first, second] of [
+      ["worker poll", "manual sync"],
+      ["manual sync", "worker poll"]
+    ] as const) {
+      it(`skip the write of a ${first} that a newer ${second} overtook`, async () => {
+        const { deps, clock, state, release } = gatedPipeline();
+        await saveSyncState(db, syncState({ nextPollAt: new Date("2026-10-11T02:30:00.000Z") }));
+        const force = (poll: string) => ({ force: poll === "manual sync" });
 
-      expect(overtaken).toMatchObject({ kind: "skipped", reason: "superseded by a newer poll" });
-      expect(overtaken.syncState.lastPolledAt).toEqual(manual.polledAt);
-      const history = await loadHistory(db, INCIDENT_ID);
-      expect(history.changes).toHaveLength(manual.changes.length);
-      expect(history.snapshots).toHaveLength(4);
-    });
+        const older = syncIncident(deps, INCIDENT_ID, force(first));
+        await vi.waitFor(() => expect(state.gated).toBe(4));
+        clock.advance(MINUTE);
+        const newer = await syncIncident(deps, INCIDENT_ID, force(second));
+        expect(newer.kind).toBe("ok");
+        // The older poll's SIGAE answers arrived before the newer one's.
+        clock.advance(-MINUTE / 2);
+        release();
+        const overtaken = await older;
+
+        expect(overtaken).toMatchObject({ kind: "skipped", reason: "superseded by a newer poll" });
+        expect(overtaken.syncState.lastPolledAt).toEqual(newer.polledAt);
+        expect((await loadSyncState(db, INCIDENT_ID))?.lastPolledAt).toEqual(newer.polledAt);
+        const history = await loadHistory(db, INCIDENT_ID);
+        expect(history.changes).toHaveLength(newer.changes.length);
+        expect(history.snapshots).toHaveLength(4);
+      });
+    }
   });
 
   it("answers OK envelopes with every key the snapshot allowlists keep", async () => {

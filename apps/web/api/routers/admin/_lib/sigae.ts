@@ -8,6 +8,8 @@ import {
   syncIncident
 } from "@bomberoscr/sync-domain/pipeline";
 
+import { syncResult } from "./sync-result";
+
 const SIGAE_ENV_KEYS = [
   "SIGAE_API_URL",
   "SIGAE_IP",
@@ -56,7 +58,8 @@ function costaRicaDate(isoDate: string): Date {
  * Polls one incident through the sync pipeline, as sync-v2 does: snapshots, changes,
  * anomalies and the sync state are recorded too. It runs even for incidents sync-v2 no
  * longer polls; one that ends up `active` or `settling` is picked up by sync-v2's next
- * hourly resume.
+ * hourly resume. An incident sync-v2 never tracked only starts being tracked when SIGAE
+ * answers for it, so a not-found here never leads to its deletion.
  */
 async function syncSingleIncident(client: SigaeClient, incidentId: number) {
   let references = resolvers.get(client);
@@ -71,21 +74,7 @@ async function syncSingleIncident(client: SigaeClient, incidentId: number) {
       incidentId,
       { force: true }
     );
-    switch (outcome.kind) {
-      case "ok":
-      case "partial":
-        return { incidentId, success: true };
-      case "not_found":
-        return {
-          incidentId,
-          success: false,
-          error: outcome.deleted
-            ? "Incident not found in SIGAE; deleted"
-            : "Incident not found in SIGAE"
-        };
-      default:
-        return { incidentId, success: false, error: outcome.reason ?? "Sync failed" };
-    }
+    return syncResult(outcome);
   } catch (error) {
     return { incidentId, success: false, error: describeError(error) };
   }

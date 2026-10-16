@@ -58,6 +58,24 @@ export function createReferenceResolver(options: ReferenceResolverOptions): Refe
   const incidentTypesRefreshMs = options.incidentTypesRefreshMs ?? 15 * MINUTE_MS;
   const missUntil = new Map<string, number>();
   let incidentTypesFetchedAt = -Infinity;
+  /**
+   * Concurrent polls share one refresh: a poll that finds a code unknown while another poll's
+   * refresh is running (or finished after it read the known references) reads them again
+   * instead of recording the code as unknown until the next refresh, 15 minutes later.
+   */
+  let incidentTypesRefreshing: Promise<void> | undefined;
+  let incidentTypesRefreshes = 0;
+
+  async function refreshIncidentTypes(failures: string[]): Promise<number | null> {
+    const types = okData(await sigae.getIncidentTypes(), "incident types", failures);
+    if (!types) return null;
+    try {
+      return await upsertIncidentTypes(db, types.items);
+    } catch (error) {
+      failures.push(`incident types: failed to store: ${describeError(error)}`);
+      return null;
+    }
+  }
 
   const recentlyMissed = (key: string) => {
     const until = missUntil.get(key);
@@ -125,7 +143,9 @@ export function createReferenceResolver(options: ReferenceResolverOptions): Refe
 
   return {
     async resolve(ids) {
+      const refreshesBefore = incidentTypesRefreshes;
       let known = await findKnownReferences(db, ids);
+      let reload = false;
       const failures: string[] = [];
       const fetched: ReferenceResolution["fetched"] = {
         stations: [],
@@ -146,22 +166,28 @@ export function createReferenceResolver(options: ReferenceResolverOptions): Refe
       }
 
       const unknownTypes = ids.incidentTypes.filter((code) => !known.incidentTypes.has(code));
-      if (
-        unknownTypes.length > 0 &&
-        now().getTime() - incidentTypesFetchedAt >= incidentTypesRefreshMs
-      ) {
-        incidentTypesFetchedAt = now().getTime();
-        const types = okData(await sigae.getIncidentTypes(), "incident types", failures);
-        if (types) {
-          try {
-            fetched.incidentTypes = await upsertIncidentTypes(db, types.items);
-          } catch (error) {
-            failures.push(`incident types: failed to store: ${describeError(error)}`);
-          }
+      if (unknownTypes.length > 0) {
+        if (incidentTypesRefreshing) {
+          await incidentTypesRefreshing;
+          reload = true;
+        } else if (incidentTypesRefreshes > refreshesBefore) {
+          reload = true;
+        } else if (now().getTime() - incidentTypesFetchedAt >= incidentTypesRefreshMs) {
+          incidentTypesFetchedAt = now().getTime();
+          const refresh = refreshIncidentTypes(failures).finally(() => {
+            incidentTypesRefreshing = undefined;
+            incidentTypesRefreshes += 1;
+          });
+          incidentTypesRefreshing = refresh.then(
+            () => undefined,
+            () => undefined
+          );
+          fetched.incidentTypes = await refresh;
         }
       }
 
       if (
+        reload ||
         fetched.stations.length > 0 ||
         fetched.vehicles.length > 0 ||
         fetched.incidentTypes !== null

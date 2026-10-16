@@ -343,6 +343,62 @@ describe.skipIf(!TEST_DATABASE_URL)("syncIncident against Postgres", () => {
       await syncIncident(deps, INCIDENT_ID);
       expect(typeCalls()).toBe(2);
     });
+
+    it("lets a concurrent poll use the incident type refresh another poll started", async () => {
+      // At boot, several first polls meet the same unknown codes before the reference job
+      // has stored the incident types.
+      let release: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const sigae = fakeSigae(
+        async ({ endpoint }) => {
+          if (endpoint !== "ObtenerTiposIncidente") return { body: { ...NOT_FOUND } };
+          await gate;
+          return {
+            body: sigaeFixtureBody("ObtenerTiposIncidente", {
+              items: [
+                {
+                  codigo_tipo_incidente: "7",
+                  id_tipo_incidente: 7,
+                  tipo_incidente: "OTRO",
+                  items: []
+                }
+              ]
+            })
+          };
+        },
+        { timeoutMs: 5_000 }
+      );
+      const resolver = createReferenceResolver({ db, sigae: sigae.client });
+      const ids = {
+        stations: [],
+        vehicles: [],
+        incidentTypes: ["7"],
+        provinces: [],
+        cantons: [],
+        districts: []
+      };
+
+      const first = resolver.resolve(ids);
+      await vi.waitFor(() => expect(sigae.calls).toHaveLength(1));
+      const second = resolver.resolve(ids);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      release();
+      const [owner, waiter] = await Promise.all([first, second]);
+
+      expect(sigae.calls).toHaveLength(1);
+      expect(owner.fetched.incidentTypes).toBeGreaterThan(0);
+      expect(owner.known.incidentTypes.has("7")).toBe(true);
+      expect(waiter.fetched.incidentTypes).toBeNull();
+      expect(waiter.known.incidentTypes.has("7")).toBe(true);
+      expect(waiter.failures).toEqual([]);
+
+      // Within 15 minutes a code that is still unknown doesn't refresh again.
+      const later = await resolver.resolve({ ...ids, incidentTypes: ["9.9.9"] });
+      expect(later.known.incidentTypes.has("9.9.9")).toBe(false);
+      expect(sigae.calls).toHaveLength(1);
+    });
   });
 
   describe("partial reports and kept units", () => {

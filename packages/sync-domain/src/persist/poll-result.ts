@@ -12,7 +12,7 @@ import { saveSyncState } from "./incident-state";
 
 import type { Anomaly, Change, IncidentState, SyncState } from "../types";
 import type { Executor } from "./executor";
-import type { Database } from "@bomberoscr/db/client";
+import type { Database, Transaction } from "@bomberoscr/db/client";
 
 export interface PollWrite {
   incidentId: number;
@@ -74,31 +74,34 @@ const STATION_COLUMNS = ["incidentId", "stationId", "serviceTypeId", "attentionO
  * before, on their own, so they survive a poll that fails later.
  */
 export async function persistPollResult(db: Database, write: PollWrite): Promise<void> {
-  await db.transaction(async (tx) => {
-    if (write.deleteIncident) {
-      await deleteIncident(tx, write.incidentId);
-    } else if (write.next && write.changes.length > 0) {
-      await writeIncidentState(tx, write.next, write.now);
-    }
+  await db.transaction((tx) => writePollResult(tx, write));
+}
 
-    if (write.changes.length > 0) {
-      await tx.insert(incidentChanges).values(
-        write.changes.map((change) => ({
-          incidentId: write.incidentId,
-          entity: change.entity,
-          entityId: change.entityId,
-          field: change.field,
-          kind: change.kind,
-          oldValue: change.oldValue,
-          newValue: change.newValue,
-          snapshotIds: [...write.snapshotIds],
-          detectedAt: write.now
-        }))
-      );
-    }
-    await insertAnomalies(tx, write.incidentId, write.anomalies, write.now);
-    await saveSyncState(tx, write.syncState);
-  });
+/** {@link persistPollResult} inside a transaction the caller already opened. */
+export async function writePollResult(tx: Transaction, write: PollWrite): Promise<void> {
+  if (write.deleteIncident) {
+    await deleteIncident(tx, write.incidentId);
+  } else if (write.next && write.changes.length > 0) {
+    await writeIncidentState(tx, write.next, write.now);
+  }
+
+  if (write.changes.length > 0) {
+    await tx.insert(incidentChanges).values(
+      write.changes.map((change) => ({
+        incidentId: write.incidentId,
+        entity: change.entity,
+        entityId: change.entityId,
+        field: change.field,
+        kind: change.kind,
+        oldValue: change.oldValue,
+        newValue: change.newValue,
+        snapshotIds: [...write.snapshotIds],
+        detectedAt: write.now
+      }))
+    );
+  }
+  await insertAnomalies(tx, write.incidentId, write.anomalies, write.now);
+  await saveSyncState(tx, write.syncState);
 }
 
 /** Anomalies for an incident, outside of a poll write (for example after a failed one). */

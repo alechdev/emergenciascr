@@ -3,14 +3,20 @@ import { describe, expect, it } from "vitest";
 import { processPoll } from "../src/poll/process";
 import { pollReferences } from "../src/poll/references";
 import { anomalyKey } from "../src/reconcile/anomalies";
-import { applyKnownReferences, type KnownReferences } from "../src/reconcile/references";
 import {
+  applyKnownReferences,
+  type KnownReferences,
+  mergeReferences
+} from "../src/reconcile/references";
+import {
+  CAST_ERROR,
   INCIDENT_ID,
   KNOWN_INCIDENT_TYPES,
   classify,
   cr,
   incidentState,
   listBody,
+  reportBody,
   station,
   syncState,
   unit,
@@ -69,8 +75,46 @@ describe("pollReferences", () => {
     });
   });
 
+  it("adds what the stored state refers to, since the poll can keep it", () => {
+    // An empty unit list keeps the stored units; a partial report keeps the stored geography.
+    const { Id_Provincia: _p, Id_Canton: _c, Id_Distrito: _d, ...partial } = reportBody();
+    const classification = classify({
+      report: { body: { ...partial, ...CAST_ERROR } },
+      stations: { body: listBody([station({ IdEstacion: 5 })]) },
+      units: { body: listBody([]) }
+    });
+    const current = incidentState({
+      units: { body: listBody([unit({ CodigoUnidad: 152 })]) }
+    });
+
+    expect(pollReferences(INCIDENT_ID, classification)).toEqual({
+      stations: [5],
+      vehicles: [],
+      incidentTypes: ["2.1.3", "2.1.3.1", "2.1"],
+      provinces: [],
+      cantons: [],
+      districts: []
+    });
+    expect(pollReferences(INCIDENT_ID, classification, current)).toEqual({
+      stations: [5, 2],
+      vehicles: [152],
+      incidentTypes: ["2.1.3", "2.1.3.1", "2.1"],
+      provinces: [1],
+      cantons: [101],
+      districts: [10101]
+    });
+  });
+
   it("is empty for polls that store nothing", () => {
     const classification = classify({ details: { error: { kind: "timeout", message: "slow" } } });
+    expect(pollReferences(INCIDENT_ID, classification, incidentState())).toEqual({
+      stations: [],
+      vehicles: [],
+      incidentTypes: [],
+      provinces: [],
+      cantons: [],
+      districts: []
+    });
     expect(pollReferences(INCIDENT_ID, classification)).toEqual({
       stations: [],
       vehicles: [],
@@ -78,6 +122,33 @@ describe("pollReferences", () => {
       provinces: [],
       cantons: [],
       districts: []
+    });
+  });
+});
+
+describe("mergeReferences", () => {
+  it("lists each ID once, in the order first seen", () => {
+    const empty = {
+      stations: [],
+      vehicles: [],
+      incidentTypes: [],
+      provinces: [],
+      cantons: [],
+      districts: []
+    };
+    expect(
+      mergeReferences(
+        { ...empty, stations: [2, 5], incidentTypes: ["2.1"], districts: [10101] },
+        { ...empty, stations: [5, 7], vehicles: [140], incidentTypes: ["2.1", "2.1.3"] },
+        empty
+      )
+    ).toEqual({
+      stations: [2, 5, 7],
+      vehicles: [140],
+      incidentTypes: ["2.1", "2.1.3"],
+      provinces: [],
+      cantons: [],
+      districts: [10101]
     });
   });
 });

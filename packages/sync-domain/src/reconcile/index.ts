@@ -24,6 +24,7 @@ export {
 export {
   applyKnownReferences,
   collectReferences,
+  mergeReferences,
   type AppliedReferences,
   type KnownReferences,
   type ReferenceIds

@@ -3,9 +3,11 @@ import {
   loadIncidentState,
   loadRecordedAnomalies,
   loadSyncState,
+  lockIncident,
   saveSyncState
 } from "../persist/incident-state";
-import { persistPollResult } from "../persist/poll-result";
+import { writePollResult } from "../persist/poll-result";
+import { findKnownReferences } from "../persist/references";
 import { type SnapshotInput, type StoredSnapshots, storeSnapshots } from "../persist/snapshots";
 import { classifyPoll, type IncidentPollResponses, type PollKind } from "../poll/classify";
 import { processPoll } from "../poll/process";
@@ -55,9 +57,12 @@ export const FINISHED_PHASES: ReadonlySet<IncidentSyncPhase> = new Set([
 
 export interface SyncIncidentOutcome {
   incidentId: number;
-  /** `skipped`: the incident is no longer polled and `force` wasn't set. */
+  /**
+   * `skipped`: without `force`, the incident is no longer polled, or a newer poll was stored
+   * while this one ran; nothing was written.
+   */
   kind: PollKind | "skipped";
-  /** Why the poll failed: `lastError`. */
+  /** Why the poll failed (`lastError`), or why it was skipped. */
   reason: string | null;
   changes: Change[];
   anomalies: Anomaly[];
@@ -88,6 +93,10 @@ const ENDPOINT_KEYS = {
  * store changed snapshots, resolve references, run the pure core, and write the result and
  * the next sync state in one transaction. Scheduling the next poll is up to the caller,
  * from `syncState.nextPollAt`.
+ *
+ * Polls of the same incident are serialized by a per-incident lock from the snapshot write
+ * on. A poll without `force` that finds a newer poll stored meanwhile, or the incident
+ * finished, writes nothing and returns `skipped`.
  *
  * SIGAE failures are failed polls. So are database errors after the sync state was read:
  * the failure is counted in the sync state, and only an error saving it is thrown.
@@ -131,38 +140,70 @@ export async function syncIncident(
 
   let snapshots: StoredSnapshots | null = null;
   let references: ReferenceResolution | null = null;
+  const skipped = (syncState: SyncState, reason: string | null): SyncIncidentOutcome => ({
+    ...base,
+    kind: "skipped",
+    reason,
+    syncState,
+    polledAt,
+    snapshots,
+    references
+  });
+
   try {
-    snapshots = await storeSnapshots(db, incidentId, polledAt, snapshotInputs(responses));
-    references = await deps.references.resolve(pollReferences(incidentId, classification));
-    const [current, recorded] = await Promise.all([
-      loadIncidentState(db, incidentId),
-      loadRecordedAnomalies(db, incidentId)
-    ]);
-
-    const result = processPoll({
-      incidentId,
-      classification,
-      current,
-      syncState: previous,
-      knownIncidentTypes: references.known.incidentTypes,
-      knownReferences: references.known,
-      recordedAnomalies: new Set(recorded.map(anomalyKey)),
-      now: polledAt
+    // Every write below holds the incident's lock, so a manual sync and the worker polling
+    // the same incident can't both see "no snapshot yet" or diff against the same state.
+    snapshots = await db.transaction(async (tx) => {
+      await lockIncident(tx, incidentId);
+      return storeSnapshots(tx, incidentId, polledAt, snapshotInputs(responses));
     });
+    // Fetching references from SIGAE happens outside the lock; the upserts are idempotent.
+    references = await deps.references.resolve(
+      pollReferences(incidentId, classification, await loadIncidentState(db, incidentId))
+    );
+    const snapshotIds = Object.values(snapshots.ids).sort((a, b) => a - b);
 
-    await span("sync.poll.transaction", () =>
-      persistPollResult(db, {
-        incidentId,
-        next: result.next,
-        deleteIncident: result.deleteIncident,
-        changes: result.changes,
-        anomalies: result.anomalies,
-        syncState: result.syncState,
-        snapshotIds: Object.values(snapshots?.ids ?? {}).sort((a, b) => a - b),
-        now: polledAt
+    const written = await span("sync.poll.transaction", () =>
+      db.transaction(async (tx) => {
+        await lockIncident(tx, incidentId);
+        const latest = await loadSyncState(tx, incidentId);
+        const superseded = supersededBy(latest, polledAt, options);
+        if (superseded) return superseded;
+
+        const [current, recorded] = await Promise.all([
+          loadIncidentState(tx, incidentId),
+          loadRecordedAnomalies(tx, incidentId)
+        ]);
+        const known = await findKnownReferences(
+          tx,
+          pollReferences(incidentId, classification, current)
+        );
+        const result = processPoll({
+          incidentId,
+          classification,
+          current,
+          syncState: latest ?? previous,
+          knownIncidentTypes: known.incidentTypes,
+          knownReferences: known,
+          recordedAnomalies: new Set(recorded.map(anomalyKey)),
+          now: polledAt
+        });
+        await writePollResult(tx, {
+          incidentId,
+          next: result.next,
+          deleteIncident: result.deleteIncident,
+          changes: result.changes,
+          anomalies: result.anomalies,
+          syncState: result.syncState,
+          snapshotIds,
+          now: polledAt
+        });
+        return { result };
       })
     );
+    if ("skip" in written) return skipped(written.skip, written.reason);
 
+    const { result } = written;
     return {
       ...base,
       kind: result.kind,
@@ -177,20 +218,46 @@ export async function syncIncident(
     };
   } catch (error) {
     const reason = `internal error: ${describeError(error)}`;
-    const decision = nextPoll(previous, { kind: "failed", reason }, polledAt);
-    const syncState: SyncState = { ...decision.state, emptyUnitsCount: 0 };
-    await saveSyncState(db, syncState);
+    const failed = await db.transaction(async (tx) => {
+      await lockIncident(tx, incidentId);
+      const latest = await loadSyncState(tx, incidentId);
+      const superseded = supersededBy(latest, polledAt, options);
+      if (superseded) return superseded;
+      const decision = nextPoll(latest ?? previous, { kind: "failed", reason }, polledAt);
+      const syncState: SyncState = { ...decision.state, emptyUnitsCount: 0 };
+      await saveSyncState(tx, syncState);
+      return { syncState };
+    });
+    if ("skip" in failed) return { ...skipped(failed.skip, failed.reason), error };
     return {
       ...base,
       kind: "failed",
       reason,
-      syncState,
+      syncState: failed.syncState,
       polledAt,
       snapshots,
       references,
       error
     };
   }
+}
+
+/**
+ * Whether the state stored meanwhile makes this poll's result moot: without `force`, another
+ * poll (a manual sync) finished the incident or stored a newer poll while this one waited
+ * for SIGAE or the lock. A forced poll always writes; the lock keeps it consistent.
+ */
+function supersededBy(
+  latest: SyncState | null,
+  polledAt: Date,
+  options: SyncIncidentOptions
+): { skip: SyncState; reason: string | null } | null {
+  if (!latest || options.force) return null;
+  if (FINISHED_PHASES.has(latest.phase)) return { skip: latest, reason: null };
+  if (latest.lastPolledAt !== null && latest.lastPolledAt > polledAt) {
+    return { skip: latest, reason: "superseded by a newer poll" };
+  }
+  return null;
 }
 
 /** The four incident endpoints, at once. Request failures stay in each result. */

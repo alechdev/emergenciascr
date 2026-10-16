@@ -71,6 +71,19 @@ export function collectReferences(state: ReferencingState): ReferenceIds {
   };
 }
 
+/** Every ID in any of the sets, without duplicates. */
+export function mergeReferences(...sets: ReferenceIds[]): ReferenceIds {
+  const merge = <T>(pick: (ids: ReferenceIds) => T[]) => [...new Set(sets.flatMap(pick))];
+  return {
+    stations: merge((ids) => ids.stations),
+    vehicles: merge((ids) => ids.vehicles),
+    incidentTypes: merge((ids) => ids.incidentTypes),
+    provinces: merge((ids) => ids.provinces),
+    cantons: merge((ids) => ids.cantons),
+    districts: merge((ids) => ids.districts)
+  };
+}
+
 export interface AppliedReferences {
   state: IncidentState;
   /** `MISSING_REFERENCE` for every unknown station, vehicle or geography ID. */

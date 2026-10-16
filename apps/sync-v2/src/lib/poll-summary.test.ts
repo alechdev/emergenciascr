@@ -129,4 +129,13 @@ describe("pollSummary", () => {
     );
     expect(summary.message).toBe("incident no longer polled");
   });
+
+  it("says when a newer poll superseded this one", () => {
+    const summary = pollSummary(
+      outcome({ kind: "skipped", reason: "superseded by a newer poll", syncState: syncState() }),
+      { durationMs: 3 }
+    );
+    expect(summary.message).toBe("incident poll superseded");
+    expect(summary.fields.reason).toBe("superseded by a newer poll");
+  });
 });

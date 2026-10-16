@@ -3,10 +3,11 @@ export {
   loadIncidentState,
   loadRecordedAnomalies,
   loadSyncState,
+  lockIncident,
   saveSyncState,
   type RecordedAnomaly
 } from "./incident-state";
-export { insertAnomalies, persistPollResult, type PollWrite } from "./poll-result";
+export { insertAnomalies, persistPollResult, writePollResult, type PollWrite } from "./poll-result";
 export {
   findKnownReferences,
   upsertIncidentTypes,

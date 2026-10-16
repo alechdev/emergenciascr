@@ -30,13 +30,19 @@ export function pollSummary(
     fields.reason = outcome.reason;
     fields.consecutiveFailures = syncState.consecutiveFailures;
   }
+  if (outcome.kind === "skipped" && outcome.reason) fields.reason = outcome.reason;
   if (outcome.kind === "not_found") fields.notFoundCount = syncState.notFoundCount;
   if (outcome.deleted) fields.deleted = true;
   if (outcome.error !== undefined) fields.error = outcome.error;
 
   return {
     level: outcome.kind === "failed" ? "warn" : "info",
-    message: outcome.kind === "skipped" ? "incident no longer polled" : "incident polled",
+    message:
+      outcome.kind !== "skipped"
+        ? "incident polled"
+        : outcome.reason
+          ? "incident poll superseded"
+          : "incident no longer polled",
     fields
   };
 }

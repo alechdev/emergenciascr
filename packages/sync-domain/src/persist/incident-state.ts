@@ -1,4 +1,4 @@
-import { eq } from "@bomberoscr/db/operators";
+import { eq, sql } from "@bomberoscr/db/operators";
 import {
   dispatchedStations,
   dispatchedVehicles,
@@ -18,6 +18,7 @@ import type {
   SyncState
 } from "../types";
 import type { Executor } from "./executor";
+import type { Transaction } from "@bomberoscr/db/client";
 
 /** What the database holds for an incident, or `null` when it isn't stored. */
 export async function loadIncidentState(
@@ -80,6 +81,17 @@ export async function loadIncidentState(
     }))
     .sort((a, b) => a.id - b.id);
   return { incident, vehicles, stations };
+}
+
+// The two-key advisory lock space doesn't overlap the one-key space the migration lock uses.
+const INCIDENT_LOCK_NAMESPACE = 5_302_026;
+
+/**
+ * Serializes polls of one incident (the poll worker and the web admin manual sync) until the
+ * transaction ends: reading the stored state, diffing and writing can't interleave.
+ */
+export async function lockIncident(tx: Transaction, incidentId: number): Promise<void> {
+  await tx.execute(sql`select pg_advisory_xact_lock(${INCIDENT_LOCK_NAMESPACE}, ${incidentId})`);
 }
 
 export async function loadSyncState(db: Executor, incidentId: number): Promise<SyncState | null> {

@@ -148,6 +148,7 @@ Wire the core into the workers (section 4 pipeline, section 8).
 - [x] Poll, change, anomaly and phase metrics (section 4.2).
 - [x] Fixture capture script from `sigae_snapshots` (`bun run --cwd packages/sync-domain capture-fixture`).
 - [x] Integration tests against a throwaway Postgres migrated with the migrate runner.
+- [ ] Vehicle assignment history: `vehicle_station_history` migration, written in the same transaction as every vehicle details upsert (12h job and on-demand), with integration tests (section 5.2, 9).
 
 **Done when**
 
@@ -191,12 +192,14 @@ The rest of section 11, built and tested against a local migrated database.
 - [ ] `vehicleInternalNumber` when the vehicle is unknown.
 - [ ] "En camino" fix.
 - [ ] Costa Rica time everywhere: shared formatter, slugs, date filters, SQL buckets, current year.
+- [ ] Station vehicle list and annual recap count dispatches by `dispatched_vehicles.stationId`, not the vehicle's current station (section 11 item 7).
 - [ ] Beta mode (`SITE_ENV=beta`).
 
 **Done when**
 
 - [ ] Web tests pass under `TZ=UTC`, including the 20:25 Costa Rica evening incident case.
 - [ ] No bare `toLocaleString` / `toLocaleTimeString` / `Intl.DateTimeFormat` without the shared module remain in the web.
+- [ ] A vehicle moved from station A to station B: B's vehicle list shows it without A's dispatches, and A's past incidents still show A.
 - [ ] With `SITE_ENV=beta`: `noindex` header, `robots.txt` disallow, no sitemap, banner shown, analytics off.
 
 ## Phase 8: Beta infrastructure

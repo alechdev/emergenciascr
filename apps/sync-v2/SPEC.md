@@ -29,6 +29,7 @@ Status: approved, not implemented. Work happens on the `sync-v2` branch.
 | Incident gone upstream     | If a tracked incident stops existing in SIGAE, it is deleted. No search for a "similar" incident.                                                                                                                                                                                                               |
 | Tracking after close       | Keep polling for 72 hours after SIGAE closes an incident. Coordinates, geography and vehicle times often arrive hours after closing.                                                                                                                                                                            |
 | Long-open incidents        | Hourly polling once open for more than 72h, stop after 30 days (section 8.2). The few incidents still open by then (long wildfires, incomplete records) keep whatever SIGAE last reported.                                                                                                                      |
+| Vehicle assignments        | A dispatch keeps the station SIGAE reported for it; moving a vehicle never changes past incidents. Vehicle station and operational status are recorded over time in `vehicle_station_history` (sections 5.2, 9), and station views count dispatches by the dispatch's station (section 11).                     |
 | Partial reports            | A report answering `99` may set or change values but never clear them (section 6.1).                                                                                                                                                                                                                            |
 | Extra report times         | Store `Hora_Controlado`, `Hora_Fuego_Bajo_Control`, `Hora_Perdidas_Detenidas` and `Hora_Todo_Claro` as columns (section 5.1). The four SIGAE never fills stay only in the raw-response history.                                                                                                                 |
 | SIGAE client               | One standalone client in `packages/sigae` with native proxy support. The client owns how to talk to SIGAE (transport, timeouts, decoding); apps own what to do about the result (retries, backoff, partial and not-found handling). Section 4.1.                                                                |
@@ -348,6 +349,19 @@ The same redaction applies to test fixtures. Fixtures are public, so recorded on
 | `lastError`           | text        | Full cause.                                                |
 | `firstSeenAt`         | timestamptz |                                                            |
 
+**`vehicle_station_history`**: where each vehicle was assigned and in what operational state, over time. `vehicles` only holds the current values, which the reference sync overwrites; vehicles move between stations (maintenance, transfers to a new station), and SIGAE only reports the present.
+
+| Column              | Type                | Notes                                                                       |
+| ------------------- | ------------------- | --------------------------------------------------------------------------- |
+| `id`                | bigserial PK        |                                                                             |
+| `vehicleId`         | integer FK vehicles |                                                                             |
+| `stationId`         | integer FK stations | `Id_estacion`.                                                              |
+| `operationalStatus` | text                | `Des_estado_operativo`.                                                     |
+| `firstSeenAt`       | timestamptz         | First observation of this station and status, not the real assignment date. |
+| `lastSeenAt`        | timestamptz         | Last observation. Bumped while station and status stay the same.            |
+
+Index on `(vehicleId, lastSeenAt)`. History starts when the beta database does.
+
 ## 6. Normalization rules
 
 ### 6.1 Envelopes
@@ -380,7 +394,7 @@ The same redaction applies to test fixtures. Fixtures are public, so recorded on
 
 - `Unidad === "ATENCION A PIE"` → `attentionOnFoot = true`, `vehicleId = NULL`.
 - Times via `parseSigaeDate`. `vehicleInternalNumber` from `NumeroInterno`, which is usually `null` here (section 3.3); check the beta data before relying on it.
-- Station mapping unchanged.
+- Station mapping unchanged. A dispatched unit's station is the one SIGAE reports for that dispatch (`CodigoEstacion`), never the vehicle's current station, so moving a vehicle later doesn't change past incidents. A change while the incident is still polled is recorded like any other field change.
 - **Removal:** a unit or station in the DB but missing from an `ok`/`partial` response is deleted, with a `removed` change and `UNIT_REMOVED` anomaly. Exception: if the response has **zero** units and the DB has some, wait for 2 consecutive polls before deleting (`emptyUnitsCount`), so a single empty response can't wipe an incident.
 
 ## 7. Anomalies
@@ -446,6 +460,7 @@ Anomalies never change what gets stored. They exist to be counted, filtered and 
 - Run every reference job once at boot, then on the 12h cron.
 - Order: provinces → cantons → districts, stations → vehicles, incident types.
 - On-demand: an incident referencing an unknown station or vehicle fetches its details first. Still unknown: station → `MISSING_REFERENCE` and failed poll (FK required); vehicle → `vehicleId = NULL`, keep `vehicleInternalNumber`, log `MISSING_REFERENCE`.
+- Vehicle assignments: every time vehicle details are stored (the 12h job and on-demand fetches), the same transaction compares station and operational status with the vehicle's latest `vehicle_station_history` row. Same values: bump `lastSeenAt`. Different, or no row yet: insert a new row. Rows are never updated otherwise or deleted. A `null` status from SIGAE keeps the stored one, like the vehicle upsert. The precision is the 12h sync interval.
 
 ## 10. Migrations
 
@@ -473,7 +488,10 @@ Built and tested against the beta database.
    - Date-range filters start and end at Costa Rica midnight, not the browser's (`date-fns` `startOfDay` / `endOfDay` today).
    - SQL hour, day and month buckets convert to Costa Rica time before truncating (`date_trunc('day', col AT TIME ZONE 'America/Costa_Rica')`), never `date_trunc`, `DATE()` or a wall-clock `EXTRACT` field (`hour`, `day`, `dow`, ...) directly on a `timestamptz`, whose result follows the session timezone. Durations and `EXTRACT(epoch ...)` don't depend on the session timezone and are computed on the instants directly. This replaces the hand-written `- interval '6 hours'` in `packages/db/src/queries/stats.ts`, `stations.ts` and `map/stationsCharts.ts`, and the UTC month bucket in `sitemap.ts`. Until then, after the `timestamptz` change (section 5.1), those buckets are only right while the session timezone is UTC.
    - "Current year" checks use the Costa Rica year.
-7. Beta mode via env (`SITE_ENV=beta`): `X-Robots-Tag: noindex`, `robots.txt` disallow all, no sitemap, a visible "datos de sync-v2" banner, analytics off.
+7. Station views follow the station of each dispatch, not the vehicle's current one:
+   - Station vehicle list (`getStationVehiclesWithStats` in `packages/db/src/queries/stations.ts`): a vehicle's incident count and average response time only include dispatches where `dispatched_vehicles.stationId` is that station. The list itself stays "vehicles currently assigned".
+   - Annual recap top vehicles (`packages/db/src/queries/stats.ts`): label each vehicle with the station it served those dispatches for (`dispatched_vehicles.stationId`), not `vehicles.stationId`.
+8. Beta mode via env (`SITE_ENV=beta`): `X-Robots-Tag: noindex`, `robots.txt` disallow all, no sitemap, a visible "datos de sync-v2" banner, analytics off.
 
 ## 12. Testing
 

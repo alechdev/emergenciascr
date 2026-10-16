@@ -3,6 +3,7 @@ import {
   type Job,
   type JobsOptions,
   Queue,
+  UnrecoverableError,
   WaitingChildrenError,
   Worker
 } from "bullmq";
@@ -69,7 +70,9 @@ export function createWorker<Data, Result>(
   worker.on("failed", (job, error) => {
     const attempts = job?.opts.attempts ?? 1;
     const attemptsMade = job?.attemptsMade ?? attempts;
-    const final = attemptsMade >= attempts;
+    // BullMQ fails a job for good with an UnrecoverableError (also when it stalled too often)
+    // before its attempts run out.
+    const final = attemptsMade >= attempts || error instanceof UnrecoverableError;
     log[final ? "error" : "warn"](final ? "job failed" : "job attempt failed", {
       jobId: job?.id,
       jobName: job?.name,

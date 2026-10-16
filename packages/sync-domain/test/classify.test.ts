@@ -50,6 +50,17 @@ describe("classifyPoll (spec 6.1)", () => {
     ).toEqual({ kind: "not_found" });
   });
 
+  it("detail and report 03 with another code on units or stations: failed", () => {
+    const gone = { details: { body: NOT_FOUND }, report: { body: NOT_FOUND } };
+    expect(classify({ ...gone, stations: { body: listBody([], CAST_ERROR) } })).toMatchObject({
+      kind: "failed",
+      endpoint: "ObtenerEstacionesAtiendeIncidente"
+    });
+    expect(
+      classify({ ...gone, stations: notFoundList, units: { body: listBody([], CAST_ERROR) } })
+    ).toMatchObject({ kind: "failed", endpoint: "ObtenerUnidadesDespachadasIncidente" });
+  });
+
   it("only detail or only report 03: failed", () => {
     expect(classify({ details: { body: NOT_FOUND } })).toMatchObject({
       kind: "failed",
@@ -133,6 +144,20 @@ describe("classifyPoll (spec 6.1)", () => {
     expect(classify({ report: { body: reportBody({ Hora_Aviso: PLACEHOLDER }) } })).toMatchObject({
       kind: "failed",
       reason: "report has no incident time (Fecha, Hora_Aviso)"
+    });
+  });
+
+  it("an unknown pre-1971 incident time: failed, with the issue to record", () => {
+    const result = classify({
+      report: { body: reportBody({ Hora_Aviso: "1900-01-01T20:25:19" }) }
+    });
+    expect(result).toEqual({
+      kind: "failed",
+      endpoint: "ObtenerBoletaIncidente",
+      reason: "report has no incident time (Fecha, Hora_Aviso)",
+      reportIssues: [
+        { field: "incidentTimestamp", sigaeField: "Hora_Aviso", raw: "1900-01-01T20:25:19" }
+      ]
     });
   });
 

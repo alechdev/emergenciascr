@@ -17,6 +17,7 @@ const EnvSchema = z.object({
   SIGAE_COD_SYS: z.string().min(1),
   SIGAE_PROXY_URL: optional(z.url()),
   HEALTH_PORT: z.coerce.number().int().min(1).max(65535).default(8080),
+  HEALTH_HOST: optional(z.string()).transform((value) => value ?? "127.0.0.1"),
   OTEL_EXPORTER_OTLP_ENDPOINT: optional(z.url()),
   OTEL_SERVICE_NAME: optional(z.string())
 });

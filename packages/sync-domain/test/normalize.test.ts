@@ -212,6 +212,11 @@ describe("normalizeIncident (spec 6.3)", () => {
         normalize({ stations: { body: listBody([]) } }).incident.responsibleStation
       ).toBeNull();
     });
+
+    it("is NULL when the chosen station has ID 0", () => {
+      const stations = { body: listBody([apoyo(1, 7), apoyo(2, 0)]) };
+      expect(normalize({ stations }).incident.responsibleStation).toBeNull();
+    });
   });
 
   it("records implausible report dates", () => {

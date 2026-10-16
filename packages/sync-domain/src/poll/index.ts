@@ -7,6 +7,7 @@ export {
   type IncidentPollResponses,
   type PollClassification,
   type PollKind,
-  type PollReport
+  type PollReport,
+  type ReportIssue
 } from "./classify";
 export { processPoll, type ProcessPollInput, type ProcessPollResult } from "./process";

@@ -292,6 +292,20 @@ describe("dedupeAnomalies", () => {
     expect(dedupeAnomalies([otherField], recorded)).toEqual([otherField]);
   });
 
+  it("tells time order violations apart by their pair of fields", () => {
+    const violation = (earlierField: string, laterField: string): Anomaly => ({
+      code: "TIME_ORDER_VIOLATION",
+      entity: "dispatched_vehicle",
+      entityId: 5200101,
+      details: { earlierField, laterField, times: {} }
+    });
+    const first = violation("dispatchedTime", "arrivalTime");
+    const second = violation("departureTime", "baseReturnTime");
+    expect(anomalyKey(first)).not.toBe(anomalyKey(second));
+    expect(dedupeAnomalies([second], new Set([anomalyKey(first)]))).toEqual([second]);
+    expect(dedupeAnomalies([first], new Set([anomalyKey(first)]))).toEqual([]);
+  });
+
   it("always keeps events", () => {
     expect(dedupeAnomalies([event, event], new Set([anomalyKey(event)]))).toEqual([event, event]);
   });

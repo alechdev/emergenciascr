@@ -83,13 +83,7 @@ export function detectAnomalies(
       description: context.partialReport.description
     });
   }
-  for (const issue of context.issues ?? []) {
-    add("PLACEHOLDER_SHAPE_UNKNOWN", issue.entity, issue.entityId, {
-      field: issue.field,
-      sigaeField: issue.sigaeField,
-      raw: issue.raw
-    });
-  }
+  anomalies.push(...placeholderAnomalies(context.issues ?? []));
 
   if (previous) {
     const before = previous.incident;
@@ -237,15 +231,24 @@ export function timeOrderViolation(vehicle: DispatchedVehicleRow): [string, stri
   return null;
 }
 
+/** `PLACEHOLDER_SHAPE_UNKNOWN` for each pre-1971 date that isn't SIGAE's known placeholder. */
+export function placeholderAnomalies(issues: readonly PlaceholderIssue[]): Anomaly[] {
+  return issues.map((issue) => ({
+    code: "PLACEHOLDER_SHAPE_UNKNOWN",
+    entity: issue.entity,
+    entityId: issue.entityId,
+    details: { field: issue.field, sigaeField: issue.sigaeField, raw: issue.raw }
+  }));
+}
+
 /** Identifies a condition anomaly across polls. */
 export function anomalyKey(anomaly: Pick<Anomaly, "code" | "entity" | "entityId" | "details">) {
-  const field = anomaly.details.field;
-  return [
-    anomaly.code,
-    anomaly.entity,
-    anomaly.entityId ?? "",
-    typeof field === "string" ? field : ""
-  ].join(":");
+  const { field, earlierField, laterField } = anomaly.details;
+  let subject = typeof field === "string" ? field : "";
+  if (typeof earlierField === "string" && typeof laterField === "string") {
+    subject = `${earlierField}>${laterField}`;
+  }
+  return [anomaly.code, anomaly.entity, anomaly.entityId ?? "", subject].join(":");
 }
 
 /**

@@ -4,6 +4,8 @@ const CHECK_TIMEOUT_MS = 3_000;
 
 export interface HealthOptions {
   port: number;
+  /** Interface to listen on. Defaults to loopback, enough for a check inside the container. */
+  host?: string;
   /** Each check rejects when its dependency is unreachable. */
   checks: Record<string, () => Promise<unknown>>;
   /** Reported but never fails the check: restarting doesn't fix SIGAE being down. */
@@ -30,7 +32,7 @@ export async function startHealthServer(options: HealthOptions): Promise<HealthS
 
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
-    server.listen(options.port, () => {
+    server.listen(options.port, options.host ?? "127.0.0.1", () => {
       server.off("error", reject);
       resolve();
     });

@@ -38,12 +38,14 @@ const REQUIRED_REPORT_FIELDS = [
   "Estado_Abierto"
 ] as const;
 
+const PARTIAL_REPORT_CODE = "99";
+
 /**
  * Fetches the four incident endpoints and returns what `upsertIncident` needs.
  *
- * - Detail or report `03`: `not_found`.
- * - A report answering another code is used when it still has the fields the upsert needs,
- *   as v1 does (SIGAE answers `99` for some incidents on every retry, with most of the body).
+ * - Detail **and** report `03`: `not_found`. Only one of them `03`: `failed`.
+ * - A report answering `99` is used when it still has the fields the upsert needs, as v1
+ *   does (SIGAE answers `99` for some incidents on every retry, with most of the body).
  * - Units or stations `03`: empty lists.
  * - Anything else that is not `00`, and every transport error: `failed`, with the cause.
  */
@@ -60,7 +62,7 @@ export function fetchIncident(
   ] as const)
     .mapErr((cause) => new FetchIncidentError("failed", incidentId, cause.message, { cause }))
     .andThen(([details, report, stations, units]) => {
-      if (details.kind === "not_found" || report.kind === "not_found") {
+      if (details.kind === "not_found" && report.kind === "not_found") {
         return err(new FetchIncidentError("not_found", incidentId, "not found in SIGAE"));
       }
       const incidentDetails = okData(incidentId, "ObtenerDetalleEmergencias", details);
@@ -104,7 +106,7 @@ function usableReport(
   response: SigaeResponse<IncidentReport>
 ): Result<IncidentReport, FetchIncidentError> {
   if (response.kind === "ok") return ok(response.data);
-  if (response.kind === "upstream_error") {
+  if (response.kind === "upstream_error" && response.code === PARTIAL_REPORT_CODE) {
     const data = response.data;
     if (REQUIRED_REPORT_FIELDS.every((field) => typeof data[field] === "string")) {
       return ok(data as IncidentReport);

@@ -34,7 +34,24 @@ describe("health endpoint", () => {
     expect(body.sigae.secondsSinceLastSuccess).toBeGreaterThanOrEqual(5);
   });
 
-  it("answers 503 when a dependency is unreachable, but not for SIGAE", async () => {
+  it("answers 200 when SIGAE never answered, as long as the dependencies are up", async () => {
+    server = await startHealthServer({
+      port: 0,
+      checks: { redis: async () => "PONG", database: async () => undefined },
+      lastSigaeSuccessAt: () => undefined
+    });
+
+    const { status, body } = await get("/health");
+
+    expect(status).toBe(200);
+    expect(body).toEqual({
+      status: "ok",
+      checks: { redis: "ok", database: "ok" },
+      sigae: { lastSuccessAt: null, secondsSinceLastSuccess: null }
+    });
+  });
+
+  it("answers 503 when a dependency is unreachable", async () => {
     server = await startHealthServer({
       port: 0,
       checks: {

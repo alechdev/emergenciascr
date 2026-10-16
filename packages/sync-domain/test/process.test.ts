@@ -52,6 +52,36 @@ describe("processPoll", () => {
     });
   });
 
+  it("a report with an unknown pre-1971 incident time records it once", () => {
+    const input = { report: { body: reportBody({ Fecha: "1900-01-01T00:00:00" }) } };
+    const first = run(input);
+    expect(first).toMatchObject({ kind: "failed", next: null });
+    expect(first.anomalies).toEqual([
+      {
+        code: "PLACEHOLDER_SHAPE_UNKNOWN",
+        entity: "incident",
+        entityId: INCIDENT_ID,
+        details: { field: "incidentTimestamp", sigaeField: "Fecha", raw: "1900-01-01T00:00:00" }
+      }
+    ]);
+    const second = run(input, {
+      state: first.syncState,
+      recorded: new Set(first.anomalies.map(anomalyKey))
+    });
+    expect(second.anomalies).toEqual([]);
+  });
+
+  it("a failed or not-found poll restarts the count of empty unit lists", () => {
+    const state = { ...syncState(), emptyUnitsCount: 1 };
+    const failed = run({ units: { error: { kind: "network", message: "ECONNRESET" } } }, { state });
+    expect(failed.syncState.emptyUnitsCount).toBe(0);
+    const notFound = run(
+      { details: { body: NOT_FOUND }, report: { body: NOT_FOUND } },
+      { current: incidentState(), state }
+    );
+    expect(notFound.syncState.emptyUnitsCount).toBe(0);
+  });
+
   it("not found once writes nothing", () => {
     const result = run(
       { details: { body: NOT_FOUND }, report: { body: NOT_FOUND } },

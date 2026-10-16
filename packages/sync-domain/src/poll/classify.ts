@@ -1,4 +1,4 @@
-import { incidentTimestamp } from "../normalize/dates";
+import { type PlaceholderIssue, incidentTimestamp } from "../normalize/dates";
 
 import type { SigaeIncidentEndpoint } from "../types";
 import type {
@@ -56,7 +56,16 @@ export type PollClassification =
   /** The report answered `99`: its values may set or change fields but never clear them. */
   | { kind: "partial"; data: IncidentPollData; reportDescription: string }
   | { kind: "not_found" }
-  | { kind: "failed"; endpoint: SigaeIncidentEndpoint; reason: string };
+  | {
+      kind: "failed";
+      endpoint: SigaeIncidentEndpoint;
+      reason: string;
+      /** Unknown placeholders in the report that made it unusable, to record as anomalies. */
+      reportIssues?: ReportIssue[];
+    };
+
+/** A {@link PlaceholderIssue} on the incident itself, whose ID the caller knows. */
+export type ReportIssue = Omit<PlaceholderIssue, "entity" | "entityId">;
 
 export type PollKind = PollClassification["kind"];
 
@@ -67,8 +76,9 @@ const PARTIAL_REPORT_CODE = "99";
  *
  * - all four `00`: `ok`;
  * - report `99` and the rest `00`: `partial`;
- * - detail **and** report `03`: `not_found`;
- * - units or stations `03`: an empty list;
+ * - detail **and** report `03`, with units and stations `00` or `03`: `not_found`;
+ * - units or stations `03`: an empty list, with a `00` or `99` report alike (a persistent
+ *   `99` would otherwise keep an incident with no units or stations from ever syncing);
  * - anything else (request failures, other codes, `99` elsewhere, a report without the
  *   fields an incident needs): `failed`.
  *
@@ -93,7 +103,15 @@ export function classifyPoll(responses: IncidentPollResponses): PollClassificati
   const stations = responses.stations.value;
   const units = responses.units.value;
 
-  if (details.kind === "not_found" && report.kind === "not_found") return { kind: "not_found" };
+  if (details.kind === "not_found" && report.kind === "not_found") {
+    if (listItems(stations) === null) {
+      return failed("ObtenerEstacionesAtiendeIncidente", describe(stations));
+    }
+    if (listItems(units) === null) {
+      return failed("ObtenerUnidadesDespachadasIncidente", describe(units));
+    }
+    return { kind: "not_found" };
+  }
 
   if (details.kind !== "ok") return failed("ObtenerDetalleEmergencias", describe(details));
 
@@ -114,13 +132,18 @@ export function classifyPoll(responses: IncidentPollResponses): PollClassificati
     return failed("ObtenerBoletaIncidente", describe(report));
   }
 
+  const issues: PlaceholderIssue[] = [];
   const timestamp = incidentTimestamp(pollReport.Fecha, pollReport.Hora_Aviso, {
     entity: "incident",
     entityId: 0,
-    issues: []
+    issues
   });
   if (timestamp === null) {
-    return failed("ObtenerBoletaIncidente", "report has no incident time (Fecha, Hora_Aviso)");
+    return failed(
+      "ObtenerBoletaIncidente",
+      "report has no incident time (Fecha, Hora_Aviso)",
+      issues.map(({ field, sigaeField, raw }) => ({ field, sigaeField, raw }))
+    );
   }
 
   const stationItems = listItems(stations);
@@ -162,6 +185,12 @@ function requestFailed(
   return failed(endpoint, `request failed (${failure.kind}): ${failure.message}`);
 }
 
-function failed(endpoint: SigaeIncidentEndpoint, reason: string): PollClassification {
-  return { kind: "failed", endpoint, reason };
+function failed(
+  endpoint: SigaeIncidentEndpoint,
+  reason: string,
+  reportIssues: ReportIssue[] = []
+): PollClassification {
+  return reportIssues.length > 0
+    ? { kind: "failed", endpoint, reason, reportIssues }
+    : { kind: "failed", endpoint, reason };
 }

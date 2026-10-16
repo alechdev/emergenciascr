@@ -1,4 +1,4 @@
-import { and, db, eq } from "@bomberoscr/db/index";
+import { and, db, eq, isNull, lt, or } from "@bomberoscr/db/index";
 import { dispatchedVehicles, incidents } from "@bomberoscr/db/schema";
 import { fetchIncident } from "@bomberoscr/sync-domain/fetch-incident";
 import { upsertIncident } from "@bomberoscr/sync-domain/persist/upsertIncident";
@@ -8,6 +8,7 @@ import { sigae } from "@/config/sigae";
 import { SyncError } from "@/lib/errors";
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+const FIRST_PLAUSIBLE_TIME = new Date("1971-01-01T00:00:00Z");
 
 export function updateIncident({ id }: { id: number }): ResultAsync<void, Error> {
   return fetchIncident(sigae, id).andThen((input) =>
@@ -51,7 +52,11 @@ export async function closeIncident({
   const vehiclesInSceneQuery = db.query.dispatchedVehicles.findMany({
     where: and(
       eq(dispatchedVehicles.incidentId, id),
-      eq(dispatchedVehicles.departureTime, new Date("0001-01-01T00:00:00"))
+      // No departure yet: `NULL` from the new sync, SIGAE's year-1 placeholder in older rows.
+      or(
+        isNull(dispatchedVehicles.departureTime),
+        lt(dispatchedVehicles.departureTime, FIRST_PLAUSIBLE_TIME)
+      )
     ),
     columns: {
       departureTime: true

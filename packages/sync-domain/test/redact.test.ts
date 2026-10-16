@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { SNAPSHOT_ALLOWLISTS, payloadHash, redactSnapshot } from "../src/redact/index";
 import { detailsBody, listBody, reportBody, station, unit } from "./builders";
-import { listScenarios, readSnapshot, snapshotFiles } from "./fixture-runner";
+import { FIXTURES_DIR, listScenarios, readSnapshot, snapshotFiles } from "./fixture-runner";
 
 import type { Allowlist } from "../src/redact/allowlists";
 import type { SigaeIncidentEndpoint } from "../src/types";
@@ -23,9 +23,14 @@ const PERSONAL = {
   CampoNuevo: "SIGAE added this later"
 };
 
-/** Every key path in a payload that its endpoint's allowlist doesn't permit. */
+/**
+ * Every key path in a payload that its endpoint's allowlist doesn't permit. Anything but an
+ * object where the allowlist expects one is flagged too, since it can't be checked.
+ */
 function unlistedKeys(value: unknown, allowlist: Allowlist, path = ""): string[] {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return [];
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return [`${path || "(root)"} (not an object)`];
+  }
   return Object.entries(value).flatMap(([key, field]) => {
     const rule = Object.hasOwn(allowlist, key) ? allowlist[key] : undefined;
     const here = `${path}${key}`;
@@ -112,6 +117,14 @@ describe("redactSnapshot (spec 5.2)", () => {
 describe("fixtures", () => {
   const scenarios = listScenarios();
 
+  it("the allowlist check flags values it can't look into", () => {
+    const allowlist = SNAPSHOT_ALLOWLISTS.ObtenerUnidadesDespachadasIncidente;
+    expect(unlistedKeys([{ Operador: "NOMBRE" }], allowlist)).toEqual(["(root) (not an object)"]);
+    expect(unlistedKeys({ Codigo: "00", Items: [[{ Operador: "NOMBRE" }]] }, allowlist)).toEqual([
+      "Items[0]. (not an object)"
+    ]);
+  });
+
   it("contain no field outside the allowlists", () => {
     for (const scenario of scenarios) {
       for (const file of snapshotFiles(scenario)) {
@@ -130,7 +143,7 @@ describe("fixtures", () => {
 
   it("are the only files in each scenario besides expected.json", () => {
     for (const scenario of scenarios) {
-      const dir = new URL(`../fixtures/${scenario}/`, import.meta.url).pathname;
+      const dir = join(FIXTURES_DIR, scenario);
       const extra = readdirSync(dir).filter(
         (name) => name !== "expected.json" && !/^\d{3}\.json$/.test(name)
       );

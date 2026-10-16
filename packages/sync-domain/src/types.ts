@@ -59,7 +59,8 @@ export interface DispatchedVehicleRow {
   arrivalTime: Date | null;
   departureTime: Date | null;
   baseReturnTime: Date | null;
-  attentionOnFoot: boolean;
+  /** The sync always writes a boolean, but the column is nullable. */
+  attentionOnFoot: boolean | null;
 }
 
 export interface DispatchedStationRow {

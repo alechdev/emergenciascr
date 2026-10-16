@@ -7,8 +7,8 @@ import { createWorker, removeFinishedJob } from "@/lib/jobs";
 import logger from "@/lib/logger";
 import { recordReferenceSuccess } from "@/lib/metrics";
 import { type ReferenceJobData, referenceQueue } from "@/queues/reference.queue";
-import { stationJobId, stationsQueue } from "@/queues/stations.queue";
-import { vehicleJobId, vehiclesQueue } from "@/queues/vehicles.queue";
+import { STATION_JOB_NAME, stationJobId, stationsQueue } from "@/queues/stations.queue";
+import { VEHICLE_JOB_NAME, vehicleJobId, vehiclesQueue } from "@/queues/vehicles.queue";
 import { syncDistricts } from "@/services/districts.service";
 import { syncIncidentTypes } from "@/services/incidentTypes.service";
 import { listStations } from "@/services/stations.service";
@@ -64,7 +64,7 @@ export function createReferenceWorker({ signal }: { signal: AbortSignal }): Refe
       return runItemJobs(
         stationsQueue,
         stationsEvents,
-        "station",
+        STATION_JOB_NAME,
         list.value.map((data) => ({ jobId: stationJobId(data.id), data })),
         signal
       );
@@ -75,7 +75,7 @@ export function createReferenceWorker({ signal }: { signal: AbortSignal }): Refe
       return runItemJobs(
         vehiclesQueue,
         vehiclesEvents,
-        "vehicle",
+        VEHICLE_JOB_NAME,
         list.value.map((data) => ({ jobId: vehicleJobId(data.id), data })),
         signal
       );

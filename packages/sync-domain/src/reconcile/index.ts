@@ -5,6 +5,7 @@ export {
   anomalyKey,
   dedupeAnomalies,
   detectAnomalies,
+  placeholderAnomalies,
   timeOrderViolation,
   type AnomalyContext
 } from "./anomalies";

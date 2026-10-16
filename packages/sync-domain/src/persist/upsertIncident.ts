@@ -54,30 +54,33 @@ export async function upsertIncident({
     incidentId
   });
 
-  await db.insert(incidentsTable).values(incident).onConflictDoUpdate({
-    set: incident,
-    target: incidentsTable.id
+  // One transaction, so a failed child insert never leaves a stored incident without them.
+  await db.transaction(async (tx) => {
+    await tx.insert(incidentsTable).values(incident).onConflictDoUpdate({
+      set: incident,
+      target: incidentsTable.id
+    });
+
+    if (dispatchedStationsData.length > 0) {
+      await tx
+        .insert(dispatchedStationsTable)
+        .values(dispatchedStationsData)
+        .onConflictDoUpdate({
+          target: dispatchedStationsTable.id,
+          set: conflictUpdateSetAllColumns(dispatchedStationsTable)
+        });
+    }
+
+    if (dispatchedVehiclesData.length > 0) {
+      await tx
+        .insert(dispatchedVehiclesTable)
+        .values(dispatchedVehiclesData)
+        .onConflictDoUpdate({
+          target: dispatchedVehiclesTable.id,
+          set: conflictUpdateSetAllColumns(dispatchedVehiclesTable)
+        });
+    }
   });
-
-  if (dispatchedStationsData.length > 0) {
-    await db
-      .insert(dispatchedStationsTable)
-      .values(dispatchedStationsData)
-      .onConflictDoUpdate({
-        target: dispatchedStationsTable.id,
-        set: conflictUpdateSetAllColumns(dispatchedStationsTable)
-      });
-  }
-
-  if (dispatchedVehiclesData.length > 0) {
-    await db
-      .insert(dispatchedVehiclesTable)
-      .values(dispatchedVehiclesData)
-      .onConflictDoUpdate({
-        target: dispatchedVehiclesTable.id,
-        set: conflictUpdateSetAllColumns(dispatchedVehiclesTable)
-      });
-  }
 
   return incident;
 }

@@ -61,15 +61,19 @@ async function main(): Promise<void> {
 
   health = await startHealthServer({
     port: env.HEALTH_PORT,
+    host: env.HEALTH_HOST,
     checks: {
       redis: () => redis.ping(),
       database: () => db.execute(sql`select 1`)
     },
     lastSigaeSuccessAt
   });
-  logger.info("health endpoint listening", { port: health.port });
+  logger.info("health endpoint listening", { host: env.HEALTH_HOST, port: health.port });
 
   stopObservingQueues = observeQueues(allQueues);
+
+  // Before any worker runs, so a leftover scheduler can't start one more periodic job.
+  await syncSchedulers();
 
   const reference = createReferenceWorker({ signal: shutdownController.signal });
   workers.push(
@@ -80,8 +84,6 @@ async function main(): Promise<void> {
     createOpenIncidentsWorker()
   );
   queueEvents.push(...reference.queueEvents);
-
-  await syncSchedulers();
 
   // Reference data runs once at boot, then on the 12h cron. A boot job postponed by the
   // previous shutdown is still delayed, and adding the same ID again leaves it as is.
@@ -151,12 +153,14 @@ function shutdown(reason: string, exitCode: number): Promise<void> {
       }
     }
 
-    logger.info("sync-v2 stopped", { exitCode });
     try {
       await telemetry?.shutdown();
-    } catch {
+    } catch (error) {
       exitCode = 1;
+      logger.error("shutdown step failed", { step: "telemetry", error });
     }
+    // After the telemetry flush, so this line only reaches stdout.
+    logger.info("sync-v2 stopped", { exitCode });
     process.exit(exitCode);
   })();
   return shuttingDown;

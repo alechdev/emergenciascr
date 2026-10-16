@@ -83,7 +83,7 @@
             "AtencionAPie": true,
             "ClaveEstacion": "1-4",
             "DestipoServicio": "APOYO",
-            "HoraAtencionAPie": "2026-10-10T20:40:00",
+            "HoraAtencionAPie": "2026-10-10T20:26:50",
             "IdBoletaEstacionAtiende": 3400102,
             "IdEstacion": 5,
             "IdTipoServicio": 2,
@@ -136,6 +136,26 @@
             "Traslado": false,
             "Unidad": "M-20",
             "UnidadCompleta": "M-20 METROPOLITANA NORTE"
+          },
+          {
+            "Codigo": null,
+            "Descripcion": null,
+            "CodigoEstacion": 5,
+            "CodigoUnidad": 0,
+            "DespachoAlarma": false,
+            "HoraBase": "0001-01-01T00:00:00",
+            "HoraDespacho": "2026-10-10T20:26:50",
+            "HoraDevolverBase": "0001-01-01T00:00:00",
+            "HoraLLegada": "0001-01-01T00:00:00",
+            "HoraRetiro": "0001-01-01T00:00:00",
+            "HoraTraslado": "0001-01-01T00:00:00",
+            "IdBoletaServicio": 0,
+            "IdBoletaUnidadDespachada": 5200104,
+            "IdVehiculo": 0,
+            "NumeroInterno": null,
+            "Traslado": false,
+            "Unidad": "ATENCION A PIE",
+            "UnidadCompleta": "ATENCION A PIE"
           }
         ]
       }

@@ -7,7 +7,7 @@ describe("serializeError", () => {
     const pg = Object.assign(new Error("insert violates foreign key"), {
       code: "23503",
       constraint: "dispatched_vehicles_vehicleId_vehicles_id_fk",
-      detail: "Key (vehicleId)=(8380) is not present"
+      detail: 'Key (vehicleId)=(8380) is not present in table "vehicles".'
     });
     const error = new SyncError("failed to store incident 1", {
       cause: new Error("Failed query", { cause: pg })
@@ -25,12 +25,22 @@ describe("serializeError", () => {
           message: "insert violates foreign key",
           code: "23503",
           constraint: "dispatched_vehicles_vehicleId_vehicles_id_fk",
-          detail: "Key (vehicleId)=(8380) is not present"
+          detail: 'Key (vehicleId)=(…) is not present in table "vehicles".'
         }
       }
     });
     expect(serialized.stack).toContain("SyncError");
     expect(serialized.cause?.stack).toBeUndefined();
+  });
+
+  it("keeps only key names from Postgres details", () => {
+    const pgError = (detail: string) =>
+      serializeError(Object.assign(new Error("violation"), { code: "23505", detail }));
+
+    expect(pgError("Key (id, name)=(1, SAN (JOSE)) already exists.").detail).toBe(
+      "Key (id, name)=(…) already exists."
+    );
+    expect(pgError("Failing row contains (1, null, SAN JOSE).")).not.toHaveProperty("detail");
   });
 
   it("serializes aggregated errors", () => {

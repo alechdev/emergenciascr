@@ -260,7 +260,7 @@ OpenTelemetry only: traces, metrics and logs exported over OTLP. Sentry is remov
 
 **Traces.** One span per job (from `bullmq-otel`) → `sync.poll` (attributes: incident ID, result, change and anomaly counts) → one span per SIGAE request and one for the database transaction. Span attributes follow the same rules as logs.
 
-**Health.** A small HTTP endpoint (`HEALTH_PORT`, internal only) for the container health check. It fails when Redis or the database is unreachable. Time since the last successful SIGAE response is reported in the body but doesn't fail the check, because restarting doesn't fix SIGAE being down.
+**Health.** A small HTTP endpoint (`HEALTH_PORT`, on loopback unless `HEALTH_HOST` says otherwise) for the container health check. It fails when Redis or the database is unreachable. Time since the last successful SIGAE response is reported in the body but doesn't fail the check, because restarting doesn't fix SIGAE being down.
 
 **Shutdown.** On `SIGTERM`/`SIGINT`: stop scheduling, `close()` every worker (waits for running jobs, up to 30s), close queues, Redis and the database pool, run `sdk.shutdown()`, then exit.
 
@@ -351,13 +351,13 @@ The same redaction applies to test fixtures. Fixtures are public, so recorded on
 
 ### 6.1 Envelopes
 
-| Result                                                                       | Classification | Action                                                                                                                                                                                                             |
-| ---------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| All four `00`                                                                | `ok`           | Normal write.                                                                                                                                                                                                      |
-| Report `99`, the other three `00`                                            | `partial`      | Write. Fields from the partial report may **set or change** values but never **clear** them; `0`/empty in a partial report means "failed to serialize", not "SIGAE says empty". Anomaly `UPSTREAM_PARTIAL_REPORT`. |
-| Detail **and** report `03`                                                   | `not_found`    | Not-found flow (section 8.4). No write.                                                                                                                                                                            |
-| Network/HTTP error, invalid JSON, `99` on any other endpoint, any other code | `failed`       | No write. Count a failed poll.                                                                                                                                                                                     |
-| Units or stations `03` while detail and report are `00`                      | `ok`           | Treat as an empty list. Verify in phase 6 with a brand-new incident.                                                                                                                                               |
+| Result                                                                       | Classification   | Action                                                                                                                                                                                                             |
+| ---------------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| All four `00`                                                                | `ok`             | Normal write.                                                                                                                                                                                                      |
+| Report `99`, the other three `00`                                            | `partial`        | Write. Fields from the partial report may **set or change** values but never **clear** them; `0`/empty in a partial report means "failed to serialize", not "SIGAE says empty". Anomaly `UPSTREAM_PARTIAL_REPORT`. |
+| Detail **and** report `03`, units and stations `00` or `03`                  | `not_found`      | Not-found flow (section 8.4). No write.                                                                                                                                                                            |
+| Network/HTTP error, invalid JSON, `99` on any other endpoint, any other code | `failed`         | No write. Count a failed poll.                                                                                                                                                                                     |
+| Units or stations `03` while detail is `00` and report is `00` or `99`       | `ok` / `partial` | Treat as an empty list. Also with a `99` report: it is persistent, so rejecting it would keep an incident with no units or stations from ever syncing. Verify in phase 6 with a brand-new incident.                |
 
 ### 6.2 Dates
 

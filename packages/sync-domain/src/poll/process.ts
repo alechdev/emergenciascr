@@ -3,7 +3,7 @@ import { nextPoll } from "../lifecycle/next-poll";
 import { keepReportValues } from "../normalize/incident";
 import { resolveIncidentTypes } from "../normalize/incident-types";
 import { normalizePoll } from "../normalize/index";
-import { dedupeAnomalies, detectAnomalies } from "../reconcile/anomalies";
+import { dedupeAnomalies, detectAnomalies, placeholderAnomalies } from "../reconcile/anomalies";
 import { diffIncidentState, removalChanges } from "../reconcile/diff";
 import { applyEmptyUnitsRule } from "../reconcile/removal";
 
@@ -54,7 +54,15 @@ export function processPoll(input: ProcessPollInput): ProcessPollResult {
       },
       now
     );
-    return idle("failed", decision.state, decision.anomalies);
+    const issues = (classification.reportIssues ?? []).map((issue) => ({
+      ...issue,
+      entity: "incident" as const,
+      entityId: input.incidentId
+    }));
+    return idle("failed", decision.state, [
+      ...dedupeAnomalies(placeholderAnomalies(issues), input.recordedAnomalies),
+      ...decision.anomalies
+    ]);
   }
 
   if (classification.kind === "not_found") {
@@ -134,6 +142,7 @@ export function processPoll(input: ProcessPollInput): ProcessPollResult {
   };
 }
 
+/** A poll that writes nothing. It also breaks a run of zero-unit polls (spec 6.4). */
 function idle(kind: PollKind, syncState: SyncState, anomalies: Anomaly[]): ProcessPollResult {
   return {
     kind,
@@ -141,7 +150,7 @@ function idle(kind: PollKind, syncState: SyncState, anomalies: Anomaly[]): Proce
     deleteIncident: false,
     changes: [],
     anomalies,
-    syncState,
+    syncState: { ...syncState, emptyUnitsCount: 0 },
     unknownIncidentTypes: []
   };
 }

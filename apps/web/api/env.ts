@@ -3,6 +3,10 @@ import { expand } from "dotenv-expand";
 import path from "node:path";
 import { z } from "zod";
 
+/** Treats `KEY=` like an unset variable. */
+const optional = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((value) => (value === "" ? undefined : value), schema.optional());
+
 expand(
   config({
     path: path.resolve(process.cwd(), process.env.NODE_ENV === "test" ? ".env.test" : ".env")
@@ -14,12 +18,12 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().default(9999),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]),
   API_URL: z.string().url(),
-  SIGAE_API_URL: z.string().url().optional(),
-  SIGAE_IP: z.string().optional(),
-  SIGAE_PASSWORD: z.string().optional(),
-  SIGAE_USER: z.string().optional(),
-  SIGAE_COD_SYS: z.string().optional(),
-  SIGAE_PROXY_URL: z.string().url().optional(),
+  SIGAE_API_URL: optional(z.string().url()),
+  SIGAE_IP: optional(z.string()),
+  SIGAE_PASSWORD: optional(z.string()),
+  SIGAE_USER: optional(z.string()),
+  SIGAE_COD_SYS: optional(z.string()),
+  SIGAE_PROXY_URL: optional(z.string().url()),
   ADMIN_TOKEN: z.string().optional(),
   MAPBOX_API_KEY: z.string(),
   INTERNAL_API_URL: z.string().url(),

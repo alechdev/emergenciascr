@@ -1,8 +1,9 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const SRC = new URL("../src/", import.meta.url).pathname;
+const SRC = fileURLToPath(new URL("../src/", import.meta.url));
 const CORE = ["poll", "normalize", "reconcile", "lifecycle", "redact"];
 const CORE_FILES = ["types.ts"];
 
@@ -28,17 +29,42 @@ function isInCore(path: string): boolean {
   return CORE_FILES.includes(rel) || CORE.some((dir) => rel.startsWith(`${dir}/`));
 }
 
+/** Static `import … from`, `export … from` and side-effect `import "…"` declarations. */
+function importsOf(source: string): { typeOnly: boolean; specifier: string }[] {
+  const fromClauses = [
+    ...source.matchAll(/^(?:import|export)\s+(type\s+)?[^;]*?from\s+["']([^"']+)["']/gm)
+  ].map((match) => ({ typeOnly: Boolean(match[1]), specifier: match[2] as string }));
+  const sideEffects = [...source.matchAll(/^import\s+["']([^"']+)["']/gm)].map((match) => ({
+    typeOnly: false,
+    specifier: match[1] as string
+  }));
+  return [...fromClauses, ...sideEffects];
+}
+
 describe("the pure core", () => {
+  it("finds every kind of import", () => {
+    const source = [
+      'import { a } from "./a";',
+      'import type { B } from "b";',
+      'import "@bomberoscr/db/index";',
+      "import 'side-effect';",
+      'export * from "./c";'
+    ].join("\n");
+    expect(importsOf(source)).toEqual([
+      { typeOnly: false, specifier: "./a" },
+      { typeOnly: true, specifier: "b" },
+      { typeOnly: false, specifier: "./c" },
+      { typeOnly: false, specifier: "@bomberoscr/db/index" },
+      { typeOnly: false, specifier: "side-effect" }
+    ]);
+  });
+
   it("imports no database, Redis, BullMQ or env module", () => {
     const violations: string[] = [];
     for (const file of coreFiles()) {
       const source = readFileSync(file, "utf8");
       const name = relative(SRC, file);
-      for (const match of source.matchAll(
-        /^(import|export)\s+(type\s+)?[^;]*?from\s+"([^"]+)"/gm
-      )) {
-        const typeOnly = Boolean(match[2]);
-        const specifier = match[3] as string;
+      for (const { typeOnly, specifier } of importsOf(source)) {
         if (specifier.startsWith(".")) {
           const target = resolve(dirname(file), specifier);
           if (!isInCore(target.endsWith(".ts") ? target : `${target}.ts`)) {

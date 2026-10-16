@@ -38,6 +38,7 @@ export function recordReferenceSuccess(kind: string, at = Date.now()): void {
 
 const QUEUE_STATES = [
   "waiting",
+  "paused",
   "active",
   "delayed",
   "prioritized",

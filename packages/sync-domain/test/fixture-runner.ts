@@ -4,6 +4,7 @@
  */
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { classifyPoll } from "../src/poll/classify";
 import { processPoll } from "../src/poll/process";
@@ -12,7 +13,7 @@ import { KNOWN_INCIDENT_TYPES, decode, type EndpointInput } from "./builders";
 
 import type { IncidentState, SigaeIncidentEndpoint, SyncState } from "../src/types";
 
-export const FIXTURES_DIR = new URL("../fixtures/", import.meta.url).pathname;
+export const FIXTURES_DIR = fileURLToPath(new URL("../fixtures/", import.meta.url));
 
 export interface FixtureSnapshot {
   incidentId: number;
@@ -51,7 +52,7 @@ export function readSnapshot(scenario: string, file: string): FixtureSnapshot {
   return JSON.parse(readFileSync(join(FIXTURES_DIR, scenario, file), "utf8")) as FixtureSnapshot;
 }
 
-export function runScenario(scenario: string): FixtureOutcome {
+export function runScenario(scenario: string): Serialized<FixtureOutcome> {
   const files = snapshotFiles(scenario);
   const outcome: FixtureOutcome = {
     polls: [],
@@ -122,7 +123,16 @@ export function runScenario(scenario: string): FixtureOutcome {
   return toPlainJson(outcome);
 }
 
+/** `T` after a JSON round trip: dates are ISO strings. */
+export type Serialized<T> = T extends Date
+  ? string
+  : T extends readonly (infer Item)[]
+    ? Serialized<Item>[]
+    : T extends object
+      ? { [Key in keyof T]: Serialized<T[Key]> }
+      : T;
+
 /** Dates become ISO strings, as in `expected.json`. */
-export function toPlainJson<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+export function toPlainJson<T>(value: T): Serialized<T> {
+  return JSON.parse(JSON.stringify(value)) as Serialized<T>;
 }

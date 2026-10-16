@@ -23,5 +23,5 @@ export function normalizeDispatchedStations(
 /** The `RESPONSABLE` station, else the last one listed, else `null` (never `0`). */
 export function responsibleStation(stations: readonly DispatchedStation[]): number | null {
   const responsible = stations.find((station) => station.DestipoServicio === RESPONSIBLE_SERVICE);
-  return (responsible ?? stations.at(-1))?.IdEstacion ?? null;
+  return (responsible ?? stations.at(-1))?.IdEstacion || null;
 }

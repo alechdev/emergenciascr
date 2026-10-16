@@ -28,7 +28,7 @@ See [`.env.example`](./.env.example). `SIGAE_PROXY_URL` is optional; when set, e
 
 - Logs are JSON lines on stdout (pretty in `NODE_ENV=development`), plus OpenTelemetry. They never contain SIGAE bodies, credentials or the proxy URL.
 - Traces, metrics and logs are exported over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, and configured with the standard `OTEL_*` variables. Without an endpoint, export is off.
-- `GET /health` on `HEALTH_PORT` answers `503` when Redis or the database is unreachable. The time since the last successful SIGAE response is in the body but doesn't fail the check.
+- `GET /health` on `HEALTH_HOST:HEALTH_PORT` (loopback by default) answers `503` when Redis or the database is unreachable. The time since the last successful SIGAE response is in the body but doesn't fail the check.
 
 ## Shutdown
 
@@ -36,8 +36,11 @@ On `SIGTERM` or `SIGINT` the service closes every worker (running jobs get up to
 
 ## Development
 
+From the repository root:
+
 ```sh
-cp .env.example .env
+cp apps/sync-v2/.env.example apps/sync-v2/.env   # then fill in the SIGAE values
+cp apps/sync-v2/.env.example apps/migrate/.env   # migrate only reads the POSTGRES_* values
 bun run --cwd apps/migrate start   # apply migrations
 bun run --cwd apps/sync-v2 dev
 ```

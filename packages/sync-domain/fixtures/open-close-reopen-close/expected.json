@@ -128,6 +128,24 @@
     },
     {
       "poll": "002.json",
+      "entity": "dispatched_vehicle",
+      "entityId": 5200104,
+      "field": "*",
+      "kind": "added",
+      "oldValue": null,
+      "newValue": {
+        "stationId": 5,
+        "vehicleId": null,
+        "vehicleInternalNumber": null,
+        "dispatchedTime": "2026-10-11T02:26:50.000Z",
+        "arrivalTime": null,
+        "departureTime": null,
+        "baseReturnTime": null,
+        "attentionOnFoot": true
+      }
+    },
+    {
+      "poll": "002.json",
       "entity": "dispatched_station",
       "entityId": 3400102,
       "field": "*",
@@ -334,6 +352,18 @@
           "departureTime": "2026-10-11T02:32:30.000Z",
           "baseReturnTime": "2026-10-11T02:47:00.000Z",
           "attentionOnFoot": false
+        },
+        {
+          "id": 5200104,
+          "incidentId": 1900001,
+          "stationId": 5,
+          "vehicleId": null,
+          "vehicleInternalNumber": null,
+          "dispatchedTime": "2026-10-11T02:26:50.000Z",
+          "arrivalTime": null,
+          "departureTime": null,
+          "baseReturnTime": null,
+          "attentionOnFoot": true
         }
       ],
       "stations": [

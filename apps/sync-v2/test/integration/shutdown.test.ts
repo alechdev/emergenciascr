@@ -100,6 +100,11 @@ describe.skipIf(!INTEGRATION)("graceful shutdown", () => {
     await seedReferences(db);
     const { trackNewIncidents, loadSyncState } = await import("@bomberoscr/sync-domain/persist");
     await trackNewIncidents(db, [{ incidentId: INCIDENT_ID, firstSeenAt: new Date() }]);
+    // What the legacy sync left in Redis: boot removes it.
+    const { Queue } = await import("bullmq");
+    const legacy = new Queue("open-incidents", { connection: redis });
+    await legacy.add("open-incident", { incidentId: INCIDENT_ID }, { jobId: "open-incident-1" });
+    await legacy.close();
 
     const answers = incidentAnswers(new Date(Date.now() - MINUTE));
     let pollStarted: () => void = () => {};
@@ -209,6 +214,11 @@ describe.skipIf(!INTEGRATION)("graceful shutdown", () => {
     expect(
       await redis.zscore(`bull:incident-poll:delayed`, `incident-poll-${INCIDENT_ID}`)
     ).not.toBeNull();
+
+    expect(await redis.keys("bull:open-incidents:*")).toEqual([]);
+    expect(log).toContainEqual(
+      expect.objectContaining({ message: "removed legacy queue", queue: "open-incidents" })
+    );
 
     const messages = log.map((entry) => entry.message);
     const stopping = messages.indexOf("shutting down");

@@ -100,6 +100,41 @@ export function createWorker<Data, Result>(
   return worker;
 }
 
+/** Queues earlier versions used, with their jobs and schedulers left in Redis. */
+export const LEGACY_QUEUES = ["open-incidents"] as const;
+
+/**
+ * Deletes what is left of the legacy queues, so their jobs and repeat schedulers don't
+ * linger in Redis (or run again if an old worker comes back). Returns the queues that had
+ * anything to delete.
+ */
+export async function removeLegacyQueues(
+  names: readonly string[] = LEGACY_QUEUES
+): Promise<string[]> {
+  const removed: string[] = [];
+  for (const name of names) {
+    if (!(await hasKeys(`bull:${name}:`))) continue;
+    const queue = new Queue(name, { connection: redis });
+    try {
+      await queue.obliterate({ force: true });
+    } finally {
+      await queue.close();
+    }
+    removed.push(name);
+  }
+  return removed;
+}
+
+async function hasKeys(prefix: string): Promise<boolean> {
+  let cursor = "0";
+  do {
+    const [next, keys] = await redis.scan(cursor, "MATCH", `${prefix}*`, "COUNT", 1000);
+    if (keys.length > 0) return true;
+    cursor = next;
+  } while (cursor !== "0");
+  return false;
+}
+
 /**
  * Removes a finished job with this ID, so adding the ID again creates a new job instead of
  * being ignored as a duplicate. Waiting, delayed and active jobs are left alone.

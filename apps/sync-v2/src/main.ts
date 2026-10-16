@@ -6,7 +6,7 @@ import { referenceResolver } from "@/config/pipeline";
 import { closeRedis, redis } from "@/config/redis";
 import { lastSigaeSuccessAt, sigae } from "@/config/sigae";
 import { type HealthServer, startHealthServer } from "@/lib/health";
-import { removeFinishedJob } from "@/lib/jobs";
+import { removeFinishedJob, removeLegacyQueues } from "@/lib/jobs";
 import logger from "@/lib/logger";
 import { observeIncidentPhases, observeQueues } from "@/lib/metrics";
 import { expectOk } from "@/lib/sigae";
@@ -88,6 +88,9 @@ async function main(): Promise<void> {
   stopObservingQueues = observeQueues(allQueues);
   stopObservingPhases = observeIncidentPhases(() => countIncidentsByPhase(db));
 
+  for (const queue of await removeLegacyQueues()) {
+    logger.info("removed legacy queue", { queue });
+  }
   // Before any worker runs, so a leftover scheduler can't start one more periodic job.
   await syncSchedulers();
   // A shutdown that started meanwhile has already closed the queues.

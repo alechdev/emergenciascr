@@ -13,7 +13,7 @@ Rewrite of [sync (v1)](../sync/) that heavily uses `neverthrow` for explicit, pr
 | Incident polls     | Per incident, on the lifecycle schedule (spec section 8.2) |
 | Reference data     | At boot, then every 12 hours                               |
 
-Reference data runs as one `reference` job, in order: provinces, cantons and districts; stations; vehicles; incident types; vehicle availability. Stations and vehicles fan out one job per item (`station-<id>`, `vehicle-<id>`) with limited concurrency, so outbound requests don't spike. A kind that fails doesn't stop the others, and a retry skips the kinds that already succeeded.
+Reference data runs as one `reference` job, in order: provinces, cantons and districts; stations; vehicles; incident types; vehicle availability. Stations and vehicles fan out one job per item (`station-<id>`, `vehicle-<id>`) with limited concurrency, so outbound requests don't spike. Each time a vehicle's details are stored (by its job or fetched on demand by a poll), the same transaction records its station and operational status in `vehicle_station_history`: the latest row's `lastSeenAt` moves while both stay the same, and a change starts a new row. `vehicles` only holds the current values. A kind that fails doesn't stop the others, and a retry skips the kinds that already succeeded.
 
 ## How it works
 

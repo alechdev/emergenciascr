@@ -2,7 +2,10 @@ import { config } from "dotenv";
 import { expand } from "dotenv-expand";
 import { z } from "zod";
 
-/** The URL is the only connection setting; `POSTGRES_*` variables, if set, aren't read. */
+/**
+ * `DRIZZLE_POSTGRES_URL` is the only setting validated here. `POSTGRES_*` variables are not
+ * required, but a `.env` may still build the URL from them through dotenv expansion.
+ */
 const EnvSchema = z.object({
   DRIZZLE_POSTGRES_URL: z.string().min(1)
 });

@@ -15,6 +15,7 @@
     "typecheck:web": "bun run --cwd apps/web typecheck",
     "format:check": "bun run --cwd apps/web format:check",
     "format": "bun run --cwd apps/web format",
+    "test:integration": "scripts/test-integration.sh",
     "prepare": "husky"
   },
   "devDependencies": {

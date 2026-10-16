@@ -16,7 +16,8 @@
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
-    "test:tz": "TZ=UTC vitest run && TZ=America/Costa_Rica vitest run"
+    "test:tz": "TZ=UTC vitest run && TZ=America/Costa_Rica vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@bomberoscr/db": "workspace:*",

@@ -22,6 +22,13 @@
       "when": 1792114385141,
       "tag": "20261016013305_remove-news",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792130482753,
+      "tag": "20261016060122_vehicles-internal-number-not-unique",
+      "breakpoints": true
     }
   ]
 }

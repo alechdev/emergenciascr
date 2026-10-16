@@ -39,7 +39,9 @@ export const stationsRelations = relations(stations, ({ many }) => ({
 
 export const vehicles = pgTable("vehicles", {
   id: integer().primaryKey(),
-  internalNumber: text().notNull().unique(),
+  // Not unique: SIGAE moves internal numbers between vehicles, and the stored row of the old
+  // holder keeps its number until the next reference sync (or forever, if it was retired).
+  internalNumber: text().notNull(),
   plate: text().notNull(),
   stationId: integer()
     .notNull()

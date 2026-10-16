@@ -1,0 +1,1 @@
+ALTER TABLE "vehicles" DROP CONSTRAINT "vehicles_internalNumber_unique";

@@ -138,6 +138,39 @@ describe("validateFixturePolls", () => {
     expect(() => validateFixturePolls([address])).toThrow(/Direccion is not synthetic/);
     expect(() => validateFixturePolls([address])).not.toThrow(/CALLE REAL/);
   });
+
+  it("accepts synthetic coordinates with their moves, and zero or null ones", () => {
+    const polls = buildFixturePolls(INCIDENT_ID, [
+      row("ObtenerDetalleEmergencias", 0, detailsBody({ latitud: 0, longitud: null })),
+      row("ObtenerDetalleEmergencias", 5, detailsBody({ latitud: 10.01, longitud: -84.2 })),
+      row("ObtenerDetalleEmergencias", 9, detailsBody({ latitud: 10.06, longitud: -84.21 }))
+    ]);
+    expect(() => validateFixturePolls(polls)).not.toThrow();
+  });
+
+  it("rejects real coordinates, naming no value", () => {
+    const withDetails = (details: Record<string, unknown>) =>
+      ({
+        ...poll!,
+        responses: {
+          ...poll!.responses,
+          ObtenerDetalleEmergencias: { body: { ...details, direccion: "DIRECCION DE PRUEBA 1" } }
+        }
+      }) as CapturedPoll;
+    const real = withDetails(detailsBody({ latitud: 10.0123, longitud: -84.0833 }));
+    const text = withDetails(detailsBody({ latitud: 9.9333, longitud: "-84.2" }));
+    // The first one is synthetic; the next is too far from it to be a masked move.
+    const far = [
+      withDetails(detailsBody({ latitud: 9.9333, longitud: -84.0833 })),
+      withDetails(detailsBody({ latitud: 9.9333, longitud: -85.1 }))
+    ];
+
+    expect(() => validateFixturePolls([real])).toThrow(/latitud is not synthetic/);
+    expect(() => validateFixturePolls([real])).not.toThrow(/10\.0123/);
+    expect(() => validateFixturePolls([text])).toThrow(/longitud is not synthetic/);
+    expect(() => validateFixturePolls(far)).toThrow(/longitud is not synthetic/);
+    expect(() => validateFixturePolls([far[0]!])).not.toThrow();
+  });
 });
 
 describe("createLocationMasker", () => {

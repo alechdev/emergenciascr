@@ -54,6 +54,12 @@ const COORDINATE_FIELDS: Readonly<Record<string, number>> = {
   latitud: SYNTHETIC_LATITUDE,
   longitud: SYNTHETIC_LONGITUDE
 };
+/**
+ * How far, in degrees, a masked coordinate may be from the synthetic point (about 55 km).
+ * The masker keeps each move's offset, so a capture whose incident moved further is refused
+ * and has to be reviewed by hand.
+ */
+const MAX_SYNTHETIC_OFFSET = 0.5;
 
 /** The connection string with every transaction read-only, so a capture can't write. */
 export function readOnlyConnection(url: string): string {
@@ -175,8 +181,14 @@ function inAllowlistOrder(value: JsonValue, allowlist: Allowlist): JsonValue {
   return ordered;
 }
 
-/** Throws if a body has a field outside the snapshot allowlists or an unmasked location. */
+/**
+ * Throws if a body has a field outside the snapshot allowlists or an unmasked location. A
+ * masked coordinate field starts exactly at the synthetic point (the masker anchors the
+ * first non-zero value there) and stays within {@link MAX_SYNTHETIC_OFFSET} of it; `null`
+ * and `0` are kept as they are.
+ */
 export function validateFixturePolls(polls: readonly CapturedPoll[]): void {
+  const anchored = new Set<string>();
   for (const poll of polls) {
     for (const endpoint of SIGAE_INCIDENT_ENDPOINTS) {
       const response = poll.responses[endpoint];
@@ -195,6 +207,17 @@ export function validateFixturePolls(polls: readonly CapturedPoll[]): void {
         ) {
           throw new Error(`${poll.fetchedAt} ${endpoint}: ${field} is not synthetic`);
         }
+      }
+      if (endpoint !== "ObtenerDetalleEmergencias") continue;
+      for (const [field, synthetic] of Object.entries(COORDINATE_FIELDS)) {
+        const value = body[field];
+        if (value === undefined || value === null || value === 0) continue;
+        const offset = typeof value === "number" ? Math.abs(value - synthetic) : Infinity;
+        const allowed = anchored.has(field) ? MAX_SYNTHETIC_OFFSET : 0;
+        if (!(offset <= allowed)) {
+          throw new Error(`${poll.fetchedAt} ${endpoint}: ${field} is not synthetic`);
+        }
+        anchored.add(field);
       }
     }
   }

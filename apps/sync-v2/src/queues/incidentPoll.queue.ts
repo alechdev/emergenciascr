@@ -34,15 +34,18 @@ export function createPollScheduler(
   return {
     async schedule(requests) {
       if (requests.length === 0) return 0;
-      // A finished job with the same ID would make the new one a silent duplicate.
-      await Promise.all(
+      // A finished job with the same ID would make the new one a silent duplicate, and
+      // `addBulk` returns pending ones as if it had added them.
+      const pending = await Promise.all(
         requests.map((request) =>
           removeFinishedJob(queue as Queue, incidentPollJobId(request.incidentId))
         )
       );
+      const missing = requests.filter((_, index) => !pending[index]);
+      if (missing.length === 0) return 0;
       const at = now();
       const jobs = await queue.addBulk(
-        requests.map((request) => ({
+        missing.map((request) => ({
           name: INCIDENT_POLL_JOB_NAME,
           data: { incidentId: request.incidentId },
           opts: {

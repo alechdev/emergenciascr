@@ -94,10 +94,16 @@ export function createWorker<Data, Result>(
 /**
  * Removes a finished job with this ID, so adding the ID again creates a new job instead of
  * being ignored as a duplicate. Waiting, delayed and active jobs are left alone.
+ *
+ * Returns whether a job with this ID is still pending.
  */
-export async function removeFinishedJob(queue: Queue, jobId: string): Promise<void> {
+export async function removeFinishedJob(queue: Queue, jobId: string): Promise<boolean> {
   const job = await queue.getJob(jobId);
-  if (!job) return;
+  if (!job) return false;
   const state = await job.getState();
-  if (state === "completed" || state === "failed") await job.remove();
+  if (state === "completed" || state === "failed") {
+    await job.remove();
+    return false;
+  }
+  return state !== "unknown";
 }

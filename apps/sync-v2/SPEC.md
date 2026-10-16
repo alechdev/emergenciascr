@@ -13,7 +13,6 @@ Status: approved, not implemented. Work happens on the `sync-v2` branch.
 
 ### Non-goals
 
-- News outlets / AI summaries (`src/services/news`). Not wired into `src/index.ts`; out of scope.
 - Redesigning the web UI. Web changes are limited to section 11.
 - Fixing or rebuilding v1.
 - Incident renumbering. v1's `getSimilarIncident` never worked reliably and is dropped.
@@ -437,7 +436,7 @@ Anomalies never change what gets stored. They exist to be counted, filtered and 
 ### 8.4 Incident gone upstream
 
 - A poll classified `not_found` increments `notFoundCount`. Any other result resets it.
-- At 2 consecutive not-found polls at least 3 minutes apart, in one transaction: delete dispatched units and stations, set `news_articles.incidentId` to `NULL`, delete the incident, set phase `deleted`, log `INCIDENT_DELETED_UPSTREAM`. Snapshots, changes and anomalies are kept.
+- At 2 consecutive not-found polls at least 3 minutes apart, in one transaction: delete dispatched units and stations, delete the incident, set phase `deleted`, log `INCIDENT_DELETED_UPSTREAM`. Snapshots, changes and anomalies are kept.
 - Only tracked incidents are polled, so historical incidents are never deleted because SIGAE archived them.
 
 ## 9. Reference data
@@ -511,7 +510,7 @@ Unit tests in `packages/sync-domain` (pure, no DB/Redis); integration tests in `
 - Dispatched but never arrived; time-order violation; dispatch before report time.
 - Valid time → placeholder: stored `NULL`, `VALUE_REGRESSED`.
 - Open → closed → reopened → closed; discovered already closed; `closedAt` source.
-- Not found once (kept), twice (deleted, news articles detached, history kept).
+- Not found once (kept), twice (deleted, history kept).
 - Lifecycle intervals and transitions, including the 72h settling window and the 30-day cap.
 - Redaction: no field outside the allowlists reaches a snapshot or fixture.
 - Telemetry: a fixture poll run with in-memory OTel exporters checks span names, metric attributes (no incident IDs) and that logs contain no SIGAE bodies, credentials or proxy URL.

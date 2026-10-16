@@ -15,6 +15,13 @@
       "when": 1792104032785,
       "tag": "20261015224032_section-5-data-model",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792114385141,
+      "tag": "20261016013305_remove-news",
+      "breakpoints": true
     }
   ]
 }

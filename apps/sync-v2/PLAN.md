@@ -117,7 +117,7 @@ The I/O-free core in `packages/sync-domain` (sections 4, 6, 7, 8), tested withou
 
 **Done when**
 
-- [x] Every required case in section 12 that the core owns has a passing test. The rest need later phases: news articles detached on deletion and the telemetry fixture poll (phase 6), the shutdown test (phase 6 integration tests; checked by hand in phase 3), the web timezone cases (phase 7) and the comparison tool (phase 9).
+- [x] Every required case in section 12 that the core owns has a passing test. The rest need later phases: the telemetry fixture poll (phase 6), the shutdown test (phase 6 integration tests; checked by hand in phase 3), the web timezone cases (phase 7) and the comparison tool (phase 9).
 - [x] Identical results under `TZ=UTC` and `TZ=America/Costa_Rica` (`bun run --cwd packages/sync-domain test:tz`).
 - [x] No module in the core imports the database, Redis, BullMQ or env (checked by `test/purity.test.ts`).
 

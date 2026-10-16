@@ -28,7 +28,6 @@
     "dotenv-expand": "^12.0.2",
     "ioredis": "^5.6.1",
     "neverthrow": "^8.2.0",
-    "rss-parser": "^3.13.0",
     "tsx": "^4.20.3",
     "winston": "^3.17.0",
     "zod": "^4.0.5"

@@ -21,6 +21,7 @@ import type { Telemetry } from "@/telemetry";
 import type { Queue, QueueEvents, Worker } from "bullmq";
 
 const WORKER_CLOSE_TIMEOUT_MS = 30_000;
+const EXIT_GRACE_MS = 1_000;
 const REFERENCE_BOOT_JOB_ID = "reference-boot";
 
 interface Scheduler {
@@ -74,6 +75,8 @@ async function main(): Promise<void> {
 
   // Before any worker runs, so a leftover scheduler can't start one more periodic job.
   await syncSchedulers();
+  // A shutdown that started meanwhile has already closed the queues.
+  if (shutdownController.signal.aborted) return;
 
   const reference = createReferenceWorker({ signal: shutdownController.signal });
   workers.push(
@@ -159,9 +162,11 @@ function shutdown(reason: string, exitCode: number): Promise<void> {
       exitCode = 1;
       logger.error("shutdown step failed", { step: "telemetry", error });
     }
-    // After the telemetry flush, so this line only reaches stdout.
+    // After the telemetry flush, so this line only reaches stdout. Exiting on its own lets
+    // the line drain; the timer only cuts off whatever still holds the event loop open.
     logger.info("sync-v2 stopped", { exitCode });
-    process.exit(exitCode);
+    process.exitCode = exitCode;
+    setTimeout(() => process.exit(exitCode), EXIT_GRACE_MS).unref();
   })();
   return shuttingDown;
 }

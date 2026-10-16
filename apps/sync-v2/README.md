@@ -17,7 +17,7 @@ Reference data runs as one `reference` job, in order: provinces, cantons and dis
 ## How it works
 
 - Discovery finds new incidents and adds one `open-incident-<id>` job per incident.
-- Each open-incident job updates the incident and moves itself back to delayed until the incident is considered closed, so an incident has at most one pending job. An incident is only closed right after a successful update, and is no longer polled after 10 consecutive failed updates.
+- Each open-incident job updates the incident and moves itself back to delayed until the incident is considered closed, so an incident has at most one pending job. An incident is only closed right after a successful update, and is no longer polled after 10 consecutive failed polls (a failed update or close check).
 - Every queue has an attempt limit. Failed attempts are logged as `warn`, the last one as `error`, with the full cause chain.
 
 ## Configuration

@@ -32,7 +32,7 @@ export function createOpenIncidentsWorker() {
       const failed = async (message: string, error: Error): Promise<OpenIncidentResult> => {
         const failedPolls = (job.data.failedPolls ?? 0) + 1;
         if (failedPolls >= MAX_FAILED_POLLS) {
-          log.error("incident no longer polled after failed updates", {
+          log.error("incident no longer polled after failed polls", {
             ...fields,
             failedPolls,
             error

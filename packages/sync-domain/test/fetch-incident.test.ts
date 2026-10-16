@@ -6,7 +6,6 @@ import {
   CAST_ERROR,
   INCIDENT_ID,
   NOT_FOUND,
-  listBody,
   pollResponses,
   reportBody,
   type PollInput
@@ -67,12 +66,15 @@ describe("fetchIncident", () => {
     expect(await fetchKind({ report: { body: reportBody(dbError) } })).toBe("failed");
   });
 
-  it("units or stations 03: empty lists", async () => {
-    const result = await fetchIncident(
-      fakeClient({ stations: notFoundList, units: { body: listBody([], NOT_FOUND) } }),
-      INCIDENT_ID
-    );
-    expect(result.isOk() && result.value.vehiclesDispatched).toEqual([]);
+  it("stations 03: an empty station list, keeping the units", async () => {
+    const result = await fetchIncident(fakeClient({ stations: notFoundList }), INCIDENT_ID);
     expect(result.isOk() && result.value.stationsAttending).toEqual([]);
+    expect(result.isOk() && result.value.vehiclesDispatched).toHaveLength(1);
+  });
+
+  it("units 03: an empty unit list, keeping the stations", async () => {
+    const result = await fetchIncident(fakeClient({ units: notFoundList }), INCIDENT_ID);
+    expect(result.isOk() && result.value.vehiclesDispatched).toEqual([]);
+    expect(result.isOk() && result.value.stationsAttending).toHaveLength(1);
   });
 });

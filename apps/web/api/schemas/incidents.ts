@@ -153,7 +153,8 @@ export const dispatchedVehicleSchema = z
       example: 3527
     }),
     internalNumber: z.string().openapi({
-      description: "The internal vehicle number.",
+      description:
+        "The internal vehicle number. For a vehicle SIGAE doesn't list, the number sent with the dispatch; `N/A` without one.",
       example: "M-46"
     }),
     plate: z.string().openapi({

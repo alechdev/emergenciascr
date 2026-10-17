@@ -47,7 +47,8 @@ describe("timeline closing event", () => {
         arrivalTime: arrivedAt,
         departureTime: null,
         station: { name: "ESTACION DE PRUEBA" },
-        vehicle: { internalNumber: "M-12" }
+        vehicle: { internalNumber: "M-12" },
+        vehicleInternalNumber: null
       }
     ]);
     expect(events.map((event) => event.title)).toEqual([

@@ -18,6 +18,7 @@ const neverDispatched = {
   departureTime: null,
   baseReturnTime: null,
   vehicle: { internalNumber: "M-48" },
+  vehicleInternalNumber: null,
   station
 };
 const onScene = {

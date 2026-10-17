@@ -1,3 +1,4 @@
+import { getDispatchedVehicleLabel } from "@api/lib/utils/incidents/formatters";
 import { isKnownDate } from "@bomberoscr/lib/missing-date";
 
 type TimelineEvent = {
@@ -21,6 +22,7 @@ function buildTimelineEvents(
     departureTime: Date | null;
     station: { name: string };
     vehicle: { internalNumber: string } | null;
+    vehicleInternalNumber: string | null;
   }>
 ): TimelineEvent[] {
   type Kind = "dispatch" | "arrival" | "departure";
@@ -50,7 +52,7 @@ function buildTimelineEvents(
   });
 
   for (const v of vehicles) {
-    const vehicleLabel = v.vehicle?.internalNumber || "N/A";
+    const vehicleLabel = getDispatchedVehicleLabel(v);
     const stationLabel = v.station.name;
 
     if (isKnownDate(v.dispatchedTime)) {

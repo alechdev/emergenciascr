@@ -476,7 +476,7 @@ export type GetIncidentByIdResponses = {
                  */
                 id: number;
                 /**
-                 * The internal vehicle number.
+                 * The internal vehicle number. For a vehicle SIGAE doesn't list, the number sent with the dispatch; `N/A` without one.
                  */
                 internalNumber: string;
                 /**

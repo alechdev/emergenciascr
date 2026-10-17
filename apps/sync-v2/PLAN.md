@@ -200,7 +200,7 @@ The rest of section 11, built and tested against a local migrated database.
 
 - [x] Closing event uses `closedAt ?? modifiedAt`.
 - [x] One shared "missing date" helper.
-- [ ] `vehicleInternalNumber` when the vehicle is unknown.
+- [x] `vehicleInternalNumber` when the vehicle is unknown.
 - [ ] "En camino" fix.
 - [ ] Costa Rica time everywhere: shared formatter, slugs, date filters, SQL buckets, current year.
 - [ ] Station vehicle list and annual recap count dispatches by `dispatched_vehicles.stationId`, not the vehicle's current station (section 11 item 7).
@@ -216,6 +216,7 @@ The rest of section 11, built and tested against a local migrated database.
 **Notes**
 
 - Closing event: `buildTimelineEvents` (`apps/web/api/lib/utils/incidents/timeline.ts`) dates "Incidente cerrado" at `closedAt`, else `modifiedAt` (incidents closed before `closedAt` existed, or a placeholder), still only for closed incidents. The incident API exposes `closedAt` and `closedAtSource` in the incident and list responses; the generated client (`src/lib/api/types.gen.ts`) is regenerated with `openapi-ts -i` from the API's `/api/doc`, dumped by importing the app in an empty directory with placeholder settings (no `.env`, no database connection).
+- Unknown vehicles: `getDispatchedVehicleLabel` (`apps/web/api/lib/utils/incidents/formatters.ts`) labels a dispatched unit with its vehicle's `internalNumber`, else the dispatch's `vehicleInternalNumber`, else `N/A`. The timeline, response times, station summary (incident page and markdown) and the incident API's dispatched vehicles use it, and the incident queries load `vehicleInternalNumber`. A known vehicle keeps its current number, as the spec says; the stored one only fills in for a `NULL` vehicle.
 - Missing dates: `isKnownDate` / `isMissingDate` (`packages/lib/src/missing-date.ts`, `@bomberoscr/lib/missing-date`), since both the API and the Start app's client components need it and `src/` components don't import `@api/*`. It replaced four checks: `isUndefinedDate` in the API formatters and in `src/lib/utils.ts` (local year `=== 1`), the response-time table's local year `=== 1970`, and the markdown page's local year `> 1970`. A time is missing when it is `null`, empty, unparsable, or its UTC year is 1970 or earlier (SIGAE's `0001-01-01` placeholder, which the legacy data still has, and the epoch). The year is read in UTC because in Costa Rica the placeholder's local year is 0, so the old `=== 1` checks missed it on a server or browser in Costa Rica time.
 
 ## Phase 8: Beta infrastructure

@@ -328,6 +328,7 @@ export async function getIncidentById({ id }: { id: number }) {
         columns: {
           id: true,
           stationId: true,
+          vehicleInternalNumber: true,
           dispatchedTime: true,
           arrivalTime: true,
           departureTime: true,
@@ -367,6 +368,7 @@ export async function getIncidentTimelineData({ id }: { id: number }) {
     with: {
       dispatchedVehicles: {
         columns: {
+          vehicleInternalNumber: true,
           dispatchedTime: true,
           arrivalTime: true,
           departureTime: true
@@ -399,6 +401,7 @@ export async function getIncidentResponseTimesData({ id }: { id: number }) {
       dispatchedVehicles: {
         columns: {
           id: true,
+          vehicleInternalNumber: true,
           dispatchedTime: true,
           arrivalTime: true,
           departureTime: true,

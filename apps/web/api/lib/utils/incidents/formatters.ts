@@ -55,6 +55,17 @@ function getIncidentTitle(
   return `${baseTitle} EN ${locationParts.join(", ")}`;
 }
 
+/**
+ * A dispatched unit's label: its vehicle's number, else the number SIGAE sent with a vehicle
+ * it doesn't know (stored with `vehicleId` `NULL`).
+ */
+function getDispatchedVehicleLabel(dispatched: {
+  vehicle: { internalNumber: string } | null;
+  vehicleInternalNumber: string | null;
+}): string {
+  return dispatched.vehicle?.internalNumber || dispatched.vehicleInternalNumber || "N/A";
+}
+
 function calculateTimeDiffInSeconds(end?: Date | null, start?: Date | null): number {
   if (!isKnownDate(end) || !isKnownDate(start)) {
     return 0;
@@ -65,6 +76,7 @@ function calculateTimeDiffInSeconds(end?: Date | null, start?: Date | null): num
 export {
   calculateTimeDiffInSeconds,
   formatIncidentTypes,
+  getDispatchedVehicleLabel,
   getIncidentTitle,
   getLocation,
   toIsoStringOrNull

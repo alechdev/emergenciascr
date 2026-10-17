@@ -1,4 +1,8 @@
-import { calculateTimeDiffInSeconds, toIsoStringOrNull } from "@api/lib/utils/incidents/formatters";
+import {
+  calculateTimeDiffInSeconds,
+  getDispatchedVehicleLabel,
+  toIsoStringOrNull
+} from "@api/lib/utils/incidents/formatters";
 import { isKnownDate } from "@bomberoscr/lib/missing-date";
 
 type IncidentResponseTimeVehicle = {
@@ -25,6 +29,7 @@ function buildIncidentResponseTimes(incident: {
     departureTime: Date | null;
     baseReturnTime: Date | null;
     vehicle: { internalNumber: string } | null;
+    vehicleInternalNumber: string | null;
     station: { name: string } | null;
   }>;
 }): IncidentResponseTimeVehicle[] {
@@ -50,7 +55,7 @@ function buildIncidentResponseTimes(incident: {
 
     return {
       id: vehicle.id,
-      vehicle: vehicle.vehicle?.internalNumber || "N/A",
+      vehicle: getDispatchedVehicleLabel(vehicle),
       station: vehicle.station?.name ?? "Estación desconocida",
       dispatchedTime: toIsoStringOrNull(vehicle.dispatchedTime),
       arrivalTime: toIsoStringOrNull(vehicle.arrivalTime),

@@ -7,7 +7,11 @@ import {
   resolveIncidentCoordinates,
   toCoordinateNumber
 } from "@api/lib/utils/incidents/coordinates";
-import { getIncidentTitle, toIsoStringOrNull } from "@api/lib/utils/incidents/formatters";
+import {
+  getDispatchedVehicleLabel,
+  getIncidentTitle,
+  toIsoStringOrNull
+} from "@api/lib/utils/incidents/formatters";
 import {
   buildImgproxyUrl,
   buildMapboxUrl,
@@ -87,6 +91,7 @@ function buildDispatchedStations(incident: {
     departureTime: Date | null;
     baseReturnTime: Date | null;
     vehicle: { internalNumber: string; plate: string; descriptionType: string } | null;
+    vehicleInternalNumber: string | null;
     station: { id: number; name: string; isOperative: boolean | null } | null;
   }>;
 }) {
@@ -153,7 +158,7 @@ function buildDispatchedStations(incident: {
     const vehicleInfo = vehicle.vehicle;
     stationMap.get(stationId)?.vehicles.push({
       id: vehicle.id,
-      internalNumber: vehicleInfo?.internalNumber ?? "N/A",
+      internalNumber: getDispatchedVehicleLabel(vehicle),
       plate: vehicleInfo?.plate ?? "N/A",
       type: vehicleInfo?.descriptionType ?? "N/A",
       dispatchedTime: toIsoStringOrNull(vehicle.dispatchedTime),

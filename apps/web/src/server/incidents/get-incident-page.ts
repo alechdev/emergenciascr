@@ -161,7 +161,8 @@ const getIncidentPage = createServerFn({ method: "GET" })
         arrivalTime: vehicle.arrivalTime,
         departureTime: vehicle.departureTime,
         station: { name: vehicle.station?.name ?? "Estación desconocida" },
-        vehicle: vehicle.vehicle
+        vehicle: vehicle.vehicle,
+        vehicleInternalNumber: vehicle.vehicleInternalNumber
       }))
     ).map((event) => ({
       id: event.id,

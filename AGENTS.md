@@ -19,7 +19,7 @@ Keep API feature logic close to its boundary (`api/` route + schema + DB query).
 - `bun run dev:web` / `bun run dev:sync`: run one process.
 - `bun run lint:check`: run lint checks for web.
 - `bun run format:check`: verify formatting for web.
-- `bun run --cwd apps/web test`: run web tests (Vitest).
+- `bun run --cwd apps/web test`: run web tests (Vitest); `test:tz` runs them under `TZ=UTC` and `TZ=America/Costa_Rica`.
 - `bun run --cwd apps/sync-v2 test`: run sync-v2 tests (Vitest).
 - `bun run --cwd packages/sigae test`: run SIGAE client tests (Vitest); `test:tz` runs them on Node and Bun under `TZ=UTC` and `TZ=America/Costa_Rica`.
 - `bun run --cwd packages/sync-domain test`: run the pure sync core and fixture tests (Vitest); `test:tz` runs them under `TZ=UTC` and `TZ=America/Costa_Rica`.

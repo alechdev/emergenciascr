@@ -11,6 +11,7 @@
     "start": "bun run --no-install server.ts",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:tz": "TZ=UTC vitest run && TZ=America/Costa_Rica vitest run",
     "format": "oxfmt --ignore-path ../../.prettierignore",
     "format:check": "oxfmt --check --ignore-path ../../.prettierignore",
     "lint": "oxlint --type-aware --tsconfig tsconfig.oxlint.json src api",

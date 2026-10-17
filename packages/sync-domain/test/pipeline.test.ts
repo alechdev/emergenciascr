@@ -3,7 +3,15 @@ import { describe, expect, it } from "vitest";
 import { describeError, redactQueryMessage } from "../src/pipeline/errors";
 import { newSyncState, snapshotInputs } from "../src/pipeline/sync-incident";
 import { payloadHash } from "../src/redact/redact";
-import { CAST_ERROR, INCIDENT_ID, NOT_FOUND, pollResponses, reportBody } from "./builders";
+import {
+  CAST_ERROR,
+  INCIDENT_ID,
+  NOT_FOUND,
+  listBody,
+  pollResponses,
+  reportBody,
+  station
+} from "./builders";
 
 describe("snapshotInputs", () => {
   it("redacts and hashes every endpoint that answered", () => {
@@ -33,6 +41,18 @@ describe("snapshotInputs", () => {
     const [first] = snapshotInputs(pollResponses());
     const [second] = snapshotInputs(pollResponses());
     expect(first?.payloadHash).toBe(second?.payloadHash);
+  });
+
+  it("hashes stations equally when only SIGAE's clock time without attention on foot differs", () => {
+    const stations = (time: string) =>
+      snapshotInputs(
+        pollResponses({ stations: { body: listBody([station({ HoraAtencionAPie: time })]) } })
+      ).find((input) => input.endpoint === "ObtenerEstacionesAtiendeIncidente");
+    const first = stations("2026-10-17T14:44:49");
+    expect(first?.payloadHash).toBe(stations("2026-10-17T14:47:52")?.payloadHash);
+    const items = first?.payload.Items as Record<string, unknown>[] | undefined;
+    expect(items?.[0]).toMatchObject({ AtencionAPie: false, IdEstacion: 2 });
+    expect(items?.[0]).not.toHaveProperty("HoraAtencionAPie");
   });
 });
 

@@ -116,6 +116,46 @@ describe.skipIf(!TEST_DATABASE_URL)("fixture replay through syncIncident", () =>
     expect(outcome.syncState.lastPolledAt).toEqual(harness.clock.now());
   });
 
+  it("stores one stations snapshot for polls differing only in SIGAE's clock time", async () => {
+    const harness = pipelineHarness(db);
+    const first = readSnapshot("units-added-removed", "001.json") as FixtureSnapshot;
+    const withClockTime = (time: string): FixtureSnapshot["responses"] => {
+      const stations = first.responses.ObtenerEstacionesAtiendeIncidente as {
+        body: { Items: Record<string, unknown>[] };
+      };
+      const items = stations.body.Items.map(
+        (item): Record<string, unknown> => ({ ...item, HoraAtencionAPie: time })
+      );
+      expect(items.every((item) => item.AtencionAPie === false)).toBe(true);
+      return {
+        ...first.responses,
+        ObtenerEstacionesAtiendeIncidente: { body: { ...stations.body, Items: items } }
+      };
+    };
+
+    const polls = [
+      ["2026-10-11T02:27:00.000Z", "2026-10-10T20:27:02"],
+      ["2026-10-11T02:30:00.000Z", "2026-10-10T20:30:03"]
+    ] as const;
+    const inserted: string[][] = [];
+    for (const [fetchedAt, clockTime] of polls) {
+      harness.clock.set(fetchedAt);
+      harness.sigae.answers = fixtureAnswers({ ...first, responses: withClockTime(clockTime) });
+      const outcome = await syncIncident(harness.deps, first.incidentId);
+      expect(outcome.kind).toBe("ok");
+      inserted.push(outcome.snapshots?.inserted ?? []);
+    }
+
+    expect(inserted[0]).toContain("ObtenerEstacionesAtiendeIncidente");
+    expect(inserted[1]).toEqual([]);
+    const history = await loadHistory(db, first.incidentId);
+    const stations = history.snapshots.filter(
+      (row) => row.endpoint === "ObtenerEstacionesAtiendeIncidente"
+    );
+    expect(stations).toHaveLength(1);
+    expect(JSON.stringify(stations[0]?.payload)).not.toContain("HoraAtencionAPie");
+  });
+
   it("stores incident, units and stations rows as the final state says", async () => {
     const harness = pipelineHarness(db);
     const outcome = await replayScenario(db, harness, "units-added-removed");

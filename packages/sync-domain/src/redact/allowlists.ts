@@ -1,11 +1,20 @@
 import type { SigaeIncidentEndpoint } from "../types";
 
-/** `true` keeps a scalar value; `{ each }` keeps an array, filtering every item. */
-export type FieldRule = true | { each: Allowlist };
+export type Scalar = string | number | boolean | null;
+
+/**
+ * `true` keeps a scalar value; `{ when }` keeps a scalar only while another field of the same
+ * object, as received, equals the given value; `{ each }` keeps an array, filtering every item.
+ */
+export type FieldRule = true | { when: { field: string; equals: Scalar } } | { each: Allowlist };
 export type Allowlist = Readonly<Record<string, FieldRule>>;
 
 function fields(...names: string[]): Record<string, true> {
   return Object.fromEntries(names.map((name) => [name, true]));
+}
+
+function keptWhen(field: string, equals: Scalar): FieldRule {
+  return { when: { field, equals } };
 }
 
 /** SIGAE sends lists as `Items` or `items`; snapshots keep the key as received. */
@@ -82,20 +91,13 @@ export const SNAPSHOT_ALLOWLISTS: Readonly<Record<SigaeIncidentEndpoint, Allowli
   },
   ObtenerEstacionesAtiendeIncidente: {
     ...fields("Codigo", "Descripcion"),
-    ...list(
-      fields(
-        "Codigo",
-        "Descripcion",
-        "AtencionAPie",
-        "ClaveEstacion",
-        "DestipoServicio",
-        "HoraAtencionAPie",
-        "IdBoletaEstacionAtiende",
-        "IdEstacion",
-        "IdTipoServicio",
-        "NombreEstacion"
-      )
-    )
+    ...list({
+      ...fields("Codigo", "Descripcion", "AtencionAPie", "ClaveEstacion", "DestipoServicio"),
+      // Without attention on foot SIGAE sends its current clock time here, which would make
+      // every poll store a new snapshot.
+      HoraAtencionAPie: keptWhen("AtencionAPie", true),
+      ...fields("IdBoletaEstacionAtiende", "IdEstacion", "IdTipoServicio", "NombreEstacion")
+    })
   },
   ObtenerUnidadesDespachadasIncidente: {
     ...fields("Codigo", "Descripcion"),

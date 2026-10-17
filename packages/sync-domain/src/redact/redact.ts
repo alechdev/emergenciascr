@@ -9,7 +9,8 @@ export type RedactedPayload = { [key: string]: JsonValue };
 /**
  * Keeps only the allowlisted keys of a raw SIGAE response. Allowlisted scalars must be JSON
  * scalars and allowlisted lists must be arrays (or `null`); anything else is dropped, so a
- * field changing shape can't smuggle unlisted data into a snapshot.
+ * field changing shape can't smuggle unlisted data into a snapshot. A conditional scalar is
+ * dropped unless its condition holds.
  */
 export function redactSnapshot(endpoint: SigaeIncidentEndpoint, raw: unknown): RedactedPayload {
   return isRecord(raw) ? redactObject(raw, SNAPSHOT_ALLOWLISTS[endpoint]) : {};
@@ -22,6 +23,10 @@ function redactObject(value: Record<string, unknown>, allowlist: Allowlist): Red
     if (rule === undefined) continue;
     if (rule === true) {
       if (isScalar(field)) redacted[key] = field;
+      continue;
+    }
+    if ("when" in rule) {
+      if (value[rule.when.field] === rule.when.equals && isScalar(field)) redacted[key] = field;
       continue;
     }
     if (field === null) {

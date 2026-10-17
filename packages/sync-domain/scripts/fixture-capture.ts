@@ -174,7 +174,7 @@ function inAllowlistOrder(value: JsonValue, allowlist: Allowlist): JsonValue {
     if (!Object.hasOwn(value, key)) continue;
     const field = value[key] as JsonValue;
     ordered[key] =
-      rule !== true && Array.isArray(field)
+      typeof rule === "object" && "each" in rule && Array.isArray(field)
         ? field.map((item) => inAllowlistOrder(item, rule.each))
         : field;
   }

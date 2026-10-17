@@ -19,7 +19,9 @@ function row(endpoint: SnapshotRow["endpoint"], minutes: number, payload: unknow
 describe("buildFixturePolls", () => {
   it("makes one poll per snapshot time, carrying each endpoint's latest answer", () => {
     const report = reportBody();
-    const stations = listBody([station()]);
+    const stations = listBody([
+      station({ AtencionAPie: true, HoraAtencionAPie: "2026-10-10T20:26:50" })
+    ]);
     const firstUnits = listBody([unit()]);
     const laterUnits = listBody([unit(), unit({ IdBoletaUnidadDespachada: 2, CodigoUnidad: 152 })]);
     const polls = buildFixturePolls(INCIDENT_ID, [
@@ -58,6 +60,27 @@ describe("buildFixturePolls", () => {
     expect(body).not.toHaveProperty("Nombre_Reporta");
     expect(body).not.toHaveProperty("Cedula");
     expect(body.Consecutivo).toBe("51234-2026");
+  });
+
+  it("drops HoraAtencionAPie from older snapshots of items without attention on foot", () => {
+    const [poll] = buildFixturePolls(INCIDENT_ID, [
+      row(
+        "ObtenerEstacionesAtiendeIncidente",
+        0,
+        listBody([
+          station({ HoraAtencionAPie: "2026-10-10T20:27:02" }),
+          station({ AtencionAPie: true, HoraAtencionAPie: "2026-10-10T20:26:50" })
+        ])
+      )
+    ]);
+    const response = poll!.responses.ObtenerEstacionesAtiendeIncidente as {
+      body: { Items: Record<string, unknown>[] };
+    };
+    expect(response.body.Items.map((item) => item.HoraAtencionAPie)).toEqual([
+      undefined,
+      "2026-10-10T20:26:50"
+    ]);
+    expect(Object.keys(response.body.Items[1]!)).toEqual(Object.keys(station()));
   });
 
   it("replaces locations, keeping changes, moves and empty values", () => {

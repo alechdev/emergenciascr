@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { SNAPSHOT_ALLOWLISTS, payloadHash, redactSnapshot } from "../src/redact/index";
-import { detailsBody, listBody, reportBody, station, unit } from "./builders";
+import { PLACEHOLDER, detailsBody, listBody, reportBody, station, unit } from "./builders";
 import { FIXTURES_DIR, listScenarios, readSnapshot, snapshotFiles } from "./fixture-runner";
 
 import type { Allowlist } from "../src/redact/allowlists";
@@ -35,7 +35,7 @@ function unlistedKeys(value: unknown, allowlist: Allowlist, path = ""): string[]
     const rule = Object.hasOwn(allowlist, key) ? allowlist[key] : undefined;
     const here = `${path}${key}`;
     if (rule === undefined) return [here];
-    if (rule === true) {
+    if (rule === true || "when" in rule) {
       return typeof field === "object" && field !== null ? [`${here} (not a scalar)`] : [];
     }
     if (field === null) return [];
@@ -111,6 +111,52 @@ describe("redactSnapshot (spec 5.2)", () => {
     expect(payloadHash(reversed)).toBe(payloadHash(a));
     expect(payloadHash(a)).toMatch(/^[0-9a-f]{64}$/);
     expect(payloadHash({ ...a, Estado_Abierto: "false" })).not.toBe(payloadHash(a));
+  });
+});
+
+describe("HoraAtencionAPie in ObtenerEstacionesAtiendeIncidente", () => {
+  const redactStations = (...items: Record<string, unknown>[]) =>
+    redactSnapshot("ObtenerEstacionesAtiendeIncidente", listBody(items)).Items as Record<
+      string,
+      unknown
+    >[];
+
+  it("is dropped without attention on foot, where SIGAE sends its current time", () => {
+    const [item] = redactStations(
+      station({ AtencionAPie: false, HoraAtencionAPie: "2026-10-17T14:44:49" })
+    );
+    expect(item).not.toHaveProperty("HoraAtencionAPie");
+    expect(item).toMatchObject({ AtencionAPie: false, IdBoletaEstacionAtiende: 3400101 });
+  });
+
+  it("is dropped with the placeholder, a missing flag or a flag that isn't true", () => {
+    const items = redactStations(
+      station({ AtencionAPie: false, HoraAtencionAPie: PLACEHOLDER }),
+      station({ AtencionAPie: undefined, HoraAtencionAPie: "2026-10-17T14:44:49" }),
+      station({ AtencionAPie: "true", HoraAtencionAPie: "2026-10-17T14:44:49" })
+    );
+    for (const item of items) expect(item).not.toHaveProperty("HoraAtencionAPie");
+  });
+
+  it("is kept with attention on foot, in the item's key order", () => {
+    const [item] = redactStations(
+      station({ AtencionAPie: true, HoraAtencionAPie: "2026-10-10T20:26:50" })
+    );
+    expect(item).toMatchObject({ AtencionAPie: true, HoraAtencionAPie: "2026-10-10T20:26:50" });
+    expect(Object.keys(item ?? {})).toEqual(Object.keys(station()));
+  });
+
+  it("doesn't change the hash of polls that differ only in it without attention on foot", () => {
+    const hash = (time: string, onFoot = false) =>
+      payloadHash(
+        redactSnapshot(
+          "ObtenerEstacionesAtiendeIncidente",
+          listBody([station({ AtencionAPie: onFoot, HoraAtencionAPie: time })])
+        )
+      );
+    expect(hash("2026-10-17T14:44:49")).toBe(hash("2026-10-17T14:47:52"));
+    expect(hash("2026-10-17T14:44:49")).toBe(hash(PLACEHOLDER));
+    expect(hash("2026-10-17T14:44:49", true)).not.toBe(hash("2026-10-17T14:47:52", true));
   });
 });
 

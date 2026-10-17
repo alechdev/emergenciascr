@@ -6,8 +6,11 @@ import {
   stations,
   vehicles
 } from "@bomberoscr/db/schema";
+import { startOfCostaRicaDay } from "@bomberoscr/lib/costa-rica-time";
 import { DEFAULT_TIME_RANGE } from "@bomberoscr/lib/time-range";
 import { and, asc, between, count, desc, eq, gte, ilike, lte, ne, or, sql } from "drizzle-orm";
+
+import { costaRicaDayKey } from "./costa-rica-time";
 
 import type { SQL } from "drizzle-orm";
 
@@ -187,19 +190,25 @@ export async function getStationByName({ name }: { name: string }) {
   );
 }
 
-export async function getStationIncidentsPerDay({
-  stationId,
-  days = 365
-}: {
-  stationId: number;
-  days?: number;
-}) {
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - days);
+/** Incidents per Costa Rica day, from Costa Rica midnight `days` days before today. */
+export async function getStationIncidentsPerDay(
+  {
+    stationId,
+    days = 365,
+    now = new Date()
+  }: {
+    stationId: number;
+    days?: number;
+    now?: Date;
+  },
+  database: Database = db
+) {
+  const cutoffDate = startOfCostaRicaDay(now, -days);
+  const incidentDay = costaRicaDayKey(incidents.incidentTimestamp);
 
-  return await db
+  return await database
     .select({
-      date: sql<string>`date_trunc('day', ${incidents.incidentTimestamp} - interval '6 hours')::date::text`,
+      date: incidentDay,
       count: sql<number>`count(*)::int`
     })
     .from(dispatchedStations)
@@ -207,7 +216,8 @@ export async function getStationIncidentsPerDay({
     .where(
       and(eq(dispatchedStations.stationId, stationId), gte(incidents.incidentTimestamp, cutoffDate))
     )
-    .groupBy(sql`date_trunc('day', ${incidents.incidentTimestamp} - interval '6 hours')`);
+    .groupBy(incidentDay)
+    .orderBy(incidentDay);
 }
 
 export async function getStationHighlightedIncidents({

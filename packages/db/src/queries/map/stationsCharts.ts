@@ -1,22 +1,20 @@
 import { db } from "@bomberoscr/db/index";
 import { dispatchedStations, incidentTypes, incidents, stations } from "@bomberoscr/db/schema";
+import { getCostaRicaDateKey, startOfCostaRicaDay } from "@bomberoscr/lib/costa-rica-time";
 import { and, between, eq, inArray, isNull, not, sql } from "drizzle-orm";
 
+import { costaRicaDayKey, costaRicaHourOfDay } from "../costa-rica-time";
+
+/** Every Costa Rica day from `startDate` to `endDate`, each starting at Costa Rica midnight. */
 function fillMissingDates(data: { day: string; count: number }[], startDate: Date, endDate: Date) {
   const filledData: { day: Date; count: number }[] = [];
-  const current = new Date(startDate);
+  const existingDates = new Map(data.map((item) => [item.day, Number(item.count)]));
+  const lastKey = getCostaRicaDateKey(endDate);
 
-  const existingDates = new Map(
-    data.map((item) => [new Date(item.day).toISOString().split("T")[0], item.count])
-  );
-
-  while (current <= endDate) {
-    const dateKey = current.toISOString().split("T")[0];
-    filledData.push({
-      day: new Date(current),
-      count: existingDates.get(dateKey) || 0
-    });
-    current.setDate(current.getDate() + 1);
+  for (let day = startOfCostaRicaDay(startDate); ; day = startOfCostaRicaDay(day, 1)) {
+    const dateKey = getCostaRicaDateKey(day);
+    if (dateKey > lastKey) break;
+    filledData.push({ day, count: existingDates.get(dateKey) || 0 });
   }
 
   return filledData;
@@ -25,8 +23,8 @@ function fillMissingDates(data: { day: string; count: number }[], startDate: Dat
 export async function getStationStats(key: string) {
   const now = new Date();
   const [weekIncidents, monthIncidents] = await Promise.all([
-    getStationIncidentsGroupedByDayUTCMinus6(key),
-    getStationIncidentsGroupedByDayUTCMinus6_30Days(key)
+    getStationIncidentsGroupedByCostaRicaDay(key),
+    getStationIncidentsGroupedByCostaRicaDay30Days(key)
   ]);
 
   const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -38,7 +36,7 @@ export async function getStationStats(key: string) {
   };
 }
 
-export async function getStationIncidentsGroupedByDayUTCMinus6(stationKey: string) {
+export async function getStationIncidentsGroupedByCostaRicaDay(stationKey: string) {
   const station = await db.query.stations.findFirst({
     where: eq(stations.stationKey, stationKey),
     columns: { id: true }
@@ -50,7 +48,7 @@ export async function getStationIncidentsGroupedByDayUTCMinus6(stationKey: strin
 
   const result = await db
     .select({
-      day: sql`DATE(${incidents.incidentTimestamp} - interval '6 hour')`,
+      day: costaRicaDayKey(incidents.incidentTimestamp),
       count: sql<number>`COUNT(*)`
     })
     .from(dispatchedStations)
@@ -61,13 +59,13 @@ export async function getStationIncidentsGroupedByDayUTCMinus6(stationKey: strin
         between(incidents.incidentTimestamp, last7Start, now)
       )
     )
-    .groupBy(sql`DATE(${incidents.incidentTimestamp} - interval '6 hour')`)
-    .orderBy(sql`DATE(${incidents.incidentTimestamp} - interval '6 hour')`);
+    .groupBy(costaRicaDayKey(incidents.incidentTimestamp))
+    .orderBy(costaRicaDayKey(incidents.incidentTimestamp));
 
   return result;
 }
 
-export async function getStationIncidentsGroupedByDayUTCMinus6_30Days(stationKey: string) {
+export async function getStationIncidentsGroupedByCostaRicaDay30Days(stationKey: string) {
   const station = await db.query.stations.findFirst({
     where: eq(stations.stationKey, stationKey),
     columns: { id: true }
@@ -79,7 +77,7 @@ export async function getStationIncidentsGroupedByDayUTCMinus6_30Days(stationKey
 
   const result = await db
     .select({
-      day: sql`DATE(${incidents.incidentTimestamp} - interval '6 hour')`,
+      day: costaRicaDayKey(incidents.incidentTimestamp),
       count: sql<number>`COUNT(*)`
     })
     .from(dispatchedStations)
@@ -90,8 +88,8 @@ export async function getStationIncidentsGroupedByDayUTCMinus6_30Days(stationKey
         between(incidents.incidentTimestamp, last30Start, now)
       )
     )
-    .groupBy(sql`DATE(${incidents.incidentTimestamp} - interval '6 hour')`)
-    .orderBy(sql`DATE(${incidents.incidentTimestamp} - interval '6 hour')`);
+    .groupBy(costaRicaDayKey(incidents.incidentTimestamp))
+    .orderBy(costaRicaDayKey(incidents.incidentTimestamp));
 
   return result;
 }
@@ -108,7 +106,7 @@ export async function getStationIncidentsByHour(stationKey: string) {
 
   const result = await db
     .select({
-      hour: sql`EXTRACT(HOUR FROM ${incidents.incidentTimestamp} - interval '6 hour')`,
+      hour: costaRicaHourOfDay(incidents.incidentTimestamp),
       count: sql<number>`COUNT(*)`
     })
     .from(dispatchedStations)
@@ -119,8 +117,8 @@ export async function getStationIncidentsByHour(stationKey: string) {
         between(incidents.incidentTimestamp, last30Start, now)
       )
     )
-    .groupBy(sql`EXTRACT(HOUR FROM ${incidents.incidentTimestamp} - interval '6 hour')`)
-    .orderBy(sql`EXTRACT(HOUR FROM ${incidents.incidentTimestamp} - interval '6 hour')`);
+    .groupBy(costaRicaHourOfDay(incidents.incidentTimestamp))
+    .orderBy(costaRicaHourOfDay(incidents.incidentTimestamp));
 
   const hourlyData: { hour: number; count: number }[] = [];
   for (let i = 0; i < 24; i++) {

@@ -93,11 +93,35 @@ describe("processPoll", () => {
 
   it("unknown incident types: NULL, anomaly, and a types sync request", () => {
     const result = run({
-      details: { body: detailsBody({ codigo_tipo_incidente_despacho: "7.7." }) }
+      details: {
+        body: detailsBody({ codigo_tipo_incidente_despacho: "7.7.", tipo_incidente_despacho: "" })
+      }
     });
     expect(result.next?.incident.dispatchIncidentCode).toBeNull();
     expect(result.unknownIncidentTypes).toEqual(["7.7"]);
+    expect(result.newIncidentTypes).toEqual([]);
     expect(result.anomalies.map((anomaly) => anomaly.code)).toEqual(["UNKNOWN_INCIDENT_TYPE"]);
+  });
+
+  it("unknown incident types with a name: types to create before the incident", () => {
+    const result = run({
+      details: {
+        body: detailsBody({
+          codigo_tipo_incidente_despacho: "10",
+          tipo_incidente_despacho: "SERVICIOS ESPECIALES",
+          codigo_tipo_incidente_despacho_esp: "10.3.",
+          tipo_incidente_despacho_esp: "INTER-INSTITUCIONAL"
+        })
+      }
+    });
+    expect(result.next?.incident).toMatchObject({
+      dispatchIncidentCode: "10",
+      specificDispatchIncidentCode: "10.3"
+    });
+    expect(result.newIncidentTypes).toEqual([
+      { code: "10", name: "SERVICIOS ESPECIALES" },
+      { code: "10.3", name: "INTER-INSTITUCIONAL" }
+    ]);
   });
 
   it("a partial report for a new incident stores what it has", () => {

@@ -10,6 +10,8 @@ export {
 export { insertAnomalies, persistPollResult, writePollResult, type PollWrite } from "./poll-result";
 export {
   findKnownReferences,
+  insertInferredIncidentTypes,
+  isInferredIncidentType,
   upsertIncidentTypes,
   upsertListedStation,
   upsertStationDetails,

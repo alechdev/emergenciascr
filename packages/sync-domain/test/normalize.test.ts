@@ -166,29 +166,40 @@ describe("normalizeIncident (spec 6.3)", () => {
     expect(normalizeIncidentTypeCode(null)).toBeNull();
   });
 
-  it("unknown incident type codes become NULL with an anomaly", () => {
+  it("unknown incident type codes without a name or known ancestor become NULL", () => {
     const { incident } = normalize({
       details: {
         body: detailsBody({ codigo_tipo_incidente: "9.9.", codigo_tipo_incidente_esp: "9.9" })
       }
     });
-    const resolved = resolveIncidentTypes(incident, KNOWN_INCIDENT_TYPES);
+    const resolved = resolveIncidentTypes(incident, { known: KNOWN_INCIDENT_TYPES });
     expect(resolved.incident.incidentCode).toBeNull();
     expect(resolved.incident.specificIncidentCode).toBeNull();
     expect(resolved.incident.dispatchIncidentCode).toBe("2.1");
     expect(resolved.unknownCodes).toEqual(["9.9"]);
+    expect(resolved.created).toEqual([]);
     expect(resolved.anomalies).toEqual([
       {
         code: "UNKNOWN_INCIDENT_TYPE",
         entity: "incident",
         entityId: INCIDENT_ID,
-        details: { field: "incidentCode", incidentCode: "9.9" }
+        details: {
+          field: "incidentCode",
+          incidentCode: "9.9",
+          storedCode: null,
+          resolution: "none"
+        }
       },
       {
         code: "UNKNOWN_INCIDENT_TYPE",
         entity: "incident",
         entityId: INCIDENT_ID,
-        details: { field: "specificIncidentCode", incidentCode: "9.9" }
+        details: {
+          field: "specificIncidentCode",
+          incidentCode: "9.9",
+          storedCode: null,
+          resolution: "none"
+        }
       }
     ]);
   });

@@ -14,7 +14,16 @@ export {
   normalizeIncidentTypeCode,
   type NormalizedIncident
 } from "./incident";
-export { resolveIncidentTypes, type ResolvedIncidentTypes } from "./incident-types";
+export {
+  incidentTypeAncestors,
+  incidentTypeNames,
+  nearestIncidentTypeAncestor,
+  resolveIncidentTypes,
+  type IncidentTypeResolution,
+  type KnownIncidentTypes,
+  type NewIncidentType,
+  type ResolvedIncidentTypes
+} from "./incident-types";
 export { normalizeDispatchedStations, responsibleStation } from "./stations";
 export { ON_FOOT_UNIT, normalizeDispatchedVehicles } from "./units";
 

@@ -241,12 +241,18 @@ export function placeholderAnomalies(issues: readonly PlaceholderIssue[]): Anoma
   }));
 }
 
-/** Identifies a condition anomaly across polls. */
+/**
+ * Identifies a condition anomaly across polls. An unknown incident type is keyed by its code
+ * too, so a reclassification to another unknown code is recorded again.
+ */
 export function anomalyKey(anomaly: Pick<Anomaly, "code" | "entity" | "entityId" | "details">) {
-  const { field, earlierField, laterField } = anomaly.details;
+  const { field, earlierField, laterField, incidentCode } = anomaly.details;
   let subject = typeof field === "string" ? field : "";
   if (typeof earlierField === "string" && typeof laterField === "string") {
     subject = `${earlierField}>${laterField}`;
+  }
+  if (anomaly.code === "UNKNOWN_INCIDENT_TYPE" && typeof incidentCode === "string") {
+    subject = `${subject}=${incidentCode}`;
   }
   return [anomaly.code, anomaly.entity, anomaly.entityId ?? "", subject].join(":");
 }

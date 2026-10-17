@@ -1,7 +1,11 @@
 import { resolveClosedAt } from "../lifecycle/closed-at";
 import { nextPoll } from "../lifecycle/next-poll";
 import { keepReportValues } from "../normalize/incident";
-import { resolveIncidentTypes } from "../normalize/incident-types";
+import {
+  type NewIncidentType,
+  incidentTypeNames,
+  resolveIncidentTypes
+} from "../normalize/incident-types";
 import { normalizePoll } from "../normalize/index";
 import { dedupeAnomalies, detectAnomalies, placeholderAnomalies } from "../reconcile/anomalies";
 import { diffIncidentState, removalChanges } from "../reconcile/diff";
@@ -17,8 +21,10 @@ export interface ProcessPollInput {
   /** What the database holds for the incident, or `null` when it isn't stored. */
   current: IncidentState | null;
   syncState: SyncState;
-  /** Codes in `incident_types`. */
+  /** Codes in `incident_types`, with the ancestors of the codes the poll uses. */
   knownIncidentTypes: ReadonlySet<string>;
+  /** Known codes whose types were created from incident data, not SIGAE's type list. */
+  inferredIncidentTypes?: ReadonlySet<string>;
   /**
    * Stations, vehicles and geography the database has, after the on-demand fetch. Omitted:
    * every reference counts as known (fixtures).
@@ -41,6 +47,8 @@ export interface ProcessPollResult {
   syncState: SyncState;
   /** Incident type codes SIGAE used that `incident_types` doesn't have yet. */
   unknownIncidentTypes: string[];
+  /** Incident types to create, parents first, before `next` is stored. */
+  newIncidentTypes: NewIncidentType[];
 }
 
 /**
@@ -81,7 +89,8 @@ export function processPoll(input: ProcessPollInput): ProcessPollResult {
       changes: current ? removalChanges(current) : [],
       anomalies: decision.anomalies,
       syncState: decision.state,
-      unknownIncidentTypes: []
+      unknownIncidentTypes: [],
+      newIncidentTypes: []
     };
   }
 
@@ -90,7 +99,11 @@ export function processPoll(input: ProcessPollInput): ProcessPollResult {
     classification.kind === "partial"
       ? keepReportValues(current?.incident ?? null, normalized.incident)
       : normalized.incident;
-  const types = resolveIncidentTypes(reported, input.knownIncidentTypes);
+  const types = resolveIncidentTypes(reported, {
+    known: input.knownIncidentTypes,
+    inferred: input.inferredIncidentTypes,
+    names: incidentTypeNames(classification.data.details)
+  });
   const units = applyEmptyUnitsRule(
     current?.vehicles ?? [],
     normalized.vehicles,
@@ -164,7 +177,8 @@ export function processPoll(input: ProcessPollInput): ProcessPollResult {
     changes: diffIncidentState(current, next),
     anomalies,
     syncState: { ...decision.state, emptyUnitsCount: units.emptyUnitsCount },
-    unknownIncidentTypes: types.unknownCodes
+    unknownIncidentTypes: types.unknownCodes,
+    newIncidentTypes: types.created
   };
 }
 
@@ -177,6 +191,7 @@ function idle(kind: PollKind, syncState: SyncState, anomalies: Anomaly[]): Proce
     changes: [],
     anomalies,
     syncState: { ...syncState, emptyUnitsCount: 0 },
-    unknownIncidentTypes: []
+    unknownIncidentTypes: [],
+    newIncidentTypes: []
   };
 }

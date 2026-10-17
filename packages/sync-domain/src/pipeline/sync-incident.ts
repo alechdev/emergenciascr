@@ -201,6 +201,7 @@ export async function syncIncident(
           current,
           syncState: latest ?? previous,
           knownIncidentTypes: known.incidentTypes,
+          inferredIncidentTypes: known.inferredIncidentTypes,
           knownReferences: known,
           recordedAnomalies: new Set(recorded.map(anomalyKey)),
           now: polledAt
@@ -212,6 +213,7 @@ export async function syncIncident(
         await writePollResult(tx, {
           incidentId,
           next: result.next,
+          incidentTypes: result.newIncidentTypes,
           deleteIncident: result.deleteIncident,
           changes: result.changes,
           anomalies: result.anomalies,

@@ -9,7 +9,9 @@ import {
 import { conflictUpdateSetColumns } from "@bomberoscr/db/utils";
 
 import { saveSyncState } from "./incident-state";
+import { insertInferredIncidentTypes } from "./references";
 
+import type { NewIncidentType } from "../normalize/incident-types";
 import type { Anomaly, Change, IncidentState, SyncState } from "../types";
 import type { Executor } from "./executor";
 import type { Database, Transaction } from "@bomberoscr/db/client";
@@ -18,6 +20,8 @@ export interface PollWrite {
   incidentId: number;
   /** The state to store; `null` when the poll stores no incident data. */
   next: IncidentState | null;
+  /** Incident types `next` uses that SIGAE's list lacks, created first (parents first). */
+  incidentTypes?: readonly NewIncidentType[];
   /** Delete the incident and everything under it (spec section 8.4). */
   deleteIncident: boolean;
   /** Incident data is only written, and `modifiedAt` bumped, when this is non-empty. */
@@ -69,8 +73,9 @@ const VEHICLE_COLUMNS = [
 const STATION_COLUMNS = ["incidentId", "stationId", "serviceTypeId", "attentionOnFoot"] as const;
 
 /**
- * Everything one poll writes, in one transaction: the incident with its dispatched units and
- * stations (or their deletion), changes, anomalies and the sync state. Snapshots are stored
+ * Everything one poll writes, in one transaction: the incident types it creates, the incident
+ * with its dispatched units and stations (or their deletion), changes, anomalies and the sync
+ * state. Snapshots are stored
  * before, on their own, so they survive a poll that fails later.
  */
 export async function persistPollResult(db: Database, write: PollWrite): Promise<void> {
@@ -81,8 +86,9 @@ export async function persistPollResult(db: Database, write: PollWrite): Promise
 export async function writePollResult(tx: Transaction, write: PollWrite): Promise<void> {
   if (write.deleteIncident) {
     await deleteIncident(tx, write.incidentId);
-  } else if (write.next && write.changes.length > 0) {
-    await writeIncidentState(tx, write.next, write.now);
+  } else if (write.next) {
+    await insertInferredIncidentTypes(tx, write.incidentTypes ?? []);
+    if (write.changes.length > 0) await writeIncidentState(tx, write.next, write.now);
   }
 
   if (write.changes.length > 0) {

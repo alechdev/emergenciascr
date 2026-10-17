@@ -323,7 +323,10 @@ describe.skipIf(!TEST_DATABASE_URL)("syncIncident against Postgres", () => {
           ObtenerTiposIncidente: () => ({ body: sigaeFixtureBody("ObtenerTiposIncidente") })
         }
       });
-      sigae.answers = answers({ details: detailsBody({ codigo_tipo_incidente: "9.9.9." }) });
+      // Without a name the type can't be created, so the code stays unknown.
+      sigae.answers = answers({
+        details: detailsBody({ codigo_tipo_incidente: "9.9.9.", tipo_incidente: "" })
+      });
       const typeCalls = () =>
         sigae.calls.filter((call) => call.endpoint === "ObtenerTiposIncidente").length;
 

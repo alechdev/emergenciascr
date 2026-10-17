@@ -1,4 +1,4 @@
-import { type SQL, desc, eq, inArray, sql } from "@bomberoscr/db/operators";
+import { type SQL, desc, eq, inArray, lt, sql } from "@bomberoscr/db/operators";
 import {
   cantons,
   districts,
@@ -10,6 +10,11 @@ import {
 } from "@bomberoscr/db/schema";
 import { conflictUpdateSetAllColumns } from "@bomberoscr/db/utils";
 
+import {
+  type NewIncidentType,
+  incidentTypeAncestors,
+  nearestIncidentTypeAncestor
+} from "../normalize/incident-types";
 import {
   type VehicleAssignment,
   storedOperationalStatus,
@@ -25,7 +30,10 @@ import type {
 } from "@bomberoscr/sigae/client";
 
 export interface KnownReferenceRows extends KnownReferences {
+  /** The referenced incident type codes that exist, and those of their ancestors. */
   incidentTypes: ReadonlySet<string>;
+  /** The ones whose types were created from incident data (negative IDs). */
+  inferredIncidentTypes: ReadonlySet<string>;
 }
 
 /** Which of the referenced rows exist. */
@@ -33,6 +41,9 @@ export async function findKnownReferences(
   db: Executor,
   ids: ReferenceIds
 ): Promise<KnownReferenceRows> {
+  const typeCodes = [
+    ...new Set(ids.incidentTypes.flatMap((code) => [code, ...incidentTypeAncestors(code)]))
+  ];
   const [stationRows, vehicleRows, typeRows, provinceRows, cantonRows, districtRows] =
     await Promise.all([
       ids.stations.length === 0
@@ -41,12 +52,12 @@ export async function findKnownReferences(
       ids.vehicles.length === 0
         ? []
         : db.select({ id: vehicles.id }).from(vehicles).where(inArray(vehicles.id, ids.vehicles)),
-      ids.incidentTypes.length === 0
+      typeCodes.length === 0
         ? []
         : db
-            .select({ code: incidentTypes.incidentCode })
+            .select({ id: incidentTypes.id, code: incidentTypes.incidentCode })
             .from(incidentTypes)
-            .where(inArray(incidentTypes.incidentCode, ids.incidentTypes)),
+            .where(inArray(incidentTypes.incidentCode, typeCodes)),
       ids.provinces.length === 0
         ? []
         : db
@@ -67,6 +78,9 @@ export async function findKnownReferences(
     stations: new Set(stationRows.map((row) => row.id)),
     vehicles: new Set(vehicleRows.map((row) => row.id)),
     incidentTypes: new Set(typeRows.map((row) => row.code)),
+    inferredIncidentTypes: new Set(
+      typeRows.filter((row) => isInferredIncidentType(row.id)).map((row) => row.code)
+    ),
     provinces: new Set(provinceRows.map((row) => row.id)),
     cantons: new Set(cantonRows.map((row) => row.id)),
     districts: new Set(districtRows.map((row) => row.id))
@@ -240,21 +254,123 @@ async function recordVehicleAssignment(
   await db.insert(vehicleStationHistory).values({ vehicleId, ...write.row });
 }
 
-/** Stores the incident type tree. Returns how many types it has. */
+/**
+ * Stores SIGAE's incident type tree, in one transaction. A code that was created from
+ * incident data takes SIGAE's ID and name: the row is kept, since incidents reference its
+ * code, and its children are linked again afterwards. Returns how many types SIGAE listed.
+ */
 export async function upsertIncidentTypes(
   db: Executor,
   items: readonly SigaeIncidentType[]
 ): Promise<number> {
   const rows = flattenIncidentTypes(items);
   if (rows.length === 0) return 0;
-  await db
-    .insert(incidentTypes)
-    .values(rows)
-    .onConflictDoUpdate({
-      target: incidentTypes.id,
-      set: conflictUpdateSetAllColumns(incidentTypes)
-    });
+  await db.transaction(async (tx) => {
+    await lockInferredIncidentTypes(tx);
+    const listed = new Map(rows.map((row) => [row.incidentCode, row.id]));
+    const inferred = await tx
+      .select({ id: incidentTypes.id, code: incidentTypes.incidentCode })
+      .from(incidentTypes)
+      .where(lt(incidentTypes.id, 0));
+    const adopted = inferred.filter((row) => listed.has(row.code));
+    if (adopted.length > 0) {
+      // Only inferred types have inferred parents. Detached here, they are linked below.
+      await tx
+        .update(incidentTypes)
+        .set({ parentId: null })
+        .where(
+          inArray(
+            incidentTypes.parentId,
+            adopted.map((row) => row.id)
+          )
+        );
+      for (const row of adopted) {
+        await tx
+          .update(incidentTypes)
+          .set({ id: listed.get(row.code) })
+          .where(eq(incidentTypes.id, row.id));
+      }
+    }
+    await tx
+      .insert(incidentTypes)
+      .values(rows)
+      .onConflictDoUpdate({
+        target: incidentTypes.id,
+        set: conflictUpdateSetAllColumns(incidentTypes)
+      });
+    if (inferred.length > adopted.length) await linkInferredIncidentTypes(tx);
+  });
   return rows.length;
+}
+
+/**
+ * Creates incident types SIGAE's list lacks, from an incident's data, parents first. Each one
+ * gets the next free negative ID (SIGAE's are positive) and the nearest existing ancestor as
+ * its parent; a code that exists by then is left as it is. Run it in the transaction that
+ * stores the incident: the lock it takes serializes creators until they commit, so two polls
+ * creating the same code end with one row, and a new ID can't be taken twice.
+ */
+export async function insertInferredIncidentTypes(
+  db: Executor,
+  types: readonly NewIncidentType[]
+): Promise<void> {
+  if (types.length === 0) return;
+  await lockInferredIncidentTypes(db);
+  for (const type of types) {
+    const ancestors = incidentTypeAncestors(type.code);
+    const existing =
+      ancestors.length === 0
+        ? []
+        : await db
+            .select({ id: incidentTypes.id, code: incidentTypes.incidentCode })
+            .from(incidentTypes)
+            .where(inArray(incidentTypes.incidentCode, ancestors));
+    const ids = new Map(existing.map((row) => [row.code, row.id]));
+    const parent = nearestIncidentTypeAncestor(type.code, new Set(ids.keys()));
+    await db
+      .insert(incidentTypes)
+      .values({
+        id: sql`(select least(min(${incidentTypes.id}), 0) - 1 from ${incidentTypes})`,
+        incidentCode: type.code,
+        name: type.name,
+        parentId: parent === null ? null : (ids.get(parent) ?? null)
+      })
+      .onConflictDoNothing({ target: incidentTypes.incidentCode });
+  }
+}
+
+/** Types created from incident data have negative IDs; SIGAE's are positive. */
+export function isInferredIncidentType(id: number): boolean {
+  return id < 0;
+}
+
+// The incident locks use the two-key space with namespace 5302026.
+const INFERRED_INCIDENT_TYPES_LOCK = [5_302_027, 1] as const;
+
+/** Serializes creating inferred incident types and the type sync until the transaction ends. */
+async function lockInferredIncidentTypes(tx: Executor): Promise<void> {
+  const [namespace, key] = INFERRED_INCIDENT_TYPES_LOCK;
+  await tx.execute(sql`select pg_advisory_xact_lock(${namespace}, ${key})`);
+}
+
+/** Points every inferred type at its nearest existing ancestor. */
+async function linkInferredIncidentTypes(tx: Executor): Promise<void> {
+  const all = await tx
+    .select({
+      id: incidentTypes.id,
+      code: incidentTypes.incidentCode,
+      parentId: incidentTypes.parentId
+    })
+    .from(incidentTypes);
+  const ids = new Map(all.map((row) => [row.code, row.id]));
+  const codes = new Set(ids.keys());
+  for (const row of all) {
+    if (!isInferredIncidentType(row.id)) continue;
+    const parent = nearestIncidentTypeAncestor(row.code, codes);
+    const parentId = parent === null ? null : (ids.get(parent) ?? null);
+    if (parentId === row.parentId) continue;
+    await tx.update(incidentTypes).set({ parentId }).where(eq(incidentTypes.id, row.id));
+  }
 }
 
 type IncidentTypeRow = typeof incidentTypes.$inferInsert;

@@ -384,7 +384,12 @@ Index on `(vehicleId, lastSeenAt)`. History starts when the beta database does.
 ### 6.3 Incident
 
 - `Id_Distrito` / `Id_Canton` / `Id_Provincia` of `0` → `NULL`.
-- Incident type codes come from the detail endpoint (as today). Strip a trailing `.`. Unknown code → `NULL` + anomaly `UNKNOWN_INCIDENT_TYPE` + trigger an incident-types sync.
+- Incident type codes come from the detail endpoint (as today). Strip a trailing `.`. A code not in `incident_types` triggers an incident-types sync (section 9) first. Still unknown, for each of the four codes:
+  - SIGAE sent a non-empty name with that exact code in the same detail response (`tipo_incidente`, `tipo_incidente_esp`, `tipo_incidente_despacho`, `tipo_incidente_despacho_esp`) → create the type from it and store the code. A name only counts for the code it came with, so a category code sent with its name (`10` "SERVICIOS ESPECIALES" next to `10.3`) creates the parent too; levels without a name are never invented.
+  - Otherwise → the nearest ancestor that exists or was just created, dropping trailing segments (`10.3.1` → `10.3` → `10`).
+  - Nothing → `NULL`.
+  - Each case records `UNKNOWN_INCIDENT_TYPE`, and so does a code whose type was created from incident data earlier, once per incident, field and code. Details: `field`, `incidentCode` (without the trailing `.`), `storedCode` and `resolution`: `created`, `inferred` (created earlier), `parent` or `none`.
+- Created types get negative IDs (SIGAE's `id_tipo_incidente` are positive), the incident's name, and the nearest existing ancestor as `parentId`. They are created in the poll's transaction, before the incident, under a lock that serializes their creators, so concurrent polls creating the same code end with one row. A code that exists by then is left as it is.
 - Coordinates: keep `"0"` for unknown (the web relies on it). `null` → `"0"`.
 - Responsible station: `DestipoServicio === "RESPONSABLE"`, else last item, else `NULL`.
 - `isOpen` = `Estado_Abierto === "true"`.
@@ -413,7 +418,7 @@ Anomalies never change what gets stored. They exist to be counted, filtered and 
 | `UNIT_REMOVED`              | Unit or station disappeared upstream.                                |
 | `COORDINATES_MISSING`       | Still `0` at `done`.                                                 |
 | `COORDINATES_MOVED`         | Coordinates changed by more than 1 km.                               |
-| `UNKNOWN_INCIDENT_TYPE`     | Code not in `incident_types`.                                        |
+| `UNKNOWN_INCIDENT_TYPE`     | Code not in SIGAE's type list (section 6.3).                         |
 | `MISSING_REFERENCE`         | Station or vehicle unknown even after on-demand fetch.               |
 | `REOPENED`                  | Upstream went closed → open.                                         |
 | `OPEN_TOO_LONG`             | Still open upstream at the hard cap (section 8.2).                   |
@@ -459,6 +464,7 @@ Anomalies never change what gets stored. They exist to be counted, filtered and 
 - Fix job IDs: `station-${id}`, `vehicle-${id}`.
 - Run every reference job once at boot, then on the 12h cron.
 - Order: provinces → cantons → districts, stations → vehicles, incident types.
+- Incident types: one transaction under the lock of section 6.3. A type created from incident data whose code SIGAE now lists takes SIGAE's ID and name; the row is kept (incidents reference its code), and the remaining created types are linked again to their nearest existing ancestor.
 - On-demand: an incident referencing an unknown station or vehicle fetches its details first. Still unknown: station → `MISSING_REFERENCE` and failed poll (FK required); vehicle → `vehicleId = NULL`, keep `vehicleInternalNumber`, log `MISSING_REFERENCE`.
 - Vehicle assignments: every time vehicle details are stored (the 12h job and on-demand fetches), the same transaction compares station and operational status with the vehicle's latest `vehicle_station_history` row. Same values: bump `lastSeenAt`. Different, or no row yet: insert a new row. Rows are never updated otherwise or deleted. A `null` status from SIGAE keeps the stored one, like the vehicle upsert. The precision is the 12h sync interval.
 

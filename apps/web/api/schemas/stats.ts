@@ -1,3 +1,4 @@
+import { getCostaRicaYear } from "@bomberoscr/lib/costa-rica-time";
 import { z } from "@hono/zod-openapi";
 
 // ============================================================================
@@ -55,7 +56,7 @@ export const yearRecapRequest = z.object({
     .min(2020)
     .max(2100)
     .optional()
-    .default(new Date().getFullYear())
+    .default(() => getCostaRicaYear())
     .openapi({
       description: "Year to get recap for.",
       param: { in: "query" },

@@ -1,4 +1,8 @@
-import { formatCostaRicaDate, getCostaRicaDateParts } from "@bomberoscr/lib/costa-rica-time";
+import {
+  formatCostaRicaDate,
+  getCostaRicaDateParts,
+  getCostaRicaYear
+} from "@bomberoscr/lib/costa-rica-time";
 import { isKnownDate } from "@bomberoscr/lib/missing-date";
 import { WarningIcon } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
@@ -242,7 +246,7 @@ export function IncidentArticle() {
 
         {incident.statistics.currentYearCount > 0 &&
           (() => {
-            const currentYear = new Date().getFullYear();
+            const currentYear = getCostaRicaYear();
             const isCurrentYear = incident.statistics.currentYear === currentYear;
             const count = incident.statistics.currentYearCount;
             const cantonCount = incident.statistics.currentYearCantonCount;

@@ -1,3 +1,4 @@
+import { getCostaRicaYear } from "@bomberoscr/lib/costa-rica-time";
 import { ArrowUpRightIcon } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
 
@@ -21,7 +22,7 @@ const SOCIAL_LINKS = [
 ] as const;
 
 export function Footer() {
-  const currentYear = new Date().getFullYear();
+  const currentYear = getCostaRicaYear();
   const enabledNavItems = navItems.filter((item) => item.enabled);
 
   return (

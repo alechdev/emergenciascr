@@ -1,4 +1,8 @@
-import { formatCostaRicaDate, isSameCostaRicaDay } from "@bomberoscr/lib/costa-rica-time";
+import {
+  formatCostaRicaDate,
+  getCostaRicaYear,
+  isSameCostaRicaDay
+} from "@bomberoscr/lib/costa-rica-time";
 import { isKnownDate } from "@bomberoscr/lib/missing-date";
 
 import { SITE_URL } from "@/lib/site";
@@ -118,11 +122,11 @@ function timelineSection(page: IncidentPageData): string {
   return `## Cronología\n\n${lines.join("\n")}`;
 }
 
-function contextSection(page: IncidentPageData): string | null {
+function contextSection(page: IncidentPageData, now: Date): string | null {
   const { incident } = page;
   if (incident.statistics.currentYearCount <= 0) return null;
 
-  const currentYear = new Date().getFullYear();
+  const currentYear = getCostaRicaYear(now);
   const isCurrentYear = incident.statistics.currentYear === currentYear;
   const count = incident.statistics.currentYearCount;
   const typeDisplay =
@@ -158,7 +162,7 @@ function contextSection(page: IncidentPageData): string | null {
   return `## Contexto\n\n${text}`;
 }
 
-export function incidentPageToMarkdown(page: IncidentPageData): string {
+export function incidentPageToMarkdown(page: IncidentPageData, now = new Date()): string {
   const { incident } = page;
   const url = `${SITE_URL}/incidentes/${incident.slug}`;
   const status = incident.isOpen ? "abierto" : "cerrado";
@@ -195,7 +199,7 @@ export function incidentPageToMarkdown(page: IncidentPageData): string {
     stationsSection(page.stations),
     responseTimesSection(page.responseTimes),
     timelineSection(page),
-    contextSection(page),
+    contextSection(page, now),
     `## Enlaces\n\n${links.join("\n")}`,
     "_Emergencias CR es un sitio independiente. No es el sitio oficial del Benemérito Cuerpo de Bomberos de Costa Rica._"
   ].filter((section): section is string => Boolean(section));

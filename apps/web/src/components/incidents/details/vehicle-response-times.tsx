@@ -1,3 +1,4 @@
+import { isKnownDate } from "@bomberoscr/lib/missing-date";
 import { ChartBarHorizontalIcon, TableIcon } from "@phosphor-icons/react";
 import { Bar, BarChart, XAxis, YAxis } from "recharts";
 
@@ -57,10 +58,8 @@ function formatSecondsToHMS(seconds: number): string {
 }
 
 function formatTime(dateString: string | null): string {
-  if (!dateString) return "N/A";
-  const date = new Date(dateString);
-  if (date.getFullYear() === 1970) return "N/A";
-  return date.toLocaleTimeString("es-CR", {
+  if (!isKnownDate(dateString)) return "N/A";
+  return new Date(dateString).toLocaleTimeString("es-CR", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: true

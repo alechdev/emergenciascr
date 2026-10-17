@@ -135,15 +135,6 @@ export function getRelativeTime(date: string, reference?: Date): string {
 }
 
 /**
- * If the date is equal to 0001-01-01T00:00:00, it is considered undefined
- * @param date date to evaluate
- */
-export function isUndefinedDate(date: Date | null | undefined) {
-  if (!date) return true;
-  return date.getFullYear() === 1;
-}
-
-/**
  * Formats a number of minutes into a human-readable string (e.g., "1h 30m" or "5m 30s")
  * @param minutes - The number of minutes to format
  */

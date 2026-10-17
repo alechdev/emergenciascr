@@ -199,7 +199,7 @@ The rest of section 11, built and tested against a local migrated database.
 **Tasks**
 
 - [ ] Closing event uses `closedAt ?? modifiedAt`.
-- [ ] One shared "missing date" helper.
+- [x] One shared "missing date" helper.
 - [ ] `vehicleInternalNumber` when the vehicle is unknown.
 - [ ] "En camino" fix.
 - [ ] Costa Rica time everywhere: shared formatter, slugs, date filters, SQL buckets, current year.
@@ -212,6 +212,10 @@ The rest of section 11, built and tested against a local migrated database.
 - [ ] No bare `toLocaleString` / `toLocaleTimeString` / `Intl.DateTimeFormat` without the shared module remain in the web.
 - [ ] A vehicle moved from station A to station B: B's vehicle list shows it without A's dispatches, and A's past incidents still show A.
 - [ ] With `SITE_ENV=beta`: `noindex` header, `robots.txt` disallow, no sitemap, banner shown, analytics off.
+
+**Notes**
+
+- Missing dates: `isKnownDate` / `isMissingDate` (`packages/lib/src/missing-date.ts`, `@bomberoscr/lib/missing-date`), since both the API and the Start app's client components need it and `src/` components don't import `@api/*`. It replaced four checks: `isUndefinedDate` in the API formatters and in `src/lib/utils.ts` (local year `=== 1`), the response-time table's local year `=== 1970`, and the markdown page's local year `> 1970`. A time is missing when it is `null`, empty, unparsable, or its UTC year is 1970 or earlier (SIGAE's `0001-01-01` placeholder, which the legacy data still has, and the epoch). The year is read in UTC because in Costa Rica the placeholder's local year is 0, so the old `=== 1` checks missed it on a server or browser in Costa Rica time.
 
 ## Phase 8: Beta infrastructure
 

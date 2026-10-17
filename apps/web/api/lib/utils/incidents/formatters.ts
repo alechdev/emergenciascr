@@ -1,9 +1,7 @@
-function isUndefinedDate(date?: Date | null): boolean {
-  return !date || date.getFullYear() === 1;
-}
+import { isKnownDate } from "@bomberoscr/lib/missing-date";
 
 function toIsoStringOrNull(date?: Date | null): string | null {
-  return isUndefinedDate(date) ? null : (date?.toISOString() ?? null);
+  return isKnownDate(date) ? date.toISOString() : null;
 }
 
 function formatListSpanish(items: string[]): string {
@@ -58,7 +56,7 @@ function getIncidentTitle(
 }
 
 function calculateTimeDiffInSeconds(end?: Date | null, start?: Date | null): number {
-  if (!end || !start || isUndefinedDate(end) || isUndefinedDate(start)) {
+  if (!isKnownDate(end) || !isKnownDate(start)) {
     return 0;
   }
   return Math.floor((end.getTime() - start.getTime()) / 1000);
@@ -69,6 +67,5 @@ export {
   formatIncidentTypes,
   getIncidentTitle,
   getLocation,
-  isUndefinedDate,
   toIsoStringOrNull
 };

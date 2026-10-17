@@ -1,8 +1,5 @@
-import {
-  calculateTimeDiffInSeconds,
-  isUndefinedDate,
-  toIsoStringOrNull
-} from "@api/lib/utils/incidents/formatters";
+import { calculateTimeDiffInSeconds, toIsoStringOrNull } from "@api/lib/utils/incidents/formatters";
+import { isKnownDate } from "@bomberoscr/lib/missing-date";
 
 type IncidentResponseTimeVehicle = {
   id: number;
@@ -36,8 +33,8 @@ function buildIncidentResponseTimes(incident: {
       vehicle.arrivalTime,
       vehicle.dispatchedTime
     );
-    const hasDeparture = !!vehicle.departureTime && !isUndefinedDate(vehicle.departureTime);
-    const hasReturn = !!vehicle.baseReturnTime && !isUndefinedDate(vehicle.baseReturnTime);
+    const hasDeparture = isKnownDate(vehicle.departureTime);
+    const hasReturn = isKnownDate(vehicle.baseReturnTime);
     const onSceneEndDate = hasDeparture
       ? vehicle.departureTime
       : incident.isOpen

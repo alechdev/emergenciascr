@@ -1,4 +1,4 @@
-import { isUndefinedDate } from "@api/lib/utils/incidents/formatters";
+import { isKnownDate } from "@bomberoscr/lib/missing-date";
 
 type TimelineEvent = {
   id: string;
@@ -47,13 +47,13 @@ function buildTimelineEvents(
     const vehicleLabel = v.vehicle?.internalNumber || "N/A";
     const stationLabel = v.station.name;
 
-    if (!isUndefinedDate(v.dispatchedTime) && v.dispatchedTime) {
+    if (isKnownDate(v.dispatchedTime)) {
       pushEvent("dispatch", v.dispatchedTime, stationLabel, vehicleLabel);
     }
-    if (!isUndefinedDate(v.arrivalTime) && v.arrivalTime) {
+    if (isKnownDate(v.arrivalTime)) {
       pushEvent("arrival", v.arrivalTime, stationLabel, vehicleLabel);
     }
-    if (!isUndefinedDate(v.departureTime) && v.departureTime) {
+    if (isKnownDate(v.departureTime)) {
       pushEvent("departure", v.departureTime, stationLabel, vehicleLabel);
     }
   }
@@ -132,7 +132,7 @@ function buildTimelineEvents(
     }
   }
 
-  if (!incident.isOpen && incident.modifiedAt && !isUndefinedDate(incident.modifiedAt)) {
+  if (!incident.isOpen && isKnownDate(incident.modifiedAt)) {
     events.push({
       id: `incident:${incident.id}:closed`,
       date: incident.modifiedAt,

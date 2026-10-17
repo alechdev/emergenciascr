@@ -1,3 +1,5 @@
+import { isKnownDate } from "@bomberoscr/lib/missing-date";
+
 import { SITE_URL } from "@/lib/site";
 
 import type {
@@ -34,18 +36,12 @@ function joinTypes(...names: Array<string | null | undefined>): string {
   return names.filter((name): name is string => Boolean(name)).join(", ");
 }
 
-function isUsableDate(value: string | null | undefined): value is string {
-  if (!value) return false;
-  const year = new Date(value).getFullYear();
-  return Number.isFinite(year) && year > 1970;
-}
-
 function formatDateTime(value: string): string {
   return dateTimeFormat.format(new Date(value));
 }
 
 function formatClock(value: string | null | undefined): string {
-  if (!isUsableDate(value)) return "—";
+  if (!isKnownDate(value)) return "—";
   return timeFormat.format(new Date(value));
 }
 
@@ -200,7 +196,7 @@ export function incidentPageToMarkdown(page: IncidentPageData): string {
     `- Estado: ${status}`,
     `- Expediente: EE-${incident.EEConsecutive}`,
     `- Reportado: ${formatDateTime(incident.incidentTimestamp)}`,
-    incident.modifiedAt && isUsableDate(incident.modifiedAt)
+    isKnownDate(incident.modifiedAt)
       ? `- Última actualización: ${formatDateTime(incident.modifiedAt)}`
       : null,
     incident.address ? `- Dirección: ${incident.address}` : null,

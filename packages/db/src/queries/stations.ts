@@ -1,4 +1,4 @@
-import { db } from "@bomberoscr/db/index";
+import { type Database, db } from "@bomberoscr/db/index";
 import {
   dispatchedStations,
   dispatchedVehicles,
@@ -299,10 +299,34 @@ export async function getStationCollaborations({ stationId }: { stationId: numbe
     .limit(6);
 }
 
-export async function getStationVehiclesWithStats({ stationId }: { stationId: number }) {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+/**
+ * The vehicles currently assigned to a station, with the dispatches they served for it in the
+ * last 30 days: a vehicle moved from another station doesn't bring that station's dispatches.
+ */
+export async function getStationVehiclesWithStats(
+  { stationId, now = new Date() }: { stationId: number; now?: Date },
+  database: Database = db
+) {
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  const results = await db
+  const stationDispatches = database
+    .select({
+      id: dispatchedVehicles.id,
+      vehicleId: dispatchedVehicles.vehicleId,
+      dispatchedTime: dispatchedVehicles.dispatchedTime,
+      arrivalTime: dispatchedVehicles.arrivalTime
+    })
+    .from(dispatchedVehicles)
+    .innerJoin(incidents, eq(dispatchedVehicles.incidentId, incidents.id))
+    .where(
+      and(
+        eq(dispatchedVehicles.stationId, stationId),
+        gte(incidents.incidentTimestamp, thirtyDaysAgo)
+      )
+    )
+    .as("station_dispatches");
+
+  const results = await database
     .select({
       id: vehicles.id,
       internalNumber: vehicles.internalNumber,
@@ -310,28 +334,24 @@ export async function getStationVehiclesWithStats({ stationId }: { stationId: nu
       descriptionType: vehicles.descriptionType,
       class: vehicles.class,
       descriptionOperationalStatus: vehicles.descriptionOperationalStatus,
-      incidentCount: sql<number>`count(${dispatchedVehicles.id})::int`.as("incident_count"),
+      incidentCount: sql<number>`count(${stationDispatches.id})::int`.as("incident_count"),
       avgResponseTimeSeconds: sql<number | null>`
         round(avg(
           CASE 
-            WHEN ${dispatchedVehicles.arrivalTime} > ${dispatchedVehicles.dispatchedTime}
-              AND extract(epoch from (${dispatchedVehicles.arrivalTime} - ${dispatchedVehicles.dispatchedTime})) >= 60
-              AND extract(epoch from (${dispatchedVehicles.arrivalTime} - ${dispatchedVehicles.dispatchedTime})) <= 10800
-            THEN extract(epoch from (${dispatchedVehicles.arrivalTime} - ${dispatchedVehicles.dispatchedTime}))
+            WHEN ${stationDispatches.arrivalTime} > ${stationDispatches.dispatchedTime}
+              AND extract(epoch from (${stationDispatches.arrivalTime} - ${stationDispatches.dispatchedTime})) >= 60
+              AND extract(epoch from (${stationDispatches.arrivalTime} - ${stationDispatches.dispatchedTime})) <= 10800
+            THEN extract(epoch from (${stationDispatches.arrivalTime} - ${stationDispatches.dispatchedTime}))
             ELSE NULL 
           END
         ))::int
       `.as("avg_response_time_seconds")
     })
     .from(vehicles)
-    .leftJoin(dispatchedVehicles, sql`${dispatchedVehicles.vehicleId} = ${vehicles.id}`)
-    .leftJoin(
-      incidents,
-      sql`${dispatchedVehicles.incidentId} = ${incidents.id} AND ${incidents.incidentTimestamp} >= ${thirtyDaysAgo}`
-    )
+    .leftJoin(stationDispatches, eq(stationDispatches.vehicleId, vehicles.id))
     .where(eq(vehicles.stationId, stationId))
     .groupBy(vehicles.id)
-    .orderBy(desc(sql`count(${dispatchedVehicles.id})`));
+    .orderBy(desc(sql`count(${stationDispatches.id})`), asc(vehicles.id));
 
   return results.map((row) => ({
     id: row.id,

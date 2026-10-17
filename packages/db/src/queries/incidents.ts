@@ -1,4 +1,4 @@
-import { db } from "@bomberoscr/db/index";
+import { type Database, db } from "@bomberoscr/db/index";
 import {
   cantons,
   dispatchedStations,
@@ -241,8 +241,8 @@ export async function getIncidents(params: GetIncidentsParams) {
   };
 }
 
-export async function getIncidentById({ id }: { id: number }) {
-  return await db.query.incidents.findFirst({
+export async function getIncidentById({ id }: { id: number }, database: Database = db) {
+  return await database.query.incidents.findFirst({
     where: eq(incidents.id, id),
     columns: {
       id: true,

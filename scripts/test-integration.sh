@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Runs the sync integration tests (packages/sync-domain, apps/sync-v2) against a throwaway
-# Postgres and Redis, under TZ=UTC and TZ=America/Costa_Rica. Both servers run in Docker on
-# random loopback ports and are removed on exit, whatever happens. Nothing here reads
+# Runs the integration tests (packages/sync-domain, apps/sync-v2, packages/db) against a
+# throwaway Postgres and Redis, under TZ=UTC and TZ=America/Costa_Rica. Both servers run in
+# Docker on random loopback ports and are removed on exit, whatever happens. Nothing here reads
 # DRIZZLE_POSTGRES_URL or REDIS_URL: the tests only get TEST_DATABASE_URL and TEST_REDIS_URL.
 #
 #   scripts/test-integration.sh
@@ -43,4 +43,5 @@ for tz in UTC America/Costa_Rica; do
   echo "== TZ=$tz"
   TZ="$tz" bun run --cwd "$root/packages/sync-domain" test:integration
   TZ="$tz" bun run --cwd "$root/apps/sync-v2" test:integration
+  TZ="$tz" bun run --cwd "$root/packages/db" test:integration
 done

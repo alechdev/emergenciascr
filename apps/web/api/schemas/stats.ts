@@ -105,7 +105,8 @@ export const yearRecapResponse = z
             example: "M-05"
           }),
           stationName: z.string().openapi({
-            description: "Station name assigned to the vehicle.",
+            description:
+              "Station the vehicle served these dispatches for. A vehicle that served two stations in the year has an entry for each.",
             example: "METROPOLITANA SUR"
           }),
           count: z.number().openapi({

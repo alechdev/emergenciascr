@@ -1,4 +1,4 @@
-import { db, count, eq, or, sql } from "@bomberoscr/db/index";
+import { type Database, db, count, eq, or, sql } from "@bomberoscr/db/index";
 import {
   dispatchedStations,
   dispatchedVehicles,
@@ -13,11 +13,11 @@ import { and, desc, gte, lt } from "drizzle-orm";
 // Year Recap
 // ============================================================================
 
-export async function getYearRecap(year: number) {
+export async function getYearRecap(year: number, database: Database = db) {
   const startOfYear = new Date(year, 0, 1);
   const endOfYear = new Date(year + 1, 0, 1);
 
-  const topIncidentDaysResults = await db
+  const topIncidentDaysResults = await database
     .select({
       date: sql<string>`DATE(${incidents.incidentTimestamp})`,
       count: sql<number>`count(*)::int`
@@ -35,7 +35,7 @@ export async function getYearRecap(year: number) {
     count: Number(item.count)
   }));
 
-  const topDispatchedStationsResults = await db
+  const topDispatchedStationsResults = await database
     .select({
       name: stations.name,
       count: sql<number>`count(*)::int`
@@ -55,21 +55,23 @@ export async function getYearRecap(year: number) {
     count: Number(item.count)
   }));
 
-  const topDispatchedVehiclesResults = await db
+  // Per vehicle and the station it served the dispatches for, not its current station: a
+  // vehicle that served two stations in the year has a row for each.
+  const topDispatchedVehiclesResults = await database
     .select({
       internalNumber: vehicles.internalNumber,
       stationName: stations.name,
       count: sql<number>`count(*)::int`
     })
-    .from(vehicles)
-    .innerJoin(stations, eq(vehicles.stationId, stations.id))
-    .innerJoin(dispatchedVehicles, eq(vehicles.id, dispatchedVehicles.vehicleId))
+    .from(dispatchedVehicles)
+    .innerJoin(vehicles, eq(dispatchedVehicles.vehicleId, vehicles.id))
+    .innerJoin(stations, eq(dispatchedVehicles.stationId, stations.id))
     .innerJoin(incidents, eq(dispatchedVehicles.incidentId, incidents.id))
     .where(
       and(gte(incidents.incidentTimestamp, startOfYear), lt(incidents.incidentTimestamp, endOfYear))
     )
-    .groupBy(vehicles.id, vehicles.internalNumber, stations.name)
-    .orderBy(desc(sql`count(*)`), vehicles.internalNumber)
+    .groupBy(vehicles.id, vehicles.internalNumber, stations.id, stations.name)
+    .orderBy(desc(sql`count(*)`), vehicles.internalNumber, stations.name)
     .limit(5);
 
   const topDispatchedVehicles = topDispatchedVehiclesResults.map((item) => ({

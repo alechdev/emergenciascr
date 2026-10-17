@@ -179,6 +179,7 @@
         "@types/pg": "^8.6.1",
         "@typescript/native-preview": "^7.0.0-dev.20260127.1",
         "drizzle-kit": "^0.31.4",
+        "vitest": "4.0.18",
       },
     },
     "packages/lib": {

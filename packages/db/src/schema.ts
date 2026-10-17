@@ -363,6 +363,11 @@ export const incidentsRelations = relations(incidents, ({ one, many }) => ({
   }),
   dispatchedVehicles: many(dispatchedVehicles),
   dispatchedStations: many(dispatchedStations),
+  /** No foreign key (see `incidentSyncState`); `NULL` for incidents sync-v2 never tracked. */
+  syncState: one(incidentSyncState, {
+    fields: [incidents.id],
+    references: [incidentSyncState.incidentId]
+  }),
   incidentType: one(incidentTypes, {
     fields: [incidents.incidentCode],
     references: [incidentTypes.incidentCode]

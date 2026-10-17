@@ -55,6 +55,7 @@ describe("an unknown vehicle", () => {
   it("shows its number in the response times", () => {
     const [times] = buildIncidentResponseTimes({
       isOpen: true,
+      syncState: null,
       dispatchedVehicles: [unknownVehicle]
     });
     expect(times?.vehicle).toBe("M-99");

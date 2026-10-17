@@ -493,7 +493,7 @@ Built and tested against the beta database.
 2. Timeline closing event uses `closedAt ?? modifiedAt`.
 3. One shared "missing date" helper replacing the three current placeholder checks.
 4. Show `vehicleInternalNumber` when `vehicle` is null.
-5. "En camino" (`isEnRoute` in `api/lib/utils/incidents/response-times.ts`) is currently true for any unit that left the scene without a base-return time. That is about 20% of units, forever. Only show it while the incident is being tracked and the departure was less than 2 hours ago; otherwise show the return time as unknown.
+5. "En camino" (`isEnRoute` in `api/lib/utils/incidents/response-times.ts`) is currently true for any unit that left the scene without a base-return time. That is about 20% of units, forever. Only show it while the incident is being tracked (its `incident_sync_state` phase is `active` or `settling`, so a return time can still arrive) and the departure was less than 2 hours ago; otherwise show the return time as unknown.
 6. Costa Rica time everywhere, whatever the server's or visitor's timezone (section 3.4):
    - One shared date-formatting module with `timeZone: "America/Costa_Rica"`, used by server and client code. It replaces bare `toLocaleString` / `toLocaleTimeString` / `Intl.DateTimeFormat` calls (incident article, timeline, response times, relative time, charts, OG image, markdown pages, meta descriptions). Server and client then render the same text, so hydration can't disagree.
    - Slugs use the Costa Rica date. Old slugs keep working through the existing 301 to the canonical slug.

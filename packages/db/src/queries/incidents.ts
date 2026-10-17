@@ -324,6 +324,11 @@ export async function getIncidentById({ id }: { id: number }) {
           }
         }
       },
+      syncState: {
+        columns: {
+          phase: true
+        }
+      },
       dispatchedVehicles: {
         columns: {
           id: true,
@@ -398,6 +403,11 @@ export async function getIncidentResponseTimesData({ id }: { id: number }) {
       isOpen: true
     },
     with: {
+      syncState: {
+        columns: {
+          phase: true
+        }
+      },
       dispatchedVehicles: {
         columns: {
           id: true,

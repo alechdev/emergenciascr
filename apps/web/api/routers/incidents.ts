@@ -497,10 +497,14 @@ app.openapi(
       return c.json({ message: HttpStatusPhrases.NOT_FOUND }, HttpStatusCodes.NOT_FOUND);
     }
 
-    const ttlSeconds = incident.isOpen ? ONE_MINUTE_SECONDS : THREE_HOURS_SECONDS;
-    c.header("Cache-Control", buildCacheControlHeader(ttlSeconds));
-
     const vehicles = buildIncidentResponseTimes(incident);
+
+    // A closed incident can still show "En camino", which ends within 2 hours.
+    const ttlSeconds =
+      incident.isOpen || vehicles.some((vehicle) => vehicle.isEnRoute)
+        ? ONE_MINUTE_SECONDS
+        : THREE_HOURS_SECONDS;
+    c.header("Cache-Control", buildCacheControlHeader(ttlSeconds));
 
     return c.json({ vehicles }, HttpStatusCodes.OK);
   }

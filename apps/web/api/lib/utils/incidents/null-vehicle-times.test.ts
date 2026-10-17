@@ -38,6 +38,7 @@ describe("NULL vehicle times", () => {
   it("give zero durations in response times", () => {
     const [first, second] = buildIncidentResponseTimes({
       isOpen: false,
+      syncState: null,
       dispatchedVehicles: [neverDispatched, onScene]
     });
 

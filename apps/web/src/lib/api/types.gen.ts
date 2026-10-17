@@ -620,7 +620,7 @@ export type GetIncidentResponseTimesResponses = {
              */
             totalTimeSeconds: number;
             /**
-             * Whether the vehicle is still en route (departed but not returned).
+             * Whether the vehicle is returning to base: it left the scene less than 2 hours ago without a base return time, and the incident is still being synced. Otherwise a missing base return time is unknown.
              */
             isEnRoute: boolean;
         }>;

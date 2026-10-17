@@ -9,6 +9,7 @@ import {
 import { normalizePoll } from "../normalize/index";
 import { dedupeAnomalies, detectAnomalies, placeholderAnomalies } from "../reconcile/anomalies";
 import { diffIncidentState, removalChanges } from "../reconcile/diff";
+import { keepKnownLocation } from "../reconcile/location";
 import { type KnownReferences, applyKnownReferences } from "../reconcile/references";
 import { applyEmptyUnitsRule } from "../reconcile/removal";
 
@@ -95,11 +96,14 @@ export function processPoll(input: ProcessPollInput): ProcessPollResult {
   }
 
   const normalized = normalizePoll(input.incidentId, classification.data);
+  // On a partial report the report rule already keeps the stored geography field by field, so
+  // the location rule only finds what is still missing after it (the coordinates).
   const reported =
     classification.kind === "partial"
       ? keepReportValues(current?.incident ?? null, normalized.incident)
       : normalized.incident;
-  const types = resolveIncidentTypes(reported, {
+  const location = keepKnownLocation(current?.incident ?? null, reported);
+  const types = resolveIncidentTypes(location.incident, {
     known: input.knownIncidentTypes,
     inferred: input.inferredIncidentTypes,
     names: incidentTypeNames(classification.data.details)
@@ -162,6 +166,7 @@ export function processPoll(input: ProcessPollInput): ProcessPollResult {
           classification.kind === "partial"
             ? { description: classification.reportDescription }
             : undefined,
+        keptLocations: location.kept,
         issues: normalized.issues,
         reachedDone: decision.state.phase === "done" && syncState.phase !== "done"
       }),

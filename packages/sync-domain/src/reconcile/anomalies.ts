@@ -10,6 +10,7 @@ import type {
   IncidentRow,
   IncidentState
 } from "../types";
+import type { KeptLocation } from "./location";
 
 const MINUTE_MS = 60_000;
 
@@ -48,13 +49,16 @@ const CONDITION_CODES: ReadonlySet<AnomalyCode> = new Set<AnomalyCode>([
   "PLACEHOLDER_SHAPE_UNKNOWN",
   "UNKNOWN_INCIDENT_TYPE",
   "MISSING_REFERENCE",
-  "UPSTREAM_PARTIAL_REPORT"
+  "UPSTREAM_PARTIAL_REPORT",
+  "LOCATION_CLEARED_UPSTREAM"
 ]);
 
 export interface AnomalyContext {
   now: Date;
   /** The report answered `99`. */
   partialReport?: { description: string };
+  /** Known locations kept although SIGAE sent them as unknown (`keepKnownLocation`). */
+  keptLocations?: readonly KeptLocation[];
   issues?: readonly PlaceholderIssue[];
   /** This poll moved the incident to `done`. */
   reachedDone?: boolean;
@@ -84,6 +88,13 @@ export function detectAnomalies(
     });
   }
   anomalies.push(...placeholderAnomalies(context.issues ?? []));
+  for (const location of context.keptLocations ?? []) {
+    add("LOCATION_CLEARED_UPSTREAM", "incident", incident.id, {
+      fields: location.fields,
+      kept: location.kept,
+      received: location.received
+    });
+  }
 
   if (previous) {
     const before = previous.incident;
@@ -243,13 +254,17 @@ export function placeholderAnomalies(issues: readonly PlaceholderIssue[]): Anoma
 
 /**
  * Identifies a condition anomaly across polls. An unknown incident type is keyed by its code
- * too, so a reclassification to another unknown code is recorded again.
+ * too, so a reclassification to another unknown code is recorded again. A kept location is
+ * keyed by its field group (`coordinates`, `geography`).
  */
 export function anomalyKey(anomaly: Pick<Anomaly, "code" | "entity" | "entityId" | "details">) {
-  const { field, earlierField, laterField, incidentCode } = anomaly.details;
+  const { field, fields, earlierField, laterField, incidentCode } = anomaly.details;
   let subject = typeof field === "string" ? field : "";
   if (typeof earlierField === "string" && typeof laterField === "string") {
     subject = `${earlierField}>${laterField}`;
+  }
+  if (anomaly.code === "LOCATION_CLEARED_UPSTREAM" && typeof fields === "string") {
+    subject = fields;
   }
   if (anomaly.code === "UNKNOWN_INCIDENT_TYPE" && typeof incidentCode === "string") {
     subject = `${subject}=${incidentCode}`;

@@ -1,0 +1,237 @@
+{
+  "polls": [
+    {
+      "poll": "001.json",
+      "kind": "ok",
+      "phase": "active",
+      "nextPollAt": "2026-10-11T02:30:00.000Z",
+      "deleteIncident": false
+    },
+    {
+      "poll": "002.json",
+      "kind": "ok",
+      "phase": "active",
+      "nextPollAt": "2026-10-11T02:33:00.000Z",
+      "deleteIncident": false
+    },
+    {
+      "poll": "003.json",
+      "kind": "ok",
+      "phase": "active",
+      "nextPollAt": "2026-10-11T02:36:00.000Z",
+      "deleteIncident": false
+    },
+    {
+      "poll": "004.json",
+      "kind": "ok",
+      "phase": "active",
+      "nextPollAt": "2026-10-11T02:39:00.000Z",
+      "deleteIncident": false
+    }
+  ],
+  "changes": [
+    {
+      "poll": "001.json",
+      "entity": "incident",
+      "entityId": 1900001,
+      "field": "*",
+      "kind": "added",
+      "oldValue": null,
+      "newValue": {
+        "EEConsecutive": "51234-2026",
+        "address": "SAN JOSE SAN JOSE CARMEN CALLE SINTETICA 1",
+        "importantDetails": "EDIFICIO SINTETICO",
+        "incidentTimestamp": "2026-10-11T02:25:19.000Z",
+        "provinceId": 1,
+        "cantonId": 101,
+        "districtId": 10101,
+        "incidentCode": "2.1.3",
+        "specificIncidentCode": "2.1.3.1",
+        "dispatchIncidentCode": "2.1",
+        "specificDispatchIncidentCode": "2.1.3",
+        "responsibleStation": 2,
+        "latitude": "9.9",
+        "longitude": "-84.1",
+        "isOpen": true,
+        "controlledAt": null,
+        "fireUnderControlAt": null,
+        "lossesStoppedAt": null,
+        "allClearAt": null,
+        "closedAt": null,
+        "closedAtSource": null
+      }
+    },
+    {
+      "poll": "001.json",
+      "entity": "dispatched_vehicle",
+      "entityId": 5200101,
+      "field": "*",
+      "kind": "added",
+      "oldValue": null,
+      "newValue": {
+        "stationId": 2,
+        "vehicleId": 140,
+        "vehicleInternalNumber": null,
+        "dispatchedTime": "2026-10-11T02:26:02.000Z",
+        "arrivalTime": null,
+        "departureTime": null,
+        "baseReturnTime": null,
+        "attentionOnFoot": false
+      }
+    },
+    {
+      "poll": "001.json",
+      "entity": "dispatched_station",
+      "entityId": 3400101,
+      "field": "*",
+      "kind": "added",
+      "oldValue": null,
+      "newValue": {
+        "stationId": 2,
+        "serviceTypeId": 1,
+        "attentionOnFoot": false
+      }
+    },
+    {
+      "poll": "004.json",
+      "entity": "incident",
+      "entityId": 1900001,
+      "field": "latitude",
+      "kind": "changed",
+      "oldValue": "9.9",
+      "newValue": "9.9012"
+    },
+    {
+      "poll": "004.json",
+      "entity": "incident",
+      "entityId": 1900001,
+      "field": "longitude",
+      "kind": "changed",
+      "oldValue": "-84.1",
+      "newValue": "-84.1009"
+    }
+  ],
+  "anomalies": [
+    {
+      "poll": "002.json",
+      "code": "LOCATION_CLEARED_UPSTREAM",
+      "entity": "incident",
+      "entityId": 1900001,
+      "details": {
+        "fields": "coordinates",
+        "kept": {
+          "latitude": "9.9",
+          "longitude": "-84.1"
+        },
+        "received": {
+          "latitude": "0",
+          "longitude": "0"
+        }
+      }
+    },
+    {
+      "poll": "002.json",
+      "code": "LOCATION_CLEARED_UPSTREAM",
+      "entity": "incident",
+      "entityId": 1900001,
+      "details": {
+        "fields": "geography",
+        "kept": {
+          "provinceId": 1,
+          "cantonId": 101,
+          "districtId": 10101
+        },
+        "received": {
+          "provinceId": null,
+          "cantonId": null,
+          "districtId": null
+        }
+      }
+    },
+    {
+      "poll": "004.json",
+      "code": "VALUE_CHANGED_AFTER_SET",
+      "entity": "incident",
+      "entityId": 1900001,
+      "details": {
+        "field": "latitude",
+        "oldValue": "9.9",
+        "newValue": "9.9012"
+      }
+    },
+    {
+      "poll": "004.json",
+      "code": "VALUE_CHANGED_AFTER_SET",
+      "entity": "incident",
+      "entityId": 1900001,
+      "details": {
+        "field": "longitude",
+        "oldValue": "-84.1",
+        "newValue": "-84.1009"
+      }
+    }
+  ],
+  "final": {
+    "state": {
+      "incident": {
+        "id": 1900001,
+        "EEConsecutive": "51234-2026",
+        "address": "SAN JOSE SAN JOSE CARMEN CALLE SINTETICA 1",
+        "importantDetails": "EDIFICIO SINTETICO",
+        "incidentTimestamp": "2026-10-11T02:25:19.000Z",
+        "provinceId": 1,
+        "cantonId": 101,
+        "districtId": 10101,
+        "incidentCode": "2.1.3",
+        "specificIncidentCode": "2.1.3.1",
+        "dispatchIncidentCode": "2.1",
+        "specificDispatchIncidentCode": "2.1.3",
+        "responsibleStation": 2,
+        "latitude": "9.9012",
+        "longitude": "-84.1009",
+        "isOpen": true,
+        "controlledAt": null,
+        "fireUnderControlAt": null,
+        "lossesStoppedAt": null,
+        "allClearAt": null,
+        "closedAt": null,
+        "closedAtSource": null
+      },
+      "vehicles": [
+        {
+          "id": 5200101,
+          "incidentId": 1900001,
+          "stationId": 2,
+          "vehicleId": 140,
+          "vehicleInternalNumber": null,
+          "dispatchedTime": "2026-10-11T02:26:02.000Z",
+          "arrivalTime": null,
+          "departureTime": null,
+          "baseReturnTime": null,
+          "attentionOnFoot": false
+        }
+      ],
+      "stations": [
+        {
+          "id": 3400101,
+          "incidentId": 1900001,
+          "stationId": 2,
+          "serviceTypeId": 1,
+          "attentionOnFoot": false
+        }
+      ]
+    },
+    "syncState": {
+      "incidentId": 1900001,
+      "phase": "active",
+      "nextPollAt": "2026-10-11T02:39:00.000Z",
+      "lastPolledAt": "2026-10-11T02:36:00.000Z",
+      "upstreamClosedAt": null,
+      "consecutiveFailures": 0,
+      "notFoundCount": 0,
+      "emptyUnitsCount": 0,
+      "lastError": null,
+      "firstSeenAt": "2026-10-11T02:27:00.000Z"
+    }
+  }
+}

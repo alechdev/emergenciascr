@@ -23,7 +23,7 @@ Status: approved, not implemented. Work happens on the `sync-v2` branch.
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Prod isolation             | Nothing on the `sync-v2` branch changes or depends on prod: not its database, workflows, deploys or data. Prod is only read through the public website and API. Promotion to `main` is planned separately once beta is accepted (section 14).                                                                   |
 | Beta database              | Separate Postgres database (`emergenciascr_v2`) on the same server, created from scratch by migrations.                                                                                                                                                                                                         |
-| Upstream values            | **Trust upstream, log it.** When SIGAE replaces a valid value with null, a placeholder, or another value, store what SIGAE says and record the change and an anomaly. No fallback to previous values.                                                                                                           |
+| Upstream values            | **Trust upstream, log it.** When SIGAE replaces a valid value with null, a placeholder, or another value, store what SIGAE says and record the change and an anomaly. No fallback to previous values, except a known location SIGAE clears, which is kept (section 6.3).                                        |
 | What "trust" doesn't cover | Failed requests. Network/HTTP failures and SIGAE error envelopes are not data and are never written, with one documented exception for partial reports (section 6.1). Placeholder dates are stored as `NULL`, which is what SIGAE means.                                                                        |
 | Dispatched units           | Whatever SIGAE currently reports. Units that disappear are deleted (operators often dispatch a unit by mistake and then dispatch from somewhere else). Every addition and removal is kept in the change history.                                                                                                |
 | Incident gone upstream     | If a tracked incident stops existing in SIGAE, it is deleted. No search for a "similar" incident.                                                                                                                                                                                                               |
@@ -391,6 +391,11 @@ Index on `(vehicleId, lastSeenAt)`. History starts when the beta database does.
   - Each case records `UNKNOWN_INCIDENT_TYPE`, and so does a code whose type was created from incident data earlier, once per incident, field and code. Details: `field`, `incidentCode` (without the trailing `.`), `storedCode` and `resolution`: `created`, `inferred` (created earlier), `parent` or `none`.
 - Created types get negative IDs (SIGAE's `id_tipo_incidente` are positive), the incident's name, and the nearest existing ancestor as `parentId`. They are created in the poll's transaction, before the incident, under a lock that serializes their creators, so concurrent polls creating the same code end with one row. A code that exists by then is left as it is.
 - Coordinates: keep `"0"` for unknown (the web relies on it). `null` → `"0"`.
+- **A known location is never cleared** (an exception to "trust upstream", section 2): operators clear an incident's location for minutes or hours and then set it again, so SIGAE sending a stored location as unknown keeps the stored one. A different known value still replaces it (and records `COORDINATES_MOVED` beyond 1 km).
+  - Coordinates (`latitud`, `longitud`) are a pair: either one `0` or `null` while both stored are known keeps both stored values, so a half pair never replaces a full one. A stored half pair follows SIGAE.
+  - Province, canton and district are a unit: all three `0` while any stored one is known keeps the stored three. When SIGAE sends some of them, what it sent is stored (missing ones become `NULL`), so a new province is never mixed with an old canton. On a `99` report the partial-report rule (section 6.1) keeps them field by field first, so this rule only finds the coordinates there.
+  - A kept location records `LOCATION_CLEARED_UPSTREAM` once per incident and field group, with `fields` (`coordinates` or `geography`), `kept` (the stored values) and `received` (what SIGAE sent). Since the stored values stay, there is no `cleared` change and no `VALUE_REGRESSED` for them. An incident with nothing known yet stores what SIGAE sends, and `COORDINATES_MISSING` still applies at `done`.
+  - The raw answers with the cleared location stay in `sigae_snapshots`, so what SIGAE said is not lost.
 - Responsible station: `DestipoServicio === "RESPONSABLE"`, else last item, else `NULL`.
 - `isOpen` = `Estado_Abierto === "true"`.
 - Extra report times via `parseSigaeDate`.
@@ -418,6 +423,7 @@ Anomalies never change what gets stored. They exist to be counted, filtered and 
 | `UNIT_REMOVED`              | Unit or station disappeared upstream.                                |
 | `COORDINATES_MISSING`       | Still `0` at `done`.                                                 |
 | `COORDINATES_MOVED`         | Coordinates changed by more than 1 km.                               |
+| `LOCATION_CLEARED_UPSTREAM` | Known coordinates or geography sent as unknown, kept (section 6.3).  |
 | `UNKNOWN_INCIDENT_TYPE`     | Code not in SIGAE's type list (section 6.3).                         |
 | `MISSING_REFERENCE`         | Station or vehicle unknown even after on-demand fetch.               |
 | `REOPENED`                  | Upstream went closed → open.                                         |
@@ -530,6 +536,7 @@ Unit tests in `packages/sync-domain` (pure, no DB/Redis); integration tests in `
 - Trailing-dot and unknown incident codes; `0` province/canton/district.
 - Responsible station: RESPONSABLE, last-item fallback, empty → `NULL`.
 - Coordinates `0`, filled in later, moved.
+- Known coordinates or geography cleared upstream and set again: kept, `LOCATION_CLEARED_UPSTREAM` once, no `cleared` change.
 - `ATENCION A PIE`.
 - Unit added; unit removed; all units missing once (kept) and twice (deleted).
 - Dispatched but never arrived; time-order violation; dispatch before report time.

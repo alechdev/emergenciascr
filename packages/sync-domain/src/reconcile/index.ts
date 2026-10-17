@@ -17,6 +17,12 @@ export {
   removalChanges
 } from "./diff";
 export {
+  keepKnownLocation,
+  type KeptLocation,
+  type KnownLocationDecision,
+  type LocationFields
+} from "./location";
+export {
   EMPTY_UNITS_POLLS_BEFORE_DELETE,
   applyEmptyUnitsRule,
   type EmptyUnitsDecision

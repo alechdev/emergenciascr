@@ -1,0 +1,112 @@
+{
+  "incidentId": 1900001,
+  "fetchedAt": "2026-10-11T02:33:00.000Z",
+  "responses": {
+    "ObtenerBoletaIncidente": {
+      "body": {
+        "Codigo": "00",
+        "Descripcion": "Proceso realizado satisfactoriamente",
+        "Id_Boleta_Incidente": 1900001,
+        "Consecutivo": "51234-2026",
+        "Fecha": "2026-10-10T00:00:00",
+        "Hora_Aviso": "2026-10-10T20:25:19",
+        "Hora_Controlado": "0001-01-01T00:00:00",
+        "Hora_Disponible": "0001-01-01T00:00:00",
+        "Hora_Fuego_Bajo_Control": "0001-01-01T00:00:00",
+        "Hora_Hospital": "0001-01-01T00:00:00",
+        "Hora_Paciente": "0001-01-01T00:00:00",
+        "Hora_Perdidas_Detenidas": "0001-01-01T00:00:00",
+        "Hora_Todo_Claro": "0001-01-01T00:00:00",
+        "Hora_Traslado": "0001-01-01T00:00:00",
+        "Estado_Abierto": "true",
+        "DesUbicacion": "SAN JOSE SAN JOSE CARMEN CALLE SINTETICA 1",
+        "Direccion": "EDIFICIO SINTETICO",
+        "Id_Provincia": 0,
+        "Id_Canton": 0,
+        "Id_Distrito": 0,
+        "Provincia": "",
+        "Canton": "",
+        "Distrito": "",
+        "CodigoTipoIncidenteDespacho": "2.1.",
+        "CodigoTipoIncidenteReal": "2.1.3.1",
+        "NomtipoIncidenteDespacho": "INCENDIO",
+        "NomTipoIncidenteReal": "VIVIENDA",
+        "Id_Etapa_Incidente": 1,
+        "DesEtapaIncidente": "EN ATENCION",
+        "Civiles_Heridos": 0,
+        "Civiles_Fallecidos": 0,
+        "Bomberos_Heridos": 0,
+        "Bomberos_Fallecidos": 0
+      }
+    },
+    "ObtenerDetalleEmergencias": {
+      "body": {
+        "Codigo": "00",
+        "Descripcion": "Proceso realizado satisfactoriamente",
+        "codigo_tipo_incidente": "2.1.3.",
+        "codigo_tipo_incidente_despacho": "2.1.",
+        "codigo_tipo_incidente_despacho_esp": "2.1.3.",
+        "codigo_tipo_incidente_esp": "2.1.3.1",
+        "consecutivo_EE": "51234-2026",
+        "direccion": "SAN JOSE SAN JOSE CARMEN CALLE SINTETICA 1",
+        "fecha": "2026-10-10T00:00:00",
+        "hora_incidente": "2026-10-10T20:25:19",
+        "latitud": 0,
+        "longitud": 0,
+        "tipo_incidente": "INCENDIO DE ESTRUCTURA",
+        "tipo_incidente_despacho": "INCENDIO",
+        "tipo_incidente_despacho_esp": "INCENDIO DE ESTRUCTURA",
+        "tipo_incidente_esp": "VIVIENDA",
+        "estaciones": []
+      }
+    },
+    "ObtenerEstacionesAtiendeIncidente": {
+      "body": {
+        "Codigo": "00",
+        "Descripcion": "Proceso realizado satisfactoriamente",
+        "Items": [
+          {
+            "Codigo": null,
+            "Descripcion": null,
+            "AtencionAPie": false,
+            "ClaveEstacion": "1-1",
+            "DestipoServicio": "RESPONSABLE",
+            "HoraAtencionAPie": "0001-01-01T00:00:00",
+            "IdBoletaEstacionAtiende": 3400101,
+            "IdEstacion": 2,
+            "IdTipoServicio": 1,
+            "NombreEstacion": "METROPOLITANA NORTE"
+          }
+        ]
+      }
+    },
+    "ObtenerUnidadesDespachadasIncidente": {
+      "body": {
+        "Codigo": "00",
+        "Descripcion": "Proceso realizado satisfactoriamente",
+        "Items": [
+          {
+            "Codigo": null,
+            "Descripcion": null,
+            "CodigoEstacion": 2,
+            "CodigoUnidad": 140,
+            "DespachoAlarma": false,
+            "HoraBase": "0001-01-01T00:00:00",
+            "HoraDespacho": "2026-10-10T20:26:02",
+            "HoraDevolverBase": "0001-01-01T00:00:00",
+            "HoraLLegada": "0001-01-01T00:00:00",
+            "HoraRetiro": "0001-01-01T00:00:00",
+            "HoraTraslado": "0001-01-01T00:00:00",
+            "IdBoletaServicio": 0,
+            "IdBoletaUnidadDespachada": 5200101,
+            "IdVehiculo": 140,
+            "NumeroInterno": null,
+            "Traslado": false,
+            "Unidad": "M-12",
+            "UnidadCompleta": "M-12 METROPOLITANA NORTE"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import { getCostaRicaCalendarToday } from "@bomberoscr/lib/costa-rica-time";
 import { eachDayOfInterval, format, startOfWeek, subYears } from "date-fns";
 import { es } from "date-fns/locale";
 import * as React from "react";
@@ -22,7 +23,8 @@ export function StationDetailsIncidentsHeatmap({ data }: StationDetailsIncidents
     []
   );
 
-  const today = new Date();
+  // Calendar days, keyed like the API's Costa Rica day buckets.
+  const today = getCostaRicaCalendarToday();
   const oneYearAgo = subYears(today, 1);
   const startDate = startOfWeek(oneYearAgo, { weekStartsOn: 0 });
   const days = eachDayOfInterval({ start: startDate, end: today });

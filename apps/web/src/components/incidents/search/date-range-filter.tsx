@@ -1,12 +1,9 @@
+import { getCostaRicaCalendarToday } from "@bomberoscr/lib/costa-rica-time";
 import { CaretDownIcon } from "@phosphor-icons/react";
 import {
-  endOfDay,
   endOfMonth,
   endOfYear,
   format,
-  isValid,
-  parseISO,
-  startOfDay,
   startOfMonth,
   startOfYear,
   subDays,
@@ -18,7 +15,9 @@ import { useMemo, useState } from "react";
 
 import {
   DEFAULT_INCIDENTS_RANGE_DAYS,
-  getDefaultIncidentsDateRange
+  fromIncidentsSearchDate,
+  getDefaultIncidentsDateRange,
+  toIncidentsSearchRange
 } from "@/components/incidents/date-range";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -33,26 +32,13 @@ type DatePreset = {
   range: DateRange;
 };
 
-function parseSearchDate(value?: string) {
-  if (!value) {
-    return undefined;
-  }
-
-  const parsed = parseISO(value);
-  if (!isValid(parsed)) {
-    return undefined;
-  }
-
-  return parsed;
-}
-
 function toSelectedRange(
   start?: string,
   end?: string,
   fallbackRange?: DateRange
 ): DateRange | undefined {
-  const from = parseSearchDate(start);
-  const to = parseSearchDate(end);
+  const from = fromIncidentsSearchDate(start);
+  const to = fromIncidentsSearchDate(end);
 
   if (!from && !to) {
     return fallbackRange;
@@ -64,14 +50,11 @@ function toSelectedRange(
   };
 }
 
-function toSearchRange(range?: DateRange) {
+function toSearchRange(range?: DateRange): { start?: string; end?: string } {
   const from = range?.from;
   const to = range?.to ?? range?.from;
 
-  return {
-    start: from ? startOfDay(from).toISOString() : undefined,
-    end: to ? endOfDay(to).toISOString() : undefined
-  };
+  return from && to ? toIncidentsSearchRange(from, to) : {};
 }
 
 function formatDesktopRangeLabel(range: DateRange) {
@@ -94,7 +77,7 @@ function formatDesktopRangeLabel(range: DateRange) {
 }
 
 function getDesktopTriggerLabel(start?: string, end?: string) {
-  const defaultRange = getDefaultIncidentsDateRange(new Date());
+  const defaultRange = getDefaultIncidentsDateRange();
   const selected = toSelectedRange(start, end, defaultRange);
   const from = selected?.from;
   const to = selected?.to;
@@ -167,7 +150,7 @@ function getPresets(today: Date): DatePreset[] {
 export function DateRangeFilterContent({ className }: { className?: string }) {
   const navigate = Route.useNavigate();
   const { start, end } = Route.useSearch();
-  const today = new Date();
+  const today = getCostaRicaCalendarToday();
   const defaultRange = getDefaultIncidentsDateRange(today);
   const selectedRange = toSelectedRange(start, end, defaultRange);
   const [month, setMonth] = useState<Date>(selectedRange?.to ?? selectedRange?.from ?? today);

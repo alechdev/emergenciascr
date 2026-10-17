@@ -1,5 +1,6 @@
 import { and, between, db, desc, inArray, or, sql } from "@bomberoscr/db/index";
 import { dispatchedStations, incidents } from "@bomberoscr/db/schema";
+import { endOfCostaRicaDay, startOfCostaRicaDay } from "@bomberoscr/lib/costa-rica-time";
 import { type SQL, ilike } from "drizzle-orm";
 
 export type SearchBounds = {
@@ -32,24 +33,9 @@ export async function searchIncidentsCoordinates(
   whereClauses.push(sql`${incidents.latitude} <> 0`);
 
   if (filters.start && filters.end) {
-    const start = new Date(
-      filters.start.getFullYear(),
-      filters.start.getMonth(),
-      filters.start.getDate(),
-      0,
-      0,
-      0,
-      0
-    );
-    const end = new Date(
-      filters.end.getFullYear(),
-      filters.end.getMonth(),
-      filters.end.getDate(),
-      23,
-      59,
-      59,
-      999
-    );
+    // Whole Costa Rica days, whatever the server's time zone.
+    const start = startOfCostaRicaDay(filters.start);
+    const end = endOfCostaRicaDay(filters.end);
     whereClauses.push(between(incidents.incidentTimestamp, start, end));
   }
 

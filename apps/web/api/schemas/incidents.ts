@@ -273,6 +273,16 @@ export const incidentByIdResponse = z
       description: "The timestamp when the incident was last modified.",
       example: "2025-11-23T23:45:12.000Z"
     }),
+    closedAt: z.string().nullable().openapi({
+      description:
+        "When the incident was closed. Null while it is open, and for incidents closed before this time was recorded; their timeline uses `modifiedAt` instead.",
+      example: "2025-11-23T23:45:12.000Z"
+    }),
+    closedAtSource: z.enum(["observed", "estimated"]).nullable().openapi({
+      description:
+        "How `closedAt` was found. `observed`: the first poll that saw the incident closed. `estimated`: it was already closed when first seen, or closed while the sync was down (the latest unit departure, else the control time, else the first-seen time).",
+      example: "observed"
+    }),
     importantDetails: z.string().openapi({
       description: "The important details of the incident.",
       example: "BODEGAS CERRADAS"

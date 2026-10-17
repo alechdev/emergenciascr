@@ -8,7 +8,13 @@ type TimelineEvent = {
 };
 
 function buildTimelineEvents(
-  incident: { id: number; incidentTimestamp: Date; isOpen: boolean; modifiedAt: Date | null },
+  incident: {
+    id: number;
+    incidentTimestamp: Date;
+    isOpen: boolean;
+    closedAt: Date | null;
+    modifiedAt: Date | null;
+  },
   vehicles: Array<{
     dispatchedTime: Date | null;
     arrivalTime: Date | null;
@@ -132,10 +138,12 @@ function buildTimelineEvents(
     }
   }
 
-  if (!incident.isOpen && isKnownDate(incident.modifiedAt)) {
+  // Incidents closed before sync-v2 recorded closedAt only have the last modification time.
+  const closedAt = isKnownDate(incident.closedAt) ? incident.closedAt : incident.modifiedAt;
+  if (!incident.isOpen && isKnownDate(closedAt)) {
     events.push({
       id: `incident:${incident.id}:closed`,
-      date: incident.modifiedAt,
+      date: closedAt,
       title: "Incidente cerrado"
     });
   }

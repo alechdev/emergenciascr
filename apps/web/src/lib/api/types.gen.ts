@@ -144,6 +144,14 @@ export type ListIncidentsResponses = {
              */
             modifiedAt: string;
             /**
+             * When the incident was closed. Null while it is open, and for incidents closed before this time was recorded; their timeline uses `modifiedAt` instead.
+             */
+            closedAt: string | null;
+            /**
+             * How `closedAt` was found. `observed`: the first poll that saw the incident closed. `estimated`: it was already closed when first seen, or closed while the sync was down (the latest unit departure, else the control time, else the first-seen time).
+             */
+            closedAtSource: 'observed' | 'estimated' | null;
+            /**
              * The important details of the incident.
              */
             importantDetails: string;
@@ -314,6 +322,14 @@ export type GetIncidentByIdResponses = {
          * The timestamp when the incident was last modified.
          */
         modifiedAt: string;
+        /**
+         * When the incident was closed. Null while it is open, and for incidents closed before this time was recorded; their timeline uses `modifiedAt` instead.
+         */
+        closedAt: string | null;
+        /**
+         * How `closedAt` was found. `observed`: the first poll that saw the incident closed. `estimated`: it was already closed when first seen, or closed while the sync was down (the latest unit departure, else the control time, else the first-seen time).
+         */
+        closedAtSource: 'observed' | 'estimated' | null;
         /**
          * The important details of the incident.
          */

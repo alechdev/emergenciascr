@@ -150,6 +150,8 @@ export async function getIncidents(params: GetIncidentsParams) {
       EEConsecutive: incidents.EEConsecutive,
       address: incidents.address,
       incidentTimestamp: incidents.incidentTimestamp,
+      closedAt: incidents.closedAt,
+      closedAtSource: incidents.closedAtSource,
       modifiedAt: incidents.modifiedAt,
       importantDetails: incidents.importantDetails,
       latitude: incidents.latitude,
@@ -248,6 +250,8 @@ export async function getIncidentById({ id }: { id: number }) {
       EEConsecutive: true,
       address: true,
       incidentTimestamp: true,
+      closedAt: true,
+      closedAtSource: true,
       modifiedAt: true,
       importantDetails: true,
       latitude: true,
@@ -357,6 +361,7 @@ export async function getIncidentTimelineData({ id }: { id: number }) {
       id: true,
       incidentTimestamp: true,
       isOpen: true,
+      closedAt: true,
       modifiedAt: true
     },
     with: {

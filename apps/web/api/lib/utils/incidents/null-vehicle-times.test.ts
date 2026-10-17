@@ -61,7 +61,13 @@ describe("NULL vehicle times", () => {
 
   it("add no timeline events", () => {
     const events = buildTimelineEvents(
-      { id: 1923918, incidentTimestamp: reportedAt, isOpen: true, modifiedAt: null },
+      {
+        id: 1923918,
+        incidentTimestamp: reportedAt,
+        isOpen: true,
+        closedAt: null,
+        modifiedAt: null
+      },
       [neverDispatched, onScene]
     );
 

@@ -1,3 +1,4 @@
+import { formatCostaRicaDate, getCostaRicaDateParts } from "@bomberoscr/lib/costa-rica-time";
 import { isKnownDate } from "@bomberoscr/lib/missing-date";
 import { WarningIcon } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
@@ -8,7 +9,7 @@ import { Route } from "@/routes/_dashboard/incidentes/$slug";
 const tenMinutesInMs = 600_000;
 
 function formatArticleForTime(date: Date): "la" | "las" {
-  const hour = date.getHours() % 12;
+  const hour = getCostaRicaDateParts(date).hour % 12;
   return hour === 1 ? "la" : "las";
 }
 
@@ -44,16 +45,8 @@ export function IncidentArticle() {
   const { incident, stations } = Route.useLoaderData();
 
   const incidentTimestamp = new Date(incident.incidentTimestamp);
-  const formattedIncidentDate = incidentTimestamp.toLocaleString("es-CR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric"
-  });
-  const formattedIncidentTime = incidentTimestamp.toLocaleTimeString("es-CR", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true
-  });
+  const formattedIncidentDate = formatCostaRicaDate(incidentTimestamp, "longDate");
+  const formattedIncidentTime = formatCostaRicaDate(incidentTimestamp, "time");
 
   const responsibleStation = stations.find((station) => station.isResponsible);
 
@@ -177,11 +170,7 @@ export function IncidentArticle() {
                 )}{" "}
                 {firstBatchVehicles.length > 1 ? "llegan" : "llega"} a la escena al ser{" "}
                 {formatArticleForTime(new Date(firstBatchVehicles[0].arrivalTime ?? ""))}{" "}
-                {new Date(firstBatchVehicles[0].arrivalTime ?? "").toLocaleTimeString("es-CR", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                  hour12: true
-                })}
+                {formatCostaRicaDate(firstBatchVehicles[0].arrivalTime ?? "", "time")}
               </>
             )}
             .
@@ -196,12 +185,7 @@ export function IncidentArticle() {
             )}{" "}
             y se retira al ser{" "}
             {formatArticleForTime(new Date(singleVehicleWithDeparture.departureTime ?? ""))}{" "}
-            {new Date(singleVehicleWithDeparture.departureTime ?? "").toLocaleTimeString("es-CR", {
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true
-            })}
-            .
+            {formatCostaRicaDate(singleVehicleWithDeparture.departureTime ?? "", "time")}.
           </p>
         )}
 

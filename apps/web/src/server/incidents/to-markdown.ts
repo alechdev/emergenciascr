@@ -1,3 +1,4 @@
+import { formatCostaRicaDate, isSameCostaRicaDay } from "@bomberoscr/lib/costa-rica-time";
 import { isKnownDate } from "@bomberoscr/lib/missing-date";
 
 import { SITE_URL } from "@/lib/site";
@@ -8,41 +9,17 @@ import type {
   IncidentPageStation
 } from "./get-incident-page";
 
-const dateTimeFormat = new Intl.DateTimeFormat("es-CR", {
-  day: "2-digit",
-  month: "long",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  hour12: true
-});
-
-const timeFormat = new Intl.DateTimeFormat("es-CR", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: true
-});
-
-const dateTimeShortFormat = new Intl.DateTimeFormat("es-CR", {
-  year: "numeric",
-  month: "short",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: true
-});
-
 function joinTypes(...names: Array<string | null | undefined>): string {
   return names.filter((name): name is string => Boolean(name)).join(", ");
 }
 
 function formatDateTime(value: string): string {
-  return dateTimeFormat.format(new Date(value));
+  return formatCostaRicaDate(value, "longDateTime");
 }
 
 function formatClock(value: string | null | undefined): string {
   if (!isKnownDate(value)) return "—";
-  return timeFormat.format(new Date(value));
+  return formatCostaRicaDate(value, "paddedTime");
 }
 
 function formatSeconds(seconds: number): string {
@@ -129,14 +106,11 @@ function timelineSection(page: IncidentPageData): string {
     return "## Cronología\n\nSin eventos registrados.";
   }
 
-  const incidentDay = new Date(page.incident.incidentTimestamp);
+  const incidentDay = page.incident.incidentTimestamp;
   const lines = page.timeline.map((event) => {
-    const date = new Date(event.date);
-    const sameDay =
-      date.getFullYear() === incidentDay.getFullYear() &&
-      date.getMonth() === incidentDay.getMonth() &&
-      date.getDate() === incidentDay.getDate();
-    const when = sameDay ? timeFormat.format(date) : dateTimeShortFormat.format(date);
+    const when = isSameCostaRicaDay(event.date, incidentDay)
+      ? formatCostaRicaDate(event.date, "paddedTime")
+      : formatCostaRicaDate(event.date, "shortDateTime");
     const description = event.description ? `: ${event.description}` : "";
     return `- **${when}** — ${event.title}${description}`;
   });

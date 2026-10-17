@@ -9,7 +9,8 @@
     "./compare-two-strings": "./src/compare-two-strings.ts",
     "./incidents-search": "./src/incidents-search.ts",
     "./incident-indexability": "./src/incident-indexability.ts",
-    "./missing-date": "./src/missing-date.ts"
+    "./missing-date": "./src/missing-date.ts",
+    "./costa-rica-time": "./src/costa-rica-time.ts"
   },
   "scripts": {
     "build": "tsc"

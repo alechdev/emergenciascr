@@ -16,6 +16,7 @@ import {
   getSystemOverview,
   getYearRecap
 } from "@bomberoscr/db/queries/stats";
+import { startOfCostaRicaDay, startOfCostaRicaHour } from "@bomberoscr/lib/costa-rica-time";
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import { jsonContent } from "stoker/openapi/helpers";
@@ -26,8 +27,6 @@ const DEFAULT_RANGE_DAYS = 30;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const HOUR_IN_MS = 60 * 60 * 1000;
 const ONE_MINUTE_SECONDS = 60;
-const COSTA_RICA_TIME_ZONE = "America/Costa_Rica";
-const COSTA_RICA_UTC_OFFSET = "-06:00";
 
 function buildCacheControlHeader(ttlSeconds: number, swrSeconds: number = ttlSeconds): string {
   return `public, max-age=${ttlSeconds}, s-maxage=${ttlSeconds}, stale-while-revalidate=${swrSeconds}`;
@@ -35,61 +34,6 @@ function buildCacheControlHeader(ttlSeconds: number, swrSeconds: number = ttlSec
 
 function parseIsoDateTime(value: string): Date {
   return new Date(value);
-}
-
-function getDatePartsInTimeZone(date: Date, timeZone: string) {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  });
-
-  const parts = formatter.formatToParts(date);
-
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  const day = parts.find((part) => part.type === "day")?.value;
-
-  if (!year || !month || !day) {
-    throw new Error("Unable to resolve date parts for timezone");
-  }
-
-  return {
-    year,
-    month,
-    day
-  };
-}
-
-function getCostaRicaMidnight(date: Date): Date {
-  const { year, month, day } = getDatePartsInTimeZone(date, COSTA_RICA_TIME_ZONE);
-
-  return new Date(`${year}-${month}-${day}T00:00:00${COSTA_RICA_UTC_OFFSET}`);
-}
-
-function getHourPartInTimeZone(date: Date, timeZone: string) {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    hour: "2-digit",
-    hourCycle: "h23"
-  });
-
-  const parts = formatter.formatToParts(date);
-  const hour = parts.find((part) => part.type === "hour")?.value;
-
-  if (!hour) {
-    throw new Error("Unable to resolve hour part for timezone");
-  }
-
-  return hour;
-}
-
-function getCostaRicaHourStart(date: Date): Date {
-  const { year, month, day } = getDatePartsInTimeZone(date, COSTA_RICA_TIME_ZONE);
-  const hour = getHourPartInTimeZone(date, COSTA_RICA_TIME_ZONE);
-
-  return new Date(`${year}-${month}-${day}T${hour}:00:00${COSTA_RICA_UTC_OFFSET}`);
 }
 
 function resolveDateRange(start: string | null | undefined, end: string | null | undefined) {
@@ -176,8 +120,7 @@ app.openapi(
     const { timeRange } = c.req.valid("query");
 
     const endDate = new Date();
-    const startOfTodayCostaRica = getCostaRicaMidnight(endDate);
-    const startDate = new Date(startOfTodayCostaRica.getTime() - (timeRange - 1) * DAY_IN_MS);
+    const startDate = startOfCostaRicaDay(endDate, -(timeRange - 1));
 
     const data = await getDailyResponseTimes({ startDate, endDate });
     const totalDispatches = data.reduce((sum, day) => sum + day.dispatchCount, 0);
@@ -207,7 +150,7 @@ app.openapi(
     const { timeRange } = c.req.valid("query");
 
     const endDate = new Date();
-    const startOfCurrentHourCostaRica = getCostaRicaHourStart(endDate);
+    const startOfCurrentHourCostaRica = startOfCostaRicaHour(endDate);
     const startDate = new Date(
       startOfCurrentHourCostaRica.getTime() - (timeRange - 1) * HOUR_IN_MS
     );

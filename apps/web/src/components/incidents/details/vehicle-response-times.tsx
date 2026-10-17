@@ -1,3 +1,4 @@
+import { formatCostaRicaDate } from "@bomberoscr/lib/costa-rica-time";
 import { isKnownDate } from "@bomberoscr/lib/missing-date";
 import { ChartBarHorizontalIcon, TableIcon } from "@phosphor-icons/react";
 import { Bar, BarChart, XAxis, YAxis } from "recharts";
@@ -59,11 +60,7 @@ function formatSecondsToHMS(seconds: number): string {
 
 function formatTime(dateString: string | null): string {
   if (!isKnownDate(dateString)) return "N/A";
-  return new Date(dateString).toLocaleTimeString("es-CR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true
-  });
+  return formatCostaRicaDate(dateString, "paddedTime");
 }
 
 export function VehicleResponseTimes() {

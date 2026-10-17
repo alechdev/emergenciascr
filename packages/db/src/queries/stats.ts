@@ -7,6 +7,7 @@ import {
   stations,
   vehicles
 } from "@bomberoscr/db/schema";
+import { formatCostaRicaDate, startOfCostaRicaDay } from "@bomberoscr/lib/costa-rica-time";
 import { and, desc, gte, lt } from "drizzle-orm";
 
 // ============================================================================
@@ -548,11 +549,7 @@ export async function getDailyIncidents({
       current: current.count,
       previous: previous?.count || 0,
       displayDate: current.date
-        ? new Date(`${current.date}T00:00:00`).toLocaleDateString("es-CR", {
-            month: "short",
-            day: "numeric",
-            timeZone: "America/Costa_Rica"
-          })
+        ? formatCostaRicaDate(startOfCostaRicaDay(current.date), "dayMonth")
         : ""
     };
   });

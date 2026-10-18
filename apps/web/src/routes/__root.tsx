@@ -1,3 +1,4 @@
+import { BETA_ROBOTS } from "@bomberoscr/lib/site-env";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { ReactQueryDevtoolsPanel } from "@tanstack/react-query-devtools";
 import {
@@ -10,8 +11,10 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { useEffect } from "react";
 
+import { BetaBanner } from "@/components/layout/beta-banner";
 import { Header } from "@/components/layout/header";
 import { STATIC_OG_IMAGE_URL } from "@/lib/site";
+import { getSiteEnv } from "@/server/site-env";
 
 import appCss from "../styles.css?url";
 
@@ -37,46 +40,58 @@ const keywords = [
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
 }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: defaultTitle },
-      { name: "description", content: description },
-      { name: "keywords", content: keywords },
-      { name: "application-name", content: brandName },
-      { name: "robots", content: "index, follow" },
-      {
-        name: "googlebot",
-        content: "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
-      },
-      // Open Graph defaults (page routes set og:url / canonical themselves)
-      { property: "og:type", content: "website" },
-      { property: "og:site_name", content: brandName },
-      { property: "og:title", content: defaultTitle },
-      { property: "og:description", content: description },
-      { property: "og:image", content: STATIC_OG_IMAGE_URL },
-      // Twitter defaults
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: defaultTitle },
-      { name: "twitter:description", content: description },
-      { name: "twitter:image", content: STATIC_OG_IMAGE_URL }
-    ],
-    links: [
-      { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico" },
-      { rel: "manifest", href: "/manifest.json" }
-    ],
-    scripts: import.meta.env.PROD
-      ? [
-          {
-            defer: true,
-            src: "https://u.alech.dev/script.js",
-            "data-website-id": "6de5b3a0-67fc-41dd-9263-84b16e910ad7"
-          }
-        ]
-      : []
-  }),
+  // Loaded once in the server render and kept: the site env doesn't change while the app runs.
+  loader: () => getSiteEnv(),
+  staleTime: Infinity,
+  shouldReload: false,
+  head: ({ loaderData }) => {
+    const beta = loaderData?.beta === true;
+
+    return {
+      meta: [
+        { charSet: "utf-8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        { title: defaultTitle },
+        { name: "description", content: description },
+        { name: "keywords", content: keywords },
+        { name: "application-name", content: brandName },
+        { name: "robots", content: beta ? BETA_ROBOTS : "index, follow" },
+        {
+          name: "googlebot",
+          content: beta
+            ? BETA_ROBOTS
+            : "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+        },
+        // Open Graph defaults (page routes set og:url / canonical themselves)
+        { property: "og:type", content: "website" },
+        { property: "og:site_name", content: brandName },
+        { property: "og:title", content: defaultTitle },
+        { property: "og:description", content: description },
+        { property: "og:image", content: STATIC_OG_IMAGE_URL },
+        // Twitter defaults
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: defaultTitle },
+        { name: "twitter:description", content: description },
+        { name: "twitter:image", content: STATIC_OG_IMAGE_URL }
+      ],
+      links: [
+        { rel: "stylesheet", href: appCss },
+        { rel: "icon", href: "/favicon.ico" },
+        { rel: "manifest", href: "/manifest.json" }
+      ],
+      // Umami analytics, the site's only one: production builds of the main site only.
+      scripts:
+        import.meta.env.PROD && !beta
+          ? [
+              {
+                defer: true,
+                src: "https://u.alech.dev/script.js",
+                "data-website-id": "6de5b3a0-67fc-41dd-9263-84b16e910ad7"
+              }
+            ]
+          : []
+    };
+  },
 
   component: RootComponent
 });
@@ -90,6 +105,7 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const { beta } = Route.useLoaderData();
   const { pathname } = useLocation();
   const normalizedPathname = pathname.replace(/\/+$/, "") || "/";
   const isIncidentesPage = normalizedPathname === "/incidentes";
@@ -113,11 +129,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="es-CR"
-      className="dark">
+      className="dark"
+      data-site-env={beta ? "beta" : undefined}>
       <head>
         <HeadContent />
       </head>
       <body className={`font-sans antialiased${isIncidentesPage ? " no-page-rails" : ""}`}>
+        {beta && <BetaBanner />}
         <Header />
         <main>{children}</main>
         <TanStackDevtools

@@ -14,6 +14,7 @@ import { Route as SitemapStationsDotxmlRouteImport } from './routes/sitemap-stat
 import { Route as SitemapPagesDotxmlRouteImport } from './routes/sitemap-pages[.]xml'
 import { Route as SitemapIncidentsDotxmlRouteImport } from './routes/sitemap-incidents[.]xml'
 import { Route as SitemapIncidentsChar123yearMonthChar125DotxmlRouteImport } from './routes/sitemap-incidents-{$yearMonth}[.]xml'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as IncidentsRouteImport } from './routes/_incidents'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as ApiIndexRouteImport } from './routes/api/index'
@@ -51,6 +52,11 @@ const SitemapIncidentsChar123yearMonthChar125DotxmlRoute =
     path: '/sitemap-incidents-{$yearMonth}.xml',
     getParentRoute: () => rootRouteImport,
   } as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IncidentsRoute = IncidentsRouteImport.update({
   id: '/_incidents',
   getParentRoute: () => rootRouteImport,
@@ -104,6 +110,7 @@ const DashboardEstacionesNameRoute = DashboardEstacionesNameRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof DashboardIndexRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap-incidents-{$yearMonth}.xml': typeof SitemapIncidentsChar123yearMonthChar125DotxmlRoute
   '/sitemap-incidents.xml': typeof SitemapIncidentsDotxmlRoute
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof DashboardIndexRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap-incidents-{$yearMonth}.xml': typeof SitemapIncidentsChar123yearMonthChar125DotxmlRoute
   '/sitemap-incidents.xml': typeof SitemapIncidentsDotxmlRoute
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_dashboard': typeof DashboardRouteWithChildren
   '/_incidents': typeof IncidentsRouteWithChildren
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap-incidents-{$yearMonth}.xml': typeof SitemapIncidentsChar123yearMonthChar125DotxmlRoute
   '/sitemap-incidents.xml': typeof SitemapIncidentsDotxmlRoute
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/robots.txt'
     | '/sitemap-incidents-{$yearMonth}.xml'
     | '/sitemap-incidents.xml'
     | '/sitemap-pages.xml'
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/robots.txt'
     | '/sitemap-incidents-{$yearMonth}.xml'
     | '/sitemap-incidents.xml'
     | '/sitemap-pages.xml'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_dashboard'
     | '/_incidents'
+    | '/robots.txt'
     | '/sitemap-incidents-{$yearMonth}.xml'
     | '/sitemap-incidents.xml'
     | '/sitemap-pages.xml'
@@ -203,6 +215,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   IncidentsRoute: typeof IncidentsRouteWithChildren
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapIncidentsChar123yearMonthChar125DotxmlRoute: typeof SitemapIncidentsChar123yearMonthChar125DotxmlRoute
   SitemapIncidentsDotxmlRoute: typeof SitemapIncidentsDotxmlRoute
   SitemapPagesDotxmlRoute: typeof SitemapPagesDotxmlRoute
@@ -248,6 +261,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap-incidents-{$yearMonth}.xml'
       fullPath: '/sitemap-incidents-{$yearMonth}.xml'
       preLoaderRoute: typeof SitemapIncidentsChar123yearMonthChar125DotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_incidents': {
@@ -356,6 +376,7 @@ const IncidentsRouteWithChildren = IncidentsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   IncidentsRoute: IncidentsRouteWithChildren,
+  RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapIncidentsChar123yearMonthChar125DotxmlRoute:
     SitemapIncidentsChar123yearMonthChar125DotxmlRoute,
   SitemapIncidentsDotxmlRoute: SitemapIncidentsDotxmlRoute,
@@ -371,10 +392,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

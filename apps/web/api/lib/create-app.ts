@@ -1,3 +1,4 @@
+import { betaRobots } from "@api/middlewares/beta-robots";
 import { pinoLogger } from "@api/middlewares/pino-logger";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { cors } from "hono/cors";
@@ -18,7 +19,7 @@ export function createRouter() {
 export default function createApp() {
   const app = createRouter();
 
-  app.use(cors()).use(requestId()).use(serveEmojiFavicon("🚒")).use(pinoLogger());
+  app.use(betaRobots()).use(cors()).use(requestId()).use(serveEmojiFavicon("🚒")).use(pinoLogger());
 
   app.notFound(notFound);
   app.onError(onError);

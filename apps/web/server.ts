@@ -1,3 +1,4 @@
+import { withBetaHeaders } from "@bomberoscr/lib/site-env";
 import { extname, join, normalize, sep } from "node:path";
 
 import apiApp from "./api/app.ts";
@@ -90,53 +91,15 @@ function resolveStaticFilePath(pathname: string): string | null {
   return filePath;
 }
 
-Bun.serve({
-  port: PORT,
-  async fetch(request) {
-    const normalizedRequest = normalizeBasePathRequest(request);
-    const url = new URL(normalizedRequest.url);
+async function handleRequest(request: Request): Promise<Response> {
+  const normalizedRequest = normalizeBasePathRequest(request);
+  const url = new URL(normalizedRequest.url);
 
-    if (isApiPath(url.pathname)) {
-      try {
-        return await apiFetch(normalizedRequest);
-      } catch (error) {
-        console.error("Unhandled API request error", {
-          path: url.pathname,
-          method: request.method,
-          error
-        });
-
-        return new Response("Internal Server Error", {
-          status: 500,
-          headers: {
-            "Content-Type": "text/plain; charset=utf-8"
-          }
-        });
-      }
-    }
-
-    const staticFilePath = resolveStaticFilePath(url.pathname);
-
-    if (staticFilePath) {
-      const file = Bun.file(staticFilePath);
-
-      if (await file.exists()) {
-        const headers = new Headers();
-
-        if (url.pathname.includes("/assets/")) {
-          headers.set("Cache-Control", "public, max-age=31536000, immutable");
-        } else {
-          headers.set("Cache-Control", "public, max-age=3600");
-        }
-
-        return new Response(file, { headers });
-      }
-    }
-
+  if (isApiPath(url.pathname)) {
     try {
-      return await startFetch(normalizedRequest);
+      return await apiFetch(normalizedRequest);
     } catch (error) {
-      console.error("Unhandled frontend request error", {
+      console.error("Unhandled API request error", {
         path: url.pathname,
         method: request.method,
         error
@@ -149,6 +112,50 @@ Bun.serve({
         }
       });
     }
+  }
+
+  const staticFilePath = resolveStaticFilePath(url.pathname);
+
+  if (staticFilePath) {
+    const file = Bun.file(staticFilePath);
+
+    if (await file.exists()) {
+      const headers = new Headers();
+
+      if (url.pathname.includes("/assets/")) {
+        headers.set("Cache-Control", "public, max-age=31536000, immutable");
+      } else {
+        headers.set("Cache-Control", "public, max-age=3600");
+      }
+
+      return new Response(file, { headers });
+    }
+  }
+
+  try {
+    return await startFetch(normalizedRequest);
+  } catch (error) {
+    console.error("Unhandled frontend request error", {
+      path: url.pathname,
+      method: request.method,
+      error
+    });
+
+    return new Response("Internal Server Error", {
+      status: 500,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8"
+      }
+    });
+  }
+}
+
+Bun.serve({
+  port: PORT,
+  // The API and Start set the beta header themselves; static files and the fallback errors
+  // above only get it here.
+  async fetch(request) {
+    return withBetaHeaders(await handleRequest(request));
   }
 });
 

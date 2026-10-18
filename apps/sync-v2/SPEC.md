@@ -503,7 +503,7 @@ Built and tested against the beta database.
 7. Station views follow the station of each dispatch, not the vehicle's current one:
    - Station vehicle list (`getStationVehiclesWithStats` in `packages/db/src/queries/stations.ts`): a vehicle's incident count and average response time only include dispatches where `dispatched_vehicles.stationId` is that station. The list itself stays "vehicles currently assigned".
    - Annual recap top vehicles (`packages/db/src/queries/stats.ts`): label each vehicle with the station it served those dispatches for (`dispatched_vehicles.stationId`), not `vehicles.stationId`.
-8. Beta mode via env (`SITE_ENV=beta`): `X-Robots-Tag: noindex`, `robots.txt` disallow all, no sitemap, a visible "datos de sync-v2" banner, analytics off.
+8. Beta mode via env (`SITE_ENV=beta`, read by the server at runtime, so the same build serves either site): `X-Robots-Tag: noindex, nofollow`, `robots.txt` disallow all, no sitemap, a visible "datos de sync-v2" banner, analytics off.
 
 ## 12. Testing
 

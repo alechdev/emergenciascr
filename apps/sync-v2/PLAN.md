@@ -204,14 +204,14 @@ The rest of section 11, built and tested against a local migrated database.
 - [x] "En camino" fix.
 - [x] Costa Rica time everywhere: shared formatter, slugs, date filters, SQL buckets, current year.
 - [x] Station vehicle list and annual recap count dispatches by `dispatched_vehicles.stationId`, not the vehicle's current station (section 11 item 7).
-- [ ] Beta mode (`SITE_ENV=beta`).
+- [x] Beta mode (`SITE_ENV=beta`).
 
 **Done when**
 
 - [x] Web tests pass under `TZ=UTC`, including the 20:25 Costa Rica evening incident case (`bun run --cwd apps/web test:tz`).
 - [x] No bare `toLocaleString` / `toLocaleTimeString` / `Intl.DateTimeFormat` without the shared module remain in the web (`apps/web/src/lib/date-formatting-guard.test.ts`).
 - [x] A vehicle moved from station A to station B: B's vehicle list shows it without A's dispatches, and A's past incidents still show A (`packages/db/test/integration/station-dispatches.test.ts`).
-- [ ] With `SITE_ENV=beta`: `noindex` header, `robots.txt` disallow, no sitemap, banner shown, analytics off.
+- [x] With `SITE_ENV=beta`: `noindex` header, `robots.txt` disallow, no sitemap, banner shown, analytics off (`apps/web/src/server/beta-mode.test.tsx`).
 
 **Notes**
 
@@ -229,6 +229,11 @@ The rest of section 11, built and tested against a local migrated database.
   - Tests: `bun run --cwd apps/web test:tz` runs the web tests under `TZ=UTC` and `TZ=America/Costa_Rica` (also checked under `Asia/Tokyo` and `America/Los_Angeles`). A guard test fails on `toLocaleDateString`, `toLocaleTimeString` or `Intl.DateTimeFormat` outside the shared module; `toLocaleString` on a date isn't caught by it, and none remains.
   - Left as they are: the homepage's rolling N-day windows (highlighted incidents, incident types chart) are instants N×24 h back, not calendar days; the admin SIGAE date at noon `-06:00` only names a day.
 - Missing dates: `isKnownDate` / `isMissingDate` (`packages/lib/src/missing-date.ts`, `@bomberoscr/lib/missing-date`), since both the API and the Start app's client components need it and `src/` components don't import `@api/*`. It replaced four checks: `isUndefinedDate` in the API formatters and in `src/lib/utils.ts` (local year `=== 1`), the response-time table's local year `=== 1970`, and the markdown page's local year `> 1970`. A time is missing when it is `null`, empty, unparsable, or its UTC year is 1970 or earlier (SIGAE's `0001-01-01` placeholder, which the legacy data still has, and the epoch). The year is read in UTC because in Costa Rica the placeholder's local year is 0, so the old `=== 1` checks missed it on a server or browser in Costa Rica time.
+- Beta mode: `isBetaSite` (`packages/lib/src/site-env.ts`, `@bomberoscr/lib/site-env`) is true only for `SITE_ENV` exactly `beta`, read per call from the server's env, so the beta image is the prod build configured at runtime (only `VITE_SERVER_URL` / `VITE_SITE_URL` differ at build). It lives in `packages/lib` because the API, `server.ts` and the Start routes all use it.
+  - Header: `withBetaHeaders` adds `X-Robots-Tag: noindex, nofollow` (copying the response when its headers are immutable). Hono sets it in `createApp` (`api/middlewares/beta-robots.ts`), Start in a global request middleware (`src/start.ts`, `src/server/beta-robots-middleware.ts`) for pages, server routes and server functions, and `server.ts` on every response, which also covers static files and its own fallback errors.
+  - `robots.txt` is a server route (`src/routes/robots[.]txt.ts`) instead of `public/robots.txt`, since `server.ts` serves files from `dist/client` before Start; the main site's body is unchanged. The five sitemap routes return 404 through `proxyInternalSitemap`, before reaching the API. The token-protected `/api/sitemap/internal/*` endpoints are left as they are.
+  - Page: the root route loads `{ beta }` with a server function (`src/server/site-env.ts`) once, in the server render (`staleTime: Infinity`, `shouldReload: false`), so the browser hydrates the same value. In beta its head sets `robots` and `googlebot` to `noindex, nofollow` and drops the Umami script, the site's only analytics; the incident page's own robots meta, which would win over the root's, reads the root's data (`isBetaFromMatches`, `src/lib/site-env.ts`). `<html data-site-env="beta">` adds `--beta-banner-height` to `--app-header-height` and pads the header, so the fixed banner (`src/components/layout/beta-banner.tsx`, "Sitio beta: datos de sync-v2.") sits above it and every offset built on the header height clears both. On mobile `/incidentes`, which hides the header, the banner covers the top of the page.
+  - Checked on a production build with placeholder settings: with `SITE_ENV=beta` every path tried (pages, API, assets, 404s) has the header, `robots.txt` disallows all, the sitemaps are 404, and the HTML has the banner and no Umami script; without it the headers, `robots.txt`, sitemaps and HTML are as before.
 
 ## Phase 8: Beta infrastructure
 

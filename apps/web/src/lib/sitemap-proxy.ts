@@ -1,3 +1,5 @@
+import { isBetaSite } from "@bomberoscr/lib/site-env";
+
 function getPublicApiBaseUrl(): string | null {
   const value = import.meta.env.VITE_SERVER_URL || process.env.VITE_SERVER_URL;
 
@@ -13,6 +15,15 @@ function getPublicApiBaseUrl(): string | null {
 }
 
 export async function proxyInternalSitemap(path: string) {
+  if (isBetaSite()) {
+    return new Response("Not Found", {
+      status: 404,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8"
+      }
+    });
+  }
+
   const apiBaseUrl = getPublicApiBaseUrl();
   const sitemapToken = process.env.SITEMAP_TOKEN;
 

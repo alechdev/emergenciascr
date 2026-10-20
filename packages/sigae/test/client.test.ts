@@ -75,8 +75,8 @@ describe("requests", () => {
       call: (c) => c.getLatestIncidents({ count: 50 }),
       params: {
         numero_registros: 50,
-        id_tipo_incidentes_despacho: [1, 2, 3, 4, 5, 6, 7, 8, 9],
-        id_tipo_incidentes_real: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        id_tipo_incidentes_despacho: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+        id_tipo_incidentes_real: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
       }
     },
     {

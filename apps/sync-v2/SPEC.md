@@ -435,7 +435,7 @@ Anomalies never change what gets stored. They exist to be counted, filtered and 
 
 ### 8.1 Discovery
 
-- Every minute: `ObtenerListaUltimasEmergenciasApp` (50 items). New IDs get an `incident_sync_state` row (`active`) and a job.
+- Every minute: `ObtenerListaUltimasEmergenciasApp` (50 items). New IDs get an `incident_sync_state` row (`active`) and a job. The request lists type groups 1 to 11: SIGAE leaves out an incident whose dispatch or real type group isn't listed, and the public app's 1 to 9 hid every type 10 and 11 incident until the gap fill found it (up to 4.7 hours late in the local run).
 - Gap fill: at boot and hourly, `ObtenerListaEmergenciasApp(from, to)` for the last 6 hours.
 - Bootstrap: at boot, schedule a job for every `active`/`settling` row. Losing Redis must not lose tracked incidents.
 

@@ -25,8 +25,13 @@ import type { SigaeEndpoint, SigaeEndpointTypes } from "./endpoints";
 export const DEFAULT_TIMEOUT_MS = 15_000;
 export const DEFAULT_MAX_CONCURRENCY = 4;
 
-/** Incident type IDs the public app asks for: every dispatch and real type group. */
-const ALL_INCIDENT_TYPE_GROUPS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+/**
+ * Top-level incident type codes for the latest-incidents list. SIGAE leaves out an incident
+ * when either its dispatch or its real type is missing here, so 10 (SERVICIOS ESPECIALES) and
+ * 11 (SERVICIOS DECLINADOS) must be listed even though the public app only sends 1 to 9.
+ * 98 (BOLETA FANTASMA) is left out on purpose.
+ */
+const ALL_INCIDENT_TYPE_GROUPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
 export interface SigaeCredentials {
   user: string;

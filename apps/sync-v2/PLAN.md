@@ -2,27 +2,24 @@
 
 How to build what `SPEC.md` describes, in order. The spec says what and why; this file says in which order, what each phase delivers and how to tell it's done. Section numbers refer to the spec.
 
-Every phase is a reviewable set of commits on `sync-v2`. A phase is done when all its "Done when" items are checked. Nothing here touches prod (spec section 2, "Prod isolation").
+Every phase is a reviewable set of commits on `sync-v2`. A phase is done when all its "Done when" items are checked. Nothing before phase 8 touches prod (spec section 2, "Prod isolation").
 
 ## Overview
 
-| Phase | Name                   | Depends on | Status                          |
-| ----- | ---------------------- | ---------- | ------------------------------- |
-| 1     | Migrations             | —          | Done                            |
-| 2     | SIGAE client           | —          | Done                            |
-| 3     | sync-v2 foundations    | 2          | Done                            |
-| 4     | Schema changes         | 1          | Done                            |
-| 5     | Pure core and fixtures | 2          | Done                            |
-| 6     | Sync pipeline          | 3, 4, 5    | In progress                     |
-| 7     | Web changes            | 4          | Not started                     |
-| 8     | Beta infrastructure    | 1, 6, 7    | Not started                     |
-| 9     | Comparison tool        | 8          | Not started                     |
-| 10    | Beta run               | 9          | Not started                     |
-| —     | Promotion to main      | 10         | Planned separately (section 14) |
+| Phase | Name                   | Depends on | Status      |
+| ----- | ---------------------- | ---------- | ----------- |
+| 1     | Migrations             | —          | Done        |
+| 2     | SIGAE client           | —          | Done        |
+| 3     | sync-v2 foundations    | 2          | Done        |
+| 4     | Schema changes         | 1          | Done        |
+| 5     | Pure core and fixtures | 2          | Done        |
+| 6     | Sync pipeline          | 3, 4, 5    | Done        |
+| 7     | Web changes            | 4          | Done        |
+| 8     | Promotion to prod      | 6, 7       | Not started |
 
 Phases 1 and 2 can run in parallel. Phase 5 can start as soon as phase 2 has published its types and `parseSigaeDate`; it needs no database or Redis.
 
-Phase 8 may also start early, right after phase 3, to try the proxy, telemetry and deploy hooks on the server sooner. If so, reset the beta database before phase 10 so the beta run starts with data from the final sync.
+The beta site planned first (its infrastructure, a comparison tool and a beta run) was dropped. A 4-day local run and a comparison with a prod database copy took its place (spec section 13).
 
 ## Phase 1: Migrations
 
@@ -157,9 +154,9 @@ Wire the core into the workers (section 4 pipeline, section 8).
 **Done when**
 
 - [x] Integration tests pass (`bun run test:integration`, both time zones).
-- [ ] sync-v2 runs locally against SIGAE for 24 hours: no stuck or `failed` incidents, queues don't grow, and incidents move through `active` → `settling` → `done`.
+- [x] sync-v2 runs locally against SIGAE for 24 hours: no stuck or `failed` incidents, queues don't grow, and incidents move through `active` → `settling` → `done`. It ran 4 days (spec section 13).
 - [x] Deleting the Redis data and restarting resumes every tracked incident. Checked against a throwaway Postgres and Redis (`apps/sync-v2/test/integration/discovery.test.ts`); repeat it during the 24-hour run.
-- [ ] Remaining checks from spec section 3.3: units and stations responses for a brand-new incident with no units.
+- [x] Remaining checks from spec section 3.3: units and stations responses for a brand-new incident with no units (units answer `03` with empty `Items`, handled as an empty list), and whether partial reports recover to `00` (they don't: 25 of 25 stayed `99`).
 
 **Notes**
 
@@ -205,14 +202,12 @@ The rest of section 11, built and tested against a local migrated database.
 - [x] "En camino" fix.
 - [x] Costa Rica time everywhere: shared formatter, slugs, date filters, SQL buckets, current year.
 - [x] Station vehicle list and annual recap count dispatches by `dispatched_vehicles.stationId`, not the vehicle's current station (section 11 item 7).
-- [x] Beta mode (`SITE_ENV=beta`).
 
 **Done when**
 
 - [x] Web tests pass under `TZ=UTC`, including the 20:25 Costa Rica evening incident case (`bun run --cwd apps/web test:tz`).
 - [x] No bare `toLocaleString` / `toLocaleTimeString` / `Intl.DateTimeFormat` without the shared module remain in the web (`apps/web/src/lib/date-formatting-guard.test.ts`).
 - [x] A vehicle moved from station A to station B: B's vehicle list shows it without A's dispatches, and A's past incidents still show A (`packages/db/test/integration/station-dispatches.test.ts`).
-- [x] With `SITE_ENV=beta`: `noindex` header, `robots.txt` disallow, no sitemap, banner shown, analytics off (`apps/web/src/server/beta-mode.test.tsx`).
 
 **Notes**
 
@@ -230,65 +225,33 @@ The rest of section 11, built and tested against a local migrated database.
   - Tests: `bun run --cwd apps/web test:tz` runs the web tests under `TZ=UTC` and `TZ=America/Costa_Rica` (also checked under `Asia/Tokyo` and `America/Los_Angeles`). A guard test fails on `toLocaleDateString`, `toLocaleTimeString` or `Intl.DateTimeFormat` outside the shared module; `toLocaleString` on a date isn't caught by it, and none remains.
   - Left as they are: the homepage's rolling N-day windows (highlighted incidents, incident types chart) are instants N×24 h back, not calendar days; the admin SIGAE date at noon `-06:00` only names a day.
 - Missing dates: `isKnownDate` / `isMissingDate` (`packages/lib/src/missing-date.ts`, `@bomberoscr/lib/missing-date`), since both the API and the Start app's client components need it and `src/` components don't import `@api/*`. It replaced four checks: `isUndefinedDate` in the API formatters and in `src/lib/utils.ts` (local year `=== 1`), the response-time table's local year `=== 1970`, and the markdown page's local year `> 1970`. A time is missing when it is `null`, empty, unparsable, or its UTC year is 1970 or earlier (SIGAE's `0001-01-01` placeholder, which the legacy data still has, and the epoch). The year is read in UTC because in Costa Rica the placeholder's local year is 0, so the old `=== 1` checks missed it on a server or browser in Costa Rica time.
-- Beta mode: `isBetaSite` (`packages/lib/src/site-env.ts`, `@bomberoscr/lib/site-env`) is true only for `SITE_ENV` exactly `beta`, read per call from the server's env, so the beta image is the prod build configured at runtime (only `VITE_SERVER_URL` / `VITE_SITE_URL` differ at build). It lives in `packages/lib` because the API, `server.ts` and the Start routes all use it.
-  - Header: `withBetaHeaders` adds `X-Robots-Tag: noindex, nofollow` (copying the response when its headers are immutable). Hono sets it in `createApp` (`api/middlewares/beta-robots.ts`), Start in a global request middleware (`src/start.ts`, `src/server/beta-robots-middleware.ts`) for pages, server routes and server functions, and `server.ts` on every response, which also covers static files and its own fallback errors.
-  - `robots.txt` is a server route (`src/routes/robots[.]txt.ts`) instead of `public/robots.txt`, since `server.ts` serves files from `dist/client` before Start; the main site's body is unchanged. The five sitemap routes return 404 through `proxyInternalSitemap`, before reaching the API. The token-protected `/api/sitemap/internal/*` endpoints are left as they are.
-  - Page: the root route loads `{ beta }` with a server function (`src/server/site-env.ts`) once, in the server render (`staleTime: Infinity`, `shouldReload: false`), so the browser hydrates the same value. In beta its head sets `robots` and `googlebot` to `noindex, nofollow` and drops the Umami script, the site's only analytics; the incident page's own robots meta, which would win over the root's, reads the root's data (`isBetaFromMatches`, `src/lib/site-env.ts`). `<html data-site-env="beta">` adds `--beta-banner-height` to `--app-header-height` and pads the header, so the fixed banner (`src/components/layout/beta-banner.tsx`, "Sitio beta: datos de sync-v2.") sits above it and every offset built on the header height clears both. On mobile `/incidentes`, which hides the header, the banner covers the top of the page.
-  - Checked on a production build with placeholder settings: with `SITE_ENV=beta` every path tried (pages, API, assets, 404s) has the header, `robots.txt` disallows all, the sitemaps are 404, and the HTML has the banner and no Umami script; without it the headers, `robots.txt`, sitemaps and HTML are as before.
+- Beta mode (`SITE_ENV=beta`: noindex, robots, no sitemap, banner, no analytics) was built and then removed with the beta site.
 
-## Phase 8: Beta infrastructure
+## Phase 8: Promotion to prod
 
-Everything needed to run beta on the server (section 13).
+Merge `sync-v2` into `main`, migrate the prod database in place and replace v1 (spec section 14).
 
 **Tasks**
 
-- [ ] Database `emergenciascr_v2` and its own role on the same Postgres server.
-- [x] `apps/sync-v2` Dockerfile.
-- [ ] Workflows `build-migrate-beta.yaml` and `build-sync-v2-beta.yaml`; web and sync jobs need the migrate job.
-- [ ] Server: services for beta web, sync-v2, Redis and the migrate one-shot; deploy hooks; `SIGAE_PROXY_URL`; OTLP endpoint with `deployment.environment.name=beta`.
-- [ ] Beta dashboard (section 4.2).
+- [ ] Rehearsal on a local restore of a prod dump: schema drift check against the baseline, drift fixes, baseline marked as applied, `apps/migrate` run and timed.
+- [ ] The new web against the migrated copy: incident pages (old and new), stats, slugs and their 301s, maps.
+- [ ] sync-v2 against the migrated copy for a while: it picks up existing rows (the first poll diffs v1's data) and new incidents.
+- [ ] Decide the handoff window (spec section 16).
+- [ ] Runbook from the rehearsal: exact commands, backup, timings, checks and rollback.
+- [ ] Before the switch: explicit histogram buckets (`packages/sigae/src/client/telemetry.ts`), the BullMQ `removeOnComplete` race, the `tsx` dev dependency, `dispatched_vehicles` indexes, a CI test workflow, and a regenerated API client (`src/lib/api/*.gen.ts`).
+- [ ] `main` workflows: migrate job and sync-v2 image build; the web and sync deploys need the migrate job.
+- [ ] Server: Redis, the sync-v2 service, the migrate one-shot, `SIGAE_PROXY_URL`, an OTLP endpoint with `deployment.environment.name=production`, and the dashboard.
+- [ ] Merge `sync-v2` into `main`.
+- [ ] Switch following the runbook.
+- [ ] Remove v1 (`apps/sync` and what only it uses) once the switch is accepted.
 
 **Done when**
 
-- [ ] A push to `sync-v2` builds all three images and deploys migrate, then web and sync.
+- [ ] The rehearsal migrates a prod copy cleanly, and the new web shows its history correctly.
 - [ ] A failing migration stops the deploy.
-- [ ] `beta.emergenciascr.com` shows incidents synced by sync-v2.
-- [ ] The dashboard shows live data from beta.
-- [ ] Nothing on the branch has prod database credentials.
+- [ ] Prod runs sync-v2: new incidents appear, none end in `failed`, queues stay flat, and the dashboard shows live data.
+- [ ] v1 is stopped and removed.
 
 **Notes**
 
-- `apps/sync-v2/Dockerfile` follows the migrate one: the build stage installs the filtered workspace and bundles with tsdown (workspace packages, `drizzle-orm`, `pg` and `undici` end up in `dist/`), the runtime stage gets a production-only install of sync-v2's own dependencies, runs as `bun` with `bun run --no-install dist/index.mjs`, and checks `/health` on loopback. It runs on Bun 1.4 (`start` in `package.json` too): the built bundle passed the SIGTERM integration test (poll finished and stored, traces, metrics and logs flushed, exit 0) on both Bun and Node, the spec assumes Bun in deploy images, and the image needs no second runtime. The SIGAE client only loads `undici` on Node, for the proxy. The shutdown takes up to 45 seconds, so the container's stop timeout must be longer (the local stack uses 60 s). `.dockerignore` now excludes `.env` files in every directory, not just the root.
-
-## Phase 9: Comparison tool
-
-`bun run --cwd apps/sync-v2 compare` (section 13, "Comparison tool").
-
-**Tasks**
-
-- [ ] Fetch from both sites' public APIs, throttled to about 2 requests per second.
-- [ ] Coverage checks, field comparison with tolerances, classification (expected, explained, unexplained).
-- [ ] Markdown report and JSON output.
-- [ ] Tests with recorded API responses.
-
-**Done when**
-
-- [ ] Tests pass.
-- [ ] A run over the first days of beta produces a report where every difference is classified.
-
-## Phase 10: Beta run
-
-At least 7 days including a weekend, 14 preferred (section 13, "Duration and acceptance").
-
-**Tasks**
-
-- [ ] Daily comparison report, kept.
-- [ ] Triage every unexplained difference: fix the sync, or add a rule to the comparison tool with a reason.
-- [ ] A fixture test for every anomaly code seen.
-
-**Done when**
-
-- [ ] All acceptance criteria in section 13 are met.
-- [ ] Remaining checks from spec section 3.3: whether partial reports ever recover to `00` (from snapshots).
-
-Then plan the promotion to main (section 14) as its own document.
+- `apps/sync-v2/Dockerfile` (built with the old beta phase) follows the migrate one: the build stage installs the filtered workspace and bundles with tsdown (workspace packages, `drizzle-orm`, `pg` and `undici` end up in `dist/`), the runtime stage gets a production-only install of sync-v2's own dependencies, runs as `bun` with `bun run --no-install dist/index.mjs`, and checks `/health` on loopback. It runs on Bun 1.4 (`start` in `package.json` too): the built bundle passed the SIGTERM integration test (poll finished and stored, traces, metrics and logs flushed, exit 0) on both Bun and Node, the spec assumes Bun in deploy images, and the image needs no second runtime. The SIGAE client only loads `undici` on Node, for the proxy. The shutdown takes up to 45 seconds, so the container's stop timeout must be longer (the local stack uses 60 s). `.dockerignore` now excludes `.env` files in every directory, not just the root.

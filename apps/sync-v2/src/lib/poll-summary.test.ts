@@ -138,4 +138,17 @@ describe("pollSummary", () => {
     expect(summary.message).toBe("incident poll superseded");
     expect(summary.fields.reason).toBe("superseded by a newer poll");
   });
+
+  it("says when a forced poll of a deleted incident is skipped", () => {
+    const summary = pollSummary(
+      outcome({
+        kind: "skipped",
+        reason: "already deleted",
+        syncState: syncState({ phase: "deleted", nextPollAt: null })
+      }),
+      { durationMs: 3 }
+    );
+    expect(summary.message).toBe("incident poll skipped");
+    expect(summary.fields.reason).toBe("already deleted");
+  });
 });

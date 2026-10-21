@@ -23,7 +23,38 @@ describe("integration test guards", () => {
     expect(() => assertThrowaway("redis://127.0.0.1:6379/15", "V", ["APP_URL"])).toThrow(
       /must not be the same as APP_URL/
     );
-    expect(() => assertThrowaway("redis://[::1]:6379/15", "V", ["APP_URL"])).not.toThrow();
+    expect(() => assertThrowaway("redis://127.0.0.1:6380/15", "V", ["APP_URL"])).not.toThrow();
+    expect(() => assertThrowaway("redis://127.0.0.1:6379/14", "V", ["APP_URL"])).not.toThrow();
+  });
+
+  it("recognizes the app's server however its URL is spelled", () => {
+    process.env.APP_URL = "redis://localhost:6379/15";
+    for (const url of [
+      "redis://127.0.0.1/15",
+      "redis://[::1]:6379/15",
+      "redis://127.0.0.1:6379?db=15",
+      "rediss://127.0.0.1:6379/15"
+    ]) {
+      expect(() => assertThrowaway(url, "V", ["APP_URL"]), url).toThrow(/same as APP_URL/);
+    }
+    process.env.APP_URL = "postgresql://app:secret@localhost/sync_test";
+    for (const url of [
+      "postgres://test:test@127.0.0.1:5432/sync_test",
+      "postgres://test@[::1]/sync_test"
+    ]) {
+      expect(() => assertThrowaway(url, "V", ["APP_URL"]), url).toThrow(/same as APP_URL/);
+    }
+    expect(() =>
+      assertThrowaway("postgres://u@127.0.0.1:55432/sync_test", "V", ["APP_URL"])
+    ).not.toThrow();
+    process.env.APP_URL = "postgres://sync_test@localhost";
+    expect(() => assertThrowaway("postgres://u@127.0.0.1/sync_test", "V", ["APP_URL"])).toThrow(
+      /same as APP_URL/
+    );
+    process.env.APP_URL = "not a url";
+    expect(() =>
+      assertThrowaway("postgres://u@127.0.0.1/sync_test", "V", ["APP_URL"])
+    ).not.toThrow();
   });
 
   it("requires `test` in the database name", () => {

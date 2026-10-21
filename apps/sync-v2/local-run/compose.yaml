@@ -107,7 +107,7 @@ services:
       redis:
         condition: service_healthy
       otel:
-        condition: service_started
+        condition: service_healthy
     # The service waits up to 30 s for running jobs and exits by 45 s.
     stop_grace_period: 60s
     restart: unless-stopped

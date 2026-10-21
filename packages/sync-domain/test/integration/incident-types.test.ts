@@ -71,6 +71,14 @@ describe.skipIf(!TEST_DATABASE_URL)("incident types SIGAE's list lacks", () => {
       .orderBy(asc(incidentTypes.incidentCode));
   }
 
+  /** Sessions holding (`granted`) or waiting for the lock on creating incident types. */
+  async function typeLocks(granted: boolean) {
+    const rows = await db.execute<{ count: number }>(
+      sql`select count(*)::int as count from pg_locks where locktype = 'advisory' and classid = 5302027 and granted = ${granted}`
+    );
+    return Number(rows.rows[0]?.count);
+  }
+
   async function storedCodes() {
     const [incident] = await db
       .select({
@@ -222,7 +230,7 @@ describe.skipIf(!TEST_DATABASE_URL)("incident types SIGAE's list lacks", () => {
       return known;
     });
     // The second one waits for the first to commit.
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await vi.waitFor(async () => expect(await typeLocks(false)).toBe(1));
     expect(await types(["10", "10.3", "11"])).toEqual([]);
     release();
     await first;
@@ -363,12 +371,7 @@ describe.skipIf(!TEST_DATABASE_URL)("incident types SIGAE's list lacks", () => {
       await gate;
     });
     // The poll holds the lock before the type sync starts.
-    await vi.waitFor(async () => {
-      const held = await db.execute<{ count: number }>(
-        sql`select count(*)::int as count from pg_locks where locktype = 'advisory' and granted and classid = 5302027`
-      );
-      expect(Number(held.rows[0]?.count)).toBe(1);
-    });
+    await vi.waitFor(async () => expect(await typeLocks(true)).toBe(1));
     const sync = upsertIncidentTypes(db, [
       {
         codigo_tipo_incidente: "10",
@@ -377,7 +380,7 @@ describe.skipIf(!TEST_DATABASE_URL)("incident types SIGAE's list lacks", () => {
         items: []
       }
     ]);
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await vi.waitFor(async () => expect(await typeLocks(false)).toBe(1));
     release();
     await Promise.all([poll, sync]);
 

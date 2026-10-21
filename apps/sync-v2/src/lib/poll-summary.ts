@@ -37,12 +37,14 @@ export function pollSummary(
 
   return {
     level: outcome.kind === "failed" ? "warn" : "info",
-    message:
-      outcome.kind !== "skipped"
-        ? "incident polled"
-        : outcome.reason
-          ? "incident poll superseded"
-          : "incident no longer polled",
+    message: outcome.kind === "skipped" ? skippedMessage(outcome.reason) : "incident polled",
     fields
   };
+}
+
+function skippedMessage(reason: string | null): string {
+  if (reason === null) return "incident no longer polled";
+  return reason === "superseded by a newer poll"
+    ? "incident poll superseded"
+    : "incident poll skipped";
 }

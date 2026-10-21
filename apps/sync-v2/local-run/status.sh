@@ -104,8 +104,14 @@ echo "redis memory: $(redis_cli info memory | tr -d '\r' | sed -n 's/^used_memor
 
 section "disk"
 sql -At -c 'select '"'postgres database: '"' || pg_size_pretty(pg_database_size(current_database()))'
-df -h "$(docker info --format '{{.DockerRootDir}}')" | tail -n 1 |
-  awk '{print "docker disk: " $4 " free of " $2 " (" $5 " used)"}'
+# DockerRootDir is a path on the daemon's host: not this one with Docker Desktop or a remote context.
+docker_root="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
+if [ -n "$docker_root" ] && [ -d "$docker_root" ]; then
+  df -h "$docker_root" | tail -n 1 |
+    awk '{print "docker disk: " $4 " free of " $2 " (" $5 " used)"}'
+else
+  echo "docker disk: unavailable (the Docker data directory isn't on this host)"
+fi
 
 section "sync-v2 log levels (last $log_window)"
 compose logs --no-log-prefix --since "$log_window" sync-v2 2>/dev/null |

@@ -152,12 +152,13 @@ describe("resolveIncidentTypes", () => {
   it("creates the parent from the category name, sorted before a child listed first", () => {
     const result = resolve({
       codigo_tipo_incidente: "2.1.3",
-      codigo_tipo_incidente_esp: "2.1.3.1",
-      codigo_tipo_incidente_despacho_esp: "10.3",
-      tipo_incidente_despacho_esp: "INTER-INSTITUCIONAL",
+      codigo_tipo_incidente_esp: "10.3",
+      tipo_incidente_esp: "INTER-INSTITUCIONAL",
       codigo_tipo_incidente_despacho: "10",
-      tipo_incidente_despacho: "SERVICIOS ESPECIALES"
+      tipo_incidente_despacho: "SERVICIOS ESPECIALES",
+      codigo_tipo_incidente_despacho_esp: "2.1.3.1"
     });
+    expect(result.unknownCodes).toEqual(["10.3", "10"]);
     expect(result.created.map((type) => type.code)).toEqual(["10", "10.3"]);
   });
 

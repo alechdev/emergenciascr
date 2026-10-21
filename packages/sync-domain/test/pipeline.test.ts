@@ -70,6 +70,14 @@ describe("describeError", () => {
     expect(redactQueryMessage("connection refused")).toBe("connection refused");
     expect(describeError("boom")).toBe("boom");
   });
+
+  it("ends a cyclic cause chain", () => {
+    const first = new Error("failed");
+    const second = new Error("", { cause: first });
+    first.cause = second;
+
+    expect(describeError(first)).toBe("failed");
+  });
 });
 
 describe("newSyncState", () => {

@@ -76,4 +76,17 @@ describe("serializeError", () => {
 
     expect(serializeError(error).message).toBe('Failed query: insert into "incidents" ("id", …');
   });
+
+  it("drops the parameters of failed database queries from the stack", () => {
+    const error = new Error(
+      'Failed query: insert into "incidents" ("id", "address") values ($1, $2)\nparams: 1,CALLE 1'
+    );
+
+    const { stack } = serializeError(error);
+    expect(stack).toMatch(/^Error: Failed query: insert into "incidents" \("id", …\n/);
+    expect(stack).not.toContain("CALLE 1");
+
+    error.message = "Failed query: select 1\nparams: CALLE 2";
+    expect(serializeError(error)).not.toHaveProperty("stack");
+  });
 });

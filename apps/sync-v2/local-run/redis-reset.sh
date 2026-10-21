@@ -63,6 +63,13 @@ jobs=$(poll_job_ids | sort)
 missing_ids=$(comm -23 <(printf '%s\n' "$tracked" | sed '/^$/d') <(printf '%s\n' "$jobs" | sed '/^$/d'))
 extra_ids=$(comm -13 <(printf '%s\n' "$tracked" | sed '/^$/d') <(printf '%s\n' "$jobs" | sed '/^$/d'))
 
+# An incident that finished between the two reads above still reads as tracked but has no job
+# left, so only the ones still missing a moment later count.
+if [ -n "$missing_ids" ]; then
+  sleep 5
+  missing_ids=$(comm -12 <(printf '%s\n' "$missing_ids") <(comm -23 <(tracked_ids | sort) <(poll_job_ids | sort)))
+fi
+
 echo "after $(($(date +%s) - started)) s:"
 echo "  active/settling incidents: $(printf '%s\n' "$tracked" | sed '/^$/d' | wc -l)"
 echo "  incident-poll jobs:        $(printf '%s\n' "$jobs" | sed '/^$/d' | wc -l)"

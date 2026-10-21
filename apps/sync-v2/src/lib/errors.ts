@@ -47,16 +47,23 @@ function redactDetail(detail: unknown): string | undefined {
   return match ? `Key (${match[1]})=(…) ${match[2]}` : undefined;
 }
 
+/**
+ * A stack starts with the error's message, so a redacted message is redacted there too. A
+ * stack that doesn't hold the message as it is now could hold the original one: it is dropped.
+ */
+function redactStack(stack: string, original: string, redacted: string): string | undefined {
+  if (redacted === original) return stack;
+  return stack.includes(original) ? stack.replace(original, () => redacted) : undefined;
+}
+
 /** Turns an error and its whole cause chain into plain JSON. */
 export function serializeError(error: unknown, depth = 0): SerializedError {
   if (!(error instanceof Error)) {
     return { name: "NonError", message: String(error) };
   }
 
-  const serialized: SerializedError = {
-    name: error.name,
-    message: redactQueryMessage(error.message)
-  };
+  const message = redactQueryMessage(error.message);
+  const serialized: SerializedError = { name: error.name, message };
   const source = error as unknown as Record<string, unknown>;
   for (const field of FIELDS) {
     const value = source[field];
@@ -64,7 +71,10 @@ export function serializeError(error: unknown, depth = 0): SerializedError {
   }
   const detail = redactDetail(source.detail);
   if (detail !== undefined) serialized.detail = detail;
-  if (depth === 0 && error.stack) serialized.stack = error.stack;
+  if (depth === 0 && error.stack) {
+    const stack = redactStack(error.stack, error.message, message);
+    if (stack !== undefined) serialized.stack = stack;
+  }
   if (depth >= MAX_DEPTH) return serialized;
 
   if (error instanceof AggregateError) {

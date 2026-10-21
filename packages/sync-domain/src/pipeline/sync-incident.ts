@@ -99,8 +99,9 @@ const ENDPOINT_KEYS = {
  * from `syncState.nextPollAt`.
  *
  * Polls of the same incident are serialized by a per-incident lock from the snapshot write
- * on. A poll that finds a newer poll stored meanwhile writes nothing and returns `skipped`;
- * so does one without `force` that finds the incident finished.
+ * on. A poll that finds a newer poll stored meanwhile keeps the snapshots it stored, writes
+ * nothing else and returns `skipped`; so does one without `force` that finds the incident
+ * finished.
  *
  * Only tracked incidents are polled on a schedule (spec section 8.4), so a forced poll (a
  * manual sync) of an incident without a sync state row only creates one when it succeeds

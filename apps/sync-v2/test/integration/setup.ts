@@ -24,6 +24,8 @@ Object.assign(process.env, {
   // Tests pass their database in; nothing may use the env-built one.
   DRIZZLE_POSTGRES_URL: `postgres://none@${UNREACHABLE}/none`,
   SIGAE_API_URL: FAKE_SIGAE_URL,
+  // A proxy from the shell or `.env` would carry requests out; this one refuses them.
+  SIGAE_PROXY_URL: `http://${UNREACHABLE}`,
   SIGAE_IP: FAKE_CREDENTIALS.ip,
   SIGAE_USER: FAKE_CREDENTIALS.user,
   SIGAE_PASSWORD: FAKE_CREDENTIALS.password,

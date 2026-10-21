@@ -83,10 +83,10 @@ export async function pollIncident(
 }
 
 export function recordPollMetrics(outcome: SyncIncidentOutcome): void {
-  if (outcome.kind === "skipped") return;
-  pollResults.add(1, { result: outcome.kind });
   const lag = pollLagSeconds(outcome.scheduledAt, outcome.startedAt);
   if (lag !== null) pollLag.record(lag);
+  if (outcome.kind === "skipped") return;
+  pollResults.add(1, { result: outcome.kind });
   for (const change of outcome.changes) {
     changesDetected.add(1, { entity: change.entity, field: change.field, kind: change.kind });
   }

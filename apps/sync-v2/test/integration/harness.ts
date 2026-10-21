@@ -32,7 +32,7 @@ export async function eventually<T>(
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     const value = await check();
-    if (value) return value;
+    if (value !== undefined && value !== null && value !== false) return value;
     if (Date.now() > deadline) throw new Error("condition not met in time");
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }

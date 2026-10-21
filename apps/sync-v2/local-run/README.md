@@ -10,7 +10,7 @@ The phase 6 run (see [PLAN.md](../PLAN.md)): the built sync-v2 image against liv
 | `otel`     | `grafana/otel-lgtm` (Grafana, Prometheus, Tempo, Loki), volume `otel` | Grafana on `http://127.0.0.1:23000` (admin / admin)  |
 | `sync-v2`  | `apps/sync-v2/Dockerfile`                                             | none (health check inside the container)             |
 
-sync-v2 starts after `migrate` exits 0, runs with `TZ=UTC` like the servers, and exports traces, metrics and logs to `otel` with `deployment.environment.name=local-24h`. Container logs rotate at 5 × 20 MB per service.
+sync-v2 starts after `migrate` exits 0 and `otel` is ready, runs with `TZ=UTC` like the servers, and exports traces, metrics and logs to `otel` with `deployment.environment.name=local-24h`. Container logs rotate at 5 × 20 MB per service.
 
 ## Secrets
 

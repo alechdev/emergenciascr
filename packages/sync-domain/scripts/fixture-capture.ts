@@ -61,10 +61,17 @@ const COORDINATE_FIELDS: Readonly<Record<string, number>> = {
  */
 const MAX_SYNTHETIC_OFFSET = 0.5;
 
-/** The connection string with every transaction read-only, so a capture can't write. */
+/**
+ * The connection string with every transaction read-only, so a capture can't write. Options
+ * the URL already has are kept; the setting goes last, so it wins over one they set.
+ */
 export function readOnlyConnection(url: string): string {
   const connection = new URL(url);
-  connection.searchParams.set("options", "-c default_transaction_read_only=on");
+  const options = connection.searchParams.get("options")?.trim();
+  connection.searchParams.set(
+    "options",
+    [options, "-c default_transaction_read_only=on"].filter(Boolean).join(" ")
+  );
   return connection.toString();
 }
 
@@ -126,8 +133,10 @@ export function createLocationMasker() {
 /**
  * One poll per distinct `fetchedAt`, each with the latest snapshot of every endpoint up to
  * then. Snapshots only exist for answers whose payload changed, so polls that changed nothing
- * are missing, and a request that failed replays as the endpoint's previous answer. An
- * endpoint with no snapshot yet replays as a network error.
+ * are missing, and a request that failed replays as the endpoint's previous answer. A time
+ * whose snapshots change nothing once redacted with the current allowlists (they differed in
+ * a field an older allowlist kept) is left out too. An endpoint with no snapshot yet replays
+ * as a network error.
  */
 export function buildFixturePolls(
   incidentId: number,
@@ -143,15 +152,16 @@ export function buildFixturePolls(
 
   const polls: CapturedPoll[] = [];
   for (const [time, group] of byTime) {
+    let changed = false;
     for (const row of group) {
       // Snapshots are already redacted; redacting again also drops anything an older
       // allowlist kept that the current one doesn't.
       const payload = redactSnapshot(row.endpoint, row.payload);
-      latest.set(
-        row.endpoint,
-        mask(row.endpoint, inAllowlistOrder(payload, SNAPSHOT_ALLOWLISTS[row.endpoint]))
-      );
+      const body = mask(row.endpoint, inAllowlistOrder(payload, SNAPSHOT_ALLOWLISTS[row.endpoint]));
+      if (JSON.stringify(body) !== JSON.stringify(latest.get(row.endpoint))) changed = true;
+      latest.set(row.endpoint, body);
     }
+    if (!changed) continue;
     const responses = {} as Record<SigaeIncidentEndpoint, CapturedResponse>;
     for (const endpoint of ENDPOINT_ORDER) {
       const body = latest.get(endpoint);

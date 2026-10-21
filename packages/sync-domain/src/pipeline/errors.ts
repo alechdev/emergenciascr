@@ -14,8 +14,12 @@ export function redactQueryMessage(message: string): string {
 /** An error's message followed by its causes', for `lastError` and summaries. */
 export function describeError(error: unknown): string {
   const parts: string[] = [];
+  const seen = new Set<unknown>();
   let current: unknown = error;
   while (current !== undefined && current !== null && parts.length < MAX_CAUSES) {
+    // Empty or repeated messages don't add parts, so only this ends a cyclic chain.
+    if (seen.has(current)) break;
+    seen.add(current);
     if (current instanceof Error) {
       const message = redactQueryMessage(current.message);
       if (message && !parts.includes(message)) parts.push(message);

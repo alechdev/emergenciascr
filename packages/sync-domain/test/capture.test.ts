@@ -83,6 +83,16 @@ describe("buildFixturePolls", () => {
     expect(Object.keys(response.body.Items[1]!)).toEqual(Object.keys(station()));
   });
 
+  it("leaves out times whose snapshots differ only in fields the current allowlists drop", () => {
+    const stations = (time: string) => listBody([station({ HoraAtencionAPie: time })]);
+    const polls = buildFixturePolls(INCIDENT_ID, [
+      row("ObtenerEstacionesAtiendeIncidente", 0, stations("2026-10-10T20:27:02")),
+      row("ObtenerEstacionesAtiendeIncidente", 5, stations("2026-10-10T20:32:02")),
+      row("ObtenerEstacionesAtiendeIncidente", 9, listBody([station({ IdEstacion: 5 })]))
+    ]);
+    expect(polls.map((poll) => poll.fetchedAt)).toEqual([at(0).toISOString(), at(9).toISOString()]);
+  });
+
   it("replaces locations, keeping changes, moves and empty values", () => {
     const polls = buildFixturePolls(INCIDENT_ID, [
       row("ObtenerBoletaIncidente", 0, reportBody({ DesUbicacion: "CALLE REAL 1", Direccion: "" })),
@@ -217,5 +227,14 @@ describe("readOnlyConnection", () => {
     expect(url.searchParams.get("options")).toBe("-c default_transaction_read_only=on");
     expect(url.searchParams.get("sslmode")).toBe("disable");
     expect(url.pathname).toBe("/db");
+  });
+
+  it("keeps the options the URL already has", () => {
+    const url = new URL(
+      readOnlyConnection("postgres://u@127.0.0.1/db?options=-c%20search_path%3Dsync")
+    );
+    expect(url.searchParams.get("options")).toBe(
+      "-c search_path=sync -c default_transaction_read_only=on"
+    );
   });
 });

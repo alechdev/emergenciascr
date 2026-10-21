@@ -4,21 +4,55 @@
  */
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+const DEFAULT_PORTS: Readonly<Record<string, string>> = {
+  "postgres:": "5432",
+  "postgresql:": "5432",
+  "redis:": "6379",
+  "rediss:": "6379"
+};
 
 /** Created by the harness right after migrating an empty test database. */
 export const TEST_DATABASE_MARKER = "__integration_test_marker";
 
-/** Refuses anything but a loopback URL that isn't the app's own configured one. */
+/**
+ * Refuses anything but a loopback URL that isn't the app's own configured one, however
+ * either is spelled (any loopback host, a default port left out).
+ */
 export function assertThrowaway(url: string, variable: string, appVariables: string[]): void {
   const host = new URL(url).hostname;
   if (!LOOPBACK_HOSTS.has(host)) {
     throw new Error(`${variable} must point at a throwaway server on loopback, not ${host}`);
   }
+  const target = serverTarget(url);
   for (const name of appVariables) {
-    if (process.env[name] && process.env[name] === url && name !== variable) {
+    const app = process.env[name];
+    if (app && name !== variable && serverTarget(app) === target) {
       throw new Error(`${variable} must not be the same as ${name}`);
     }
   }
+}
+
+/** The server and database a Postgres or Redis URL points at, or `null` if it isn't a URL. */
+function serverTarget(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  const scheme = parsed.protocol.startsWith("redis")
+    ? "redis"
+    : parsed.protocol.startsWith("postgres")
+      ? "postgres"
+      : parsed.protocol;
+  const host = LOOPBACK_HOSTS.has(parsed.hostname) ? "loopback" : parsed.hostname.toLowerCase();
+  const port = parsed.port || DEFAULT_PORTS[parsed.protocol] || "";
+  // Postgres defaults the database to the user name; ioredis defaults to database 0.
+  const database =
+    scheme === "redis"
+      ? String(redisDatabase(url) ?? 0)
+      : decodeURIComponent(parsed.pathname.slice(1)) || decodeURIComponent(parsed.username);
+  return `${scheme} ${host}:${port}/${database}`;
 }
 
 /** The database name must say it is a test database (`sync_test`, `test`, …). */

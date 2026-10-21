@@ -89,6 +89,13 @@ async function track(
   } catch (cause) {
     throw new SyncError("failed to store discovered incidents", { cause });
   }
+  // Recorded before scheduling: once stored, these incidents are never new again.
+  incidentsDiscovered.add(discovered.length);
+  for (const incidentId of discovered) {
+    const item = byId.get(incidentId);
+    const delay = item ? discoveryDelaySeconds(listedIncidentTime(item), firstSeenAt) : null;
+    if (delay !== null) discoveryDelay.record(delay);
+  }
 
   if (discovered.length > 0) {
     await deps.scheduler.schedule(discovered.map((incidentId) => ({ incidentId, at: null })));
@@ -106,11 +113,5 @@ async function track(
   const rescheduled = await deps.scheduler.schedule(
     polled.map((row) => ({ incidentId: row.incidentId, at: row.nextPollAt }))
   );
-  incidentsDiscovered.add(discovered.length);
-  for (const incidentId of discovered) {
-    const item = byId.get(incidentId);
-    const delay = item ? discoveryDelaySeconds(listedIncidentTime(item), firstSeenAt) : null;
-    if (delay !== null) discoveryDelay.record(delay);
-  }
   return { listed: byId.size, discovered, rescheduled };
 }

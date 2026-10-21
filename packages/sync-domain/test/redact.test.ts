@@ -114,51 +114,58 @@ describe("redactSnapshot (spec 5.2)", () => {
   });
 });
 
-describe("HoraAtencionAPie in ObtenerEstacionesAtiendeIncidente", () => {
-  const redactStations = (...items: Record<string, unknown>[]) =>
-    redactSnapshot("ObtenerEstacionesAtiendeIncidente", listBody(items)).Items as Record<
-      string,
-      unknown
-    >[];
+describe.each(["Items", "items"])(
+  "HoraAtencionAPie in ObtenerEstacionesAtiendeIncidente %s",
+  (key) => {
+    const stationsBody = (items: Record<string, unknown>[]) => {
+      const { Items, ...envelope } = listBody(items);
+      return { ...envelope, [key]: Items };
+    };
+    const redactStations = (...items: Record<string, unknown>[]) =>
+      redactSnapshot("ObtenerEstacionesAtiendeIncidente", stationsBody(items))[key] as Record<
+        string,
+        unknown
+      >[];
 
-  it("is dropped without attention on foot, where SIGAE sends its current time", () => {
-    const [item] = redactStations(
-      station({ AtencionAPie: false, HoraAtencionAPie: "2026-10-17T14:44:49" })
-    );
-    expect(item).not.toHaveProperty("HoraAtencionAPie");
-    expect(item).toMatchObject({ AtencionAPie: false, IdBoletaEstacionAtiende: 3400101 });
-  });
-
-  it("is dropped with the placeholder, a missing flag or a flag that isn't true", () => {
-    const items = redactStations(
-      station({ AtencionAPie: false, HoraAtencionAPie: PLACEHOLDER }),
-      station({ AtencionAPie: undefined, HoraAtencionAPie: "2026-10-17T14:44:49" }),
-      station({ AtencionAPie: "true", HoraAtencionAPie: "2026-10-17T14:44:49" })
-    );
-    for (const item of items) expect(item).not.toHaveProperty("HoraAtencionAPie");
-  });
-
-  it("is kept with attention on foot, in the item's key order", () => {
-    const [item] = redactStations(
-      station({ AtencionAPie: true, HoraAtencionAPie: "2026-10-10T20:26:50" })
-    );
-    expect(item).toMatchObject({ AtencionAPie: true, HoraAtencionAPie: "2026-10-10T20:26:50" });
-    expect(Object.keys(item ?? {})).toEqual(Object.keys(station()));
-  });
-
-  it("doesn't change the hash of polls that differ only in it without attention on foot", () => {
-    const hash = (time: string, onFoot = false) =>
-      payloadHash(
-        redactSnapshot(
-          "ObtenerEstacionesAtiendeIncidente",
-          listBody([station({ AtencionAPie: onFoot, HoraAtencionAPie: time })])
-        )
+    it("is dropped without attention on foot, where SIGAE sends its current time", () => {
+      const [item] = redactStations(
+        station({ AtencionAPie: false, HoraAtencionAPie: "2026-10-17T14:44:49" })
       );
-    expect(hash("2026-10-17T14:44:49")).toBe(hash("2026-10-17T14:47:52"));
-    expect(hash("2026-10-17T14:44:49")).toBe(hash(PLACEHOLDER));
-    expect(hash("2026-10-17T14:44:49", true)).not.toBe(hash("2026-10-17T14:47:52", true));
-  });
-});
+      expect(item).not.toHaveProperty("HoraAtencionAPie");
+      expect(item).toMatchObject({ AtencionAPie: false, IdBoletaEstacionAtiende: 3400101 });
+    });
+
+    it("is dropped with the placeholder, a missing flag or a flag that isn't true", () => {
+      const items = redactStations(
+        station({ AtencionAPie: false, HoraAtencionAPie: PLACEHOLDER }),
+        station({ AtencionAPie: undefined, HoraAtencionAPie: "2026-10-17T14:44:49" }),
+        station({ AtencionAPie: "true", HoraAtencionAPie: "2026-10-17T14:44:49" })
+      );
+      for (const item of items) expect(item).not.toHaveProperty("HoraAtencionAPie");
+    });
+
+    it("is kept with attention on foot, in the item's key order", () => {
+      const [item] = redactStations(
+        station({ AtencionAPie: true, HoraAtencionAPie: "2026-10-10T20:26:50" })
+      );
+      expect(item).toMatchObject({ AtencionAPie: true, HoraAtencionAPie: "2026-10-10T20:26:50" });
+      expect(Object.keys(item ?? {})).toEqual(Object.keys(station()));
+    });
+
+    it("doesn't change the hash of polls that differ only in it without attention on foot", () => {
+      const hash = (time: string, onFoot = false) =>
+        payloadHash(
+          redactSnapshot(
+            "ObtenerEstacionesAtiendeIncidente",
+            stationsBody([station({ AtencionAPie: onFoot, HoraAtencionAPie: time })])
+          )
+        );
+      expect(hash("2026-10-17T14:44:49")).toBe(hash("2026-10-17T14:47:52"));
+      expect(hash("2026-10-17T14:44:49")).toBe(hash(PLACEHOLDER));
+      expect(hash("2026-10-17T14:44:49", true)).not.toBe(hash("2026-10-17T14:47:52", true));
+    });
+  }
+);
 
 describe("fixtures", () => {
   const scenarios = listScenarios();

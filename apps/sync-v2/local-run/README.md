@@ -43,8 +43,8 @@ PLAN phase 6: "deleting the Redis data and restarting resumes every tracked inci
 - [ ] 24 hours without stuck or `failed` incidents (`status.sh`: no `failed` rows, no polls overdue by more than 5 minutes, `consecutiveFailures` back to 0).
 - [ ] Queues don't grow: `incident-poll` delayed jobs track the `active` + `settling` count, no waiting backlog, no failed jobs piling up.
 - [ ] Incidents move through `active` → `settling` → `done` (`done` grows over the day; nothing stays `active` long after closing).
-- [ ] The Redis reset check passes during the run.
-- [ ] Spec section 3.3: a brand-new incident with no units yet; check its first snapshots of the units and stations endpoints (`ObtenerUnidadesDespachadasIncidente`, `ObtenerEstacionesAtiendeIncidente`) in `sigae_snapshots` by `codigo` and item count, without reading the payloads' personal fields.
+- [ ] The Redis reset check passes during the run. Not run during the 4-day run; the integration test (`apps/sync-v2/test/integration/discovery.test.ts`) covers it.
+- [x] Spec section 3.3: a brand-new incident with no units yet; check its first snapshots of the units and stations endpoints (`ObtenerUnidadesDespachadasIncidente`, `ObtenerEstacionesAtiendeIncidente`) in `sigae_snapshots` by `codigo` and item count, without reading the payloads' personal fields. The first units snapshot was `03` with empty `Items` for 5 of 566 incidents; the first stations snapshot was `00` with items for all 566.
 - [ ] sync-v2 restarts stay at 0 (`status.sh`), and warn/error lines are explained.
 
 ## Run log

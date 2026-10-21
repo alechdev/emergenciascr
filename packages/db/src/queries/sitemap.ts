@@ -19,7 +19,8 @@ import { costaRicaMonthKey } from "./costa-rica-time";
 const specificIncidentTypes = alias(incidentTypes, "specific_incident_types_sitemap");
 const actualIncidentTypes = alias(incidentTypes, "actual_incident_types_sitemap");
 const incidentMonth = costaRicaMonthKey(incidents.incidentTimestamp);
-const YEAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
+// Date.UTC reads years 0-99 as 1900-1999.
+const YEAR_MONTH_PATTERN = /^([1-9]\d{3})-(0[1-9]|1[0-2])$/;
 
 function vehicleCountsSubquery(database: Database) {
   return database

@@ -168,7 +168,7 @@ export type ListIncidentsResponses = {
              */
             isTemporaryCoordinates: boolean;
             /**
-             * URL to the incident's map image.
+             * URL to the incident's map image. It changes when the coordinates do.
              */
             mapImageUrl: string | null;
             /**
@@ -351,7 +351,7 @@ export type GetIncidentByIdResponses = {
          */
         cantonName: string | null;
         /**
-         * URL to the incident's map image.
+         * URL to the incident's map image. It changes when the coordinates do.
          */
         mapImageUrl: string | null;
         /**
@@ -663,7 +663,12 @@ export type GetIncidentMapData = {
     path: {
         id: number | null;
     };
-    query?: never;
+    query?: {
+        /**
+         * Map version from `mapImageUrl`; other values redirect to the current one
+         */
+        v?: string;
+    };
     url: '/incidents/{id}/map';
 };
 
@@ -703,6 +708,10 @@ export type GetIncidentOriginalMapData = {
     body?: never;
     path: {
         id: number | null;
+        /**
+         * Map version for the current coordinates
+         */
+        version: string;
     };
     query: {
         /**
@@ -710,7 +719,7 @@ export type GetIncidentOriginalMapData = {
          */
         token: string;
     };
-    url: '/incidents/{id}/map/original';
+    url: '/incidents/{id}/map/original/{version}';
 };
 
 export type GetIncidentOriginalMapErrors = {

@@ -26,7 +26,12 @@ section "containers"
 compose ps --all --format '{{.Service}}|{{.Status}}' | while IFS='|' read -r service status; do
   printf '%-10s %s\n' "$service" "$status"
 done
-echo "sync-v2 restarts: $(docker inspect -f '{{.RestartCount}}' "$(compose ps -q sync-v2)")"
+sync_id="$(compose ps --all -q sync-v2)"
+if [ -n "$sync_id" ]; then
+  echo "sync-v2 restarts: $(docker inspect -f '{{.RestartCount}}' "$sync_id")"
+else
+  echo "sync-v2 restarts: unavailable (container not created)"
+fi
 
 section "sync-v2 health"
 compose exec -T sync-v2 sh -c 'wget -q -O - "http://127.0.0.1:${HEALTH_PORT}/health"' ||

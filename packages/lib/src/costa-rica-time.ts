@@ -158,7 +158,8 @@ function costaRicaOffsetMs(instantMs: number): number {
 
 /**
  * The instant of a Costa Rica wall-clock time. Fields overflow like `Date.UTC`, so day 0 is the
- * last day of the previous month and month 13 is January of the next year.
+ * last day of the previous month and month 13 is January of the next year. A time skipped by a
+ * DST change (midnight on 25 February 1979) moves forward by the skipped hour.
  */
 export function costaRicaInstant(
   year: number,
@@ -170,9 +171,15 @@ export function costaRicaInstant(
   millisecond = 0
 ): Date {
   const wallMs = Date.UTC(year, month - 1, day, hour, minute, second, millisecond);
-  // The second pass corrects the guess when the offset changes between the two instants.
-  const guessMs = wallMs - costaRicaOffsetMs(wallMs);
-  return new Date(wallMs - costaRicaOffsetMs(guessMs));
+  const firstOffsetMs = costaRicaOffsetMs(wallMs);
+  const guessMs = wallMs - firstOffsetMs;
+  const secondOffsetMs = costaRicaOffsetMs(guessMs);
+  if (secondOffsetMs === firstOffsetMs) return new Date(guessMs);
+  // The offset changes between the two instants: keep the one whose offset gives back this wall
+  // time. In a DST gap neither does, and the later one is the same time after the change.
+  const correctedMs = wallMs - secondOffsetMs;
+  if (costaRicaOffsetMs(correctedMs) === secondOffsetMs) return new Date(correctedMs);
+  return new Date(Math.max(guessMs, correctedMs));
 }
 
 const DATE_KEY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;

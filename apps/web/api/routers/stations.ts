@@ -5,6 +5,7 @@ import {
 } from "@api/lib/imgproxy";
 import { existsInS3, getFromS3 } from "@api/lib/s3";
 import { buildMapImageUrl, buildStationImageUrl } from "@api/lib/url-builder";
+import { hasMapCoordinates } from "@api/lib/utils/incidents/map-utils";
 import {
   stationByNameRequest,
   stationByNameResponse,
@@ -54,14 +55,6 @@ function parseQueryNumber(value: string | undefined): number | undefined {
   if (value == null) return undefined;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function isValidCoordinates(latitude: string | null, longitude: string | null): boolean {
-  if (latitude === null || longitude === null) return false;
-  const lat = Number(latitude);
-  const lng = Number(longitude);
-  if (lat === 0 && lng === 0) return false;
-  return true;
 }
 
 function buildImgproxyUrl(sourceUrl: string): string {
@@ -314,9 +307,12 @@ app.openapi(
         incidents: incidents.map((incident) => ({
           ...incident,
           incidentTimestamp: incident.incidentTimestamp.toISOString(),
-          mapImageUrl: isValidCoordinates(incident.latitude, incident.longitude)
-            ? buildMapImageUrl(incident.id, incident.latitude, incident.longitude)
-            : null
+          mapImageUrl:
+            incident.latitude !== null &&
+            incident.longitude !== null &&
+            hasMapCoordinates(incident.latitude, incident.longitude)
+              ? buildMapImageUrl(incident.id, incident.latitude, incident.longitude)
+              : null
         }))
       },
       HttpStatusCodes.OK

@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it } from "vitest";
 const originalTz = process.env.TZ;
 
 afterEach(() => {
-  process.env.TZ = originalTz;
+  // Assigning undefined would set the literal string "undefined".
+  if (originalTz === undefined) delete process.env.TZ;
+  else process.env.TZ = originalTz;
 });
 
 describe("isMissingDate", () => {

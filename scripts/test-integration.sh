@@ -34,6 +34,10 @@ for _ in $(seq 1 60); do
   sleep 0.5
 done
 docker exec "$pg" pg_isready -U test -d sync_test -h 127.0.0.1 >/dev/null
+if [ "$(docker exec "$redis" redis-cli ping 2>/dev/null)" != "PONG" ]; then
+  echo "Redis did not become ready" >&2
+  exit 1
+fi
 
 export TEST_DATABASE_URL="postgres://test:test@127.0.0.1:$(port "$pg" 5432)/sync_test"
 # The harness refuses Redis database 0 and database names without "test".

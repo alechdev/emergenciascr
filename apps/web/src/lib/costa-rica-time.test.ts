@@ -99,6 +99,15 @@ describe("Costa Rica calendar", () => {
     expect(costaRicaInstant(1992, 3, 1).toISOString()).toBe("1992-03-01T05:00:00.000Z");
   });
 
+  it("moves a wall-clock time skipped by DST forward, so the day still starts on that day", () => {
+    // Clocks went from 00:00 to 01:00 on 25 February 1979.
+    expect(startOfCostaRicaDay("1979-02-25").toISOString()).toBe("1979-02-25T06:00:00.000Z");
+    expect(getCostaRicaDateKey(startOfCostaRicaDay("1979-02-25"))).toBe("1979-02-25");
+    expect(costaRicaInstant(1979, 2, 25, 0, 30).toISOString()).toBe("1979-02-25T06:30:00.000Z");
+    expect(startOfCostaRicaDay("1979-02-24").toISOString()).toBe("1979-02-24T06:00:00.000Z");
+    expect(startOfCostaRicaDay("1979-02-26").toISOString()).toBe("1979-02-26T05:00:00.000Z");
+  });
+
   it("keeps calendar days for date pickers as local dates of the same day", () => {
     const day = calendarDateFromKey("2026-10-10");
     expect(day && getCalendarDateKey(day)).toBe("2026-10-10");

@@ -54,7 +54,7 @@ bun run --cwd apps/sync-v2 dev
 ## Tests
 
 - `bun run --cwd apps/sync-v2 test`: unit tests, no servers needed.
-- `bun run test:integration` (from the repository root, needs Docker): starts a throwaway Postgres and Redis on random loopback ports, runs the integration tests of `packages/sync-domain` and `apps/sync-v2` under `TZ=UTC` and `TZ=America/Costa_Rica`, and removes both containers.
+- `bun run test:integration` (from the repository root, needs Docker): starts a throwaway Postgres and Redis on random loopback ports, runs the integration tests of `packages/sync-domain`, `apps/sync-v2` and `packages/db` (the web's database queries) under `TZ=UTC` and `TZ=America/Costa_Rica`, and removes both containers.
 - `bun run --cwd apps/sync-v2 test:integration` runs them against servers you started yourself, given `TEST_DATABASE_URL` and `TEST_REDIS_URL` (loopback only; never the app's `DRIZZLE_POSTGRES_URL` or `REDIS_URL`). Without both, every suite is skipped. The tests empty the database and flush the Redis database, so they refuse a database without `test` in its name, a database with tables they didn't create (they create `__integration_test_marker` in an empty one before migrating it) and Redis database 0: use something like `redis://127.0.0.1:6379/15`.
 
 The integration tests cover the real queue and lifecycle schedule, discovery, gap fill and the resume after losing Redis, the fixtures replayed through `syncIncident`, on-demand references, concurrent polls, telemetry with in-memory exporters and a graceful shutdown of the real service in a child process.

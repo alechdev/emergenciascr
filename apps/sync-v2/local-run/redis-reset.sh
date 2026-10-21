@@ -67,7 +67,11 @@ extra_ids=$(comm -13 <(printf '%s\n' "$tracked" | sed '/^$/d') <(printf '%s\n' "
 # left, so only the ones still missing a moment later count.
 if [ -n "$missing_ids" ]; then
   sleep 5
-  missing_ids=$(comm -12 <(printf '%s\n' "$missing_ids") <(comm -23 <(tracked_ids | sort) <(poll_job_ids | sort)))
+  # Read both lists outside process substitution so set -e catches a failed read.
+  tracked_now=$(tracked_ids | sort)
+  jobs_now=$(poll_job_ids | sort)
+  missing_ids=$(comm -12 <(printf '%s\n' "$missing_ids") \
+    <(comm -23 <(printf '%s\n' "$tracked_now" | sed '/^$/d') <(printf '%s\n' "$jobs_now" | sed '/^$/d')))
 fi
 
 echo "after $(($(date +%s) - started)) s:"

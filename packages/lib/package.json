@@ -10,8 +10,7 @@
     "./incidents-search": "./src/incidents-search.ts",
     "./incident-indexability": "./src/incident-indexability.ts",
     "./missing-date": "./src/missing-date.ts",
-    "./costa-rica-time": "./src/costa-rica-time.ts",
-    "./site-env": "./src/site-env.ts"
+    "./costa-rica-time": "./src/costa-rica-time.ts"
   },
   "scripts": {
     "build": "tsc"

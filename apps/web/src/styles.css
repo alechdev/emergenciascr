@@ -426,17 +426,6 @@
   margin-inline: 0;
 }
 
-/* The beta banner sits above the header: the header grows by its height, so every offset built
-   on `--app-header-height` clears both. */
-html[data-site-env="beta"] {
-  --beta-banner-height: 1.75rem;
-  --app-header-height: calc(3rem + var(--beta-banner-height));
-}
-
-html[data-site-env="beta"] .app-header {
-  padding-top: var(--beta-banner-height);
-}
-
 .app-footer {
   --_rail-line-color: color-mix(in oklch, var(--color-border) 84%, transparent);
   --_rail-pos: max(

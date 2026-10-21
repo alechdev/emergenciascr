@@ -2,7 +2,6 @@ import {
   getIncidentRobotsContent,
   isIncidentIndexable
 } from "@bomberoscr/lib/incident-indexability";
-import { BETA_ROBOTS } from "@bomberoscr/lib/site-env";
 import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 
 import { IncidentArticle, IncidentArticleSkeleton } from "@/components/incidents/details/article";
@@ -24,7 +23,6 @@ import { markdownResponse, prefersMarkdown, splitMarkdownPathSlug } from "@/lib/
 import { buildIncidentDescription } from "@/lib/incident-description";
 import { buildIncidentJsonLd } from "@/lib/json-ld";
 import { SITE_URL } from "@/lib/site";
-import { isBetaFromMatches } from "@/lib/site-env";
 import { getIncidentPage } from "@/server/incidents/get-incident-page";
 import { incidentPageToMarkdown } from "@/server/incidents/to-markdown";
 
@@ -88,10 +86,9 @@ export const Route = createFileRoute("/_dashboard/incidentes/$slug")({
       }
     }
   },
-  head: ({ loaderData, matches }) => {
+  head: ({ loaderData }) => {
     if (!loaderData) return {};
     const { incident, stations } = loaderData;
-    const beta = isBetaFromMatches(matches);
 
     const dispatchedStationsCount = stations.length;
     const dispatchedVehiclesCount = stations.reduce(
@@ -116,14 +113,12 @@ export const Route = createFileRoute("/_dashboard/incidentes/$slug")({
       meta: [
         { title: `${titleWithLocation} | EE-${incident.EEConsecutive}` },
         { name: "description", content: description },
-        { name: "robots", content: beta ? BETA_ROBOTS : robotsContent },
+        { name: "robots", content: robotsContent },
         {
           name: "googlebot",
-          content: beta
-            ? BETA_ROBOTS
-            : indexable
-              ? "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
-              : "noindex, follow"
+          content: indexable
+            ? "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+            : "noindex, follow"
         },
         { property: "og:title", content: titleWithLocation },
         { property: "og:description", content: description },

@@ -1,0 +1,213 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerTiposIncidente",
+  "request": {},
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "items": [
+      {
+        "codigo_tipo_incidente": "1",
+        "id_tipo_incidente": 82,
+        "tipo_incidente": "EMERGENCIAS POR FUEGO",
+        "items": [
+          {
+            "codigo_tipo_incidente": "1.1",
+            "id_tipo_incidente": 95,
+            "tipo_incidente": "EN ESTRUCTURAS",
+            "items": [
+              {
+                "codigo_tipo_incidente": "1.1.1",
+                "id_tipo_incidente": 201,
+                "tipo_incidente": "ALMACENAMIENTO",
+                "items": [
+                  {
+                    "codigo_tipo_incidente": "1.1.1.1",
+                    "id_tipo_incidente": 202,
+                    "tipo_incidente": "BODEGAS",
+                    "items": [
+                      {
+                        "codigo_tipo_incidente": "1.1.1.1.1",
+                        "id_tipo_incidente": 203,
+                        "tipo_incidente": "BODEGAS ABIERTAS",
+                        "items": []
+                      },
+                      {
+                        "codigo_tipo_incidente": "1.1.1.1.2",
+                        "id_tipo_incidente": 204,
+                        "tipo_incidente": "BODEGAS CERRADAS",
+                        "items": []
+                      },
+                      {
+                        "codigo_tipo_incidente": "1.1.1.1.3",
+                        "id_tipo_incidente": 205,
+                        "tipo_incidente": "BODEGAS FRIAS",
+                        "items": []
+                      }
+                    ]
+                  },
+                  {
+                    "codigo_tipo_incidente": "1.1.1.2",
+                    "id_tipo_incidente": 207,
+                    "tipo_incidente": "PATIO DE CONTENEDORES Y TANQUES",
+                    "items": []
+                  },
+                  {
+                    "codigo_tipo_incidente": "1.1.1.3",
+                    "id_tipo_incidente": 208,
+                    "tipo_incidente": "SILO",
+                    "items": []
+                  }
+                ]
+              },
+              {
+                "codigo_tipo_incidente": "1.1.10",
+                "id_tipo_incidente": 354,
+                "tipo_incidente": "ESTRUCTURAS ESPECIALES",
+                "items": [
+                  {
+                    "codigo_tipo_incidente": "1.1.10.1",
+                    "id_tipo_incidente": 355,
+                    "tipo_incidente": "AEROPUERTO / ALERTA 5",
+                    "items": []
+                  },
+                  {
+                    "codigo_tipo_incidente": "1.1.10.2",
+                    "id_tipo_incidente": 356,
+                    "tipo_incidente": "SUBESTACION ELECTRICA",
+                    "items": []
+                  },
+                  {
+                    "codigo_tipo_incidente": "1.1.10.3",
+                    "id_tipo_incidente": 357,
+                    "tipo_incidente": "TAJOS Y MINAS",
+                    "items": []
+                  }
+                ]
+              },
+              {
+                "codigo_tipo_incidente": "1.1.11",
+                "id_tipo_incidente": 450,
+                "tipo_incidente": "MULTIPLES USO",
+                "items": []
+              }
+            ]
+          },
+          {
+            "codigo_tipo_incidente": "1.2",
+            "id_tipo_incidente": 96,
+            "tipo_incidente": "EN VEGETACION",
+            "items": [
+              {
+                "codigo_tipo_incidente": "1.2.1",
+                "id_tipo_incidente": 103,
+                "tipo_incidente": "CHARRAL",
+                "items": []
+              },
+              {
+                "codigo_tipo_incidente": "1.2.2",
+                "id_tipo_incidente": 104,
+                "tipo_incidente": "AGRICOLA",
+                "items": []
+              },
+              {
+                "codigo_tipo_incidente": "1.2.3",
+                "id_tipo_incidente": 105,
+                "tipo_incidente": "FORESTAL",
+                "items": []
+              }
+            ]
+          },
+          {
+            "codigo_tipo_incidente": "1.3",
+            "id_tipo_incidente": 97,
+            "tipo_incidente": "AL AIRE LIBRE",
+            "items": [
+              {
+                "codigo_tipo_incidente": "1.3.1",
+                "id_tipo_incidente": 106,
+                "tipo_incidente": "BASUREROS / CONTENEDORES",
+                "items": []
+              },
+              {
+                "codigo_tipo_incidente": "1.3.2",
+                "id_tipo_incidente": 107,
+                "tipo_incidente": "AREA DE DESECHOS",
+                "items": []
+              },
+              {
+                "codigo_tipo_incidente": "1.3.3",
+                "id_tipo_incidente": 108,
+                "tipo_incidente": "RELLENO SANITARIO",
+                "items": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "codigo_tipo_incidente": "2",
+        "id_tipo_incidente": 83,
+        "tipo_incidente": "EMERGENCIAS POR AGUA",
+        "items": [
+          {
+            "codigo_tipo_incidente": "2.1",
+            "id_tipo_incidente": 130,
+            "tipo_incidente": "INUNDACIONES ",
+            "items": [
+              {
+                "codigo_tipo_incidente": "2.1.1",
+                "id_tipo_incidente": 380,
+                "tipo_incidente": "POR OBSTRUCCION DE ALCANTARILLAS",
+                "items": []
+              },
+              {
+                "codigo_tipo_incidente": "2.1.2",
+                "id_tipo_incidente": 381,
+                "tipo_incidente": "OTRAS INUNDACIONES",
+                "items": []
+              },
+              {
+                "codigo_tipo_incidente": "2.1.3",
+                "id_tipo_incidente": 626,
+                "tipo_incidente": "POR DESBORDAMIENTO DE QUEBRADAS",
+                "items": []
+              }
+            ]
+          },
+          {
+            "codigo_tipo_incidente": "2.2",
+            "id_tipo_incidente": 131,
+            "tipo_incidente": "DESLIZAMIENTOS",
+            "items": []
+          }
+        ]
+      },
+      {
+        "codigo_tipo_incidente": "3",
+        "id_tipo_incidente": 84,
+        "tipo_incidente": "EMERGENCIAS POR AIRE",
+        "items": [
+          {
+            "codigo_tipo_incidente": "3.1",
+            "id_tipo_incidente": 132,
+            "tipo_incidente": "FUERTES VIENTOS",
+            "items": []
+          },
+          {
+            "codigo_tipo_incidente": "3.2",
+            "id_tipo_incidente": 135,
+            "tipo_incidente": "TORNADOS",
+            "items": []
+          },
+          {
+            "codigo_tipo_incidente": "3.3",
+            "id_tipo_incidente": 136,
+            "tipo_incidente": "CAIDA DE ARBOL",
+            "items": []
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,14 +1,19 @@
+import {
+  formatCostaRicaDate,
+  getCostaRicaDateParts,
+  getCostaRicaYear
+} from "@bomberoscr/lib/costa-rica-time";
+import { isKnownDate } from "@bomberoscr/lib/missing-date";
 import { WarningIcon } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { isUndefinedDate } from "@/lib/utils";
 import { Route } from "@/routes/_dashboard/incidentes/$slug";
 
 const tenMinutesInMs = 600_000;
 
 function formatArticleForTime(date: Date): "la" | "las" {
-  const hour = date.getHours() % 12;
+  const hour = getCostaRicaDateParts(date).hour % 12;
   return hour === 1 ? "la" : "las";
 }
 
@@ -44,16 +49,8 @@ export function IncidentArticle() {
   const { incident, stations } = Route.useLoaderData();
 
   const incidentTimestamp = new Date(incident.incidentTimestamp);
-  const formattedIncidentDate = incidentTimestamp.toLocaleString("es-CR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric"
-  });
-  const formattedIncidentTime = incidentTimestamp.toLocaleTimeString("es-CR", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true
-  });
+  const formattedIncidentDate = formatCostaRicaDate(incidentTimestamp, "longDate");
+  const formattedIncidentTime = formatCostaRicaDate(incidentTimestamp, "time");
 
   const responsibleStation = stations.find((station) => station.isResponsible);
 
@@ -61,12 +58,7 @@ export function IncidentArticle() {
 
   const firstBatchVehicles = responsibleStation
     ? responsibleStation.vehicles
-        .filter((v) => v.dispatchedTime && v.arrivalTime)
-        .filter(
-          (v) =>
-            !isUndefinedDate(new Date(v.dispatchedTime ?? "")) &&
-            !isUndefinedDate(new Date(v.arrivalTime ?? ""))
-        )
+        .filter((v) => isKnownDate(v.dispatchedTime) && isKnownDate(v.arrivalTime))
         .filter((v) => {
           const timeDiff =
             new Date(v.dispatchedTime ?? "").getTime() -
@@ -85,8 +77,7 @@ export function IncidentArticle() {
     if (allVehicles.length !== 1) return null;
     const vehicle = allVehicles[0];
     // Check if departureTime and arrivalTime exist and are valid dates
-    if (!vehicle.departureTime || isUndefinedDate(new Date(vehicle.departureTime))) return null;
-    if (!vehicle.arrivalTime || isUndefinedDate(new Date(vehicle.arrivalTime))) return null;
+    if (!isKnownDate(vehicle.departureTime) || !isKnownDate(vehicle.arrivalTime)) return null;
 
     return vehicle;
   };
@@ -183,11 +174,7 @@ export function IncidentArticle() {
                 )}{" "}
                 {firstBatchVehicles.length > 1 ? "llegan" : "llega"} a la escena al ser{" "}
                 {formatArticleForTime(new Date(firstBatchVehicles[0].arrivalTime ?? ""))}{" "}
-                {new Date(firstBatchVehicles[0].arrivalTime ?? "").toLocaleTimeString("es-CR", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                  hour12: true
-                })}
+                {formatCostaRicaDate(firstBatchVehicles[0].arrivalTime ?? "", "time")}
               </>
             )}
             .
@@ -202,12 +189,7 @@ export function IncidentArticle() {
             )}{" "}
             y se retira al ser{" "}
             {formatArticleForTime(new Date(singleVehicleWithDeparture.departureTime ?? ""))}{" "}
-            {new Date(singleVehicleWithDeparture.departureTime ?? "").toLocaleTimeString("es-CR", {
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true
-            })}
-            .
+            {formatCostaRicaDate(singleVehicleWithDeparture.departureTime ?? "", "time")}.
           </p>
         )}
 
@@ -264,7 +246,7 @@ export function IncidentArticle() {
 
         {incident.statistics.currentYearCount > 0 &&
           (() => {
-            const currentYear = new Date().getFullYear();
+            const currentYear = getCostaRicaYear();
             const isCurrentYear = incident.statistics.currentYear === currentYear;
             const count = incident.statistics.currentYearCount;
             const cantonCount = incident.statistics.currentYearCantonCount;

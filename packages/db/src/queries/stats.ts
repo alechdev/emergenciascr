@@ -1,4 +1,4 @@
-import { db, count, eq, or, sql } from "@bomberoscr/db/index";
+import { type Database, db, count, eq, or, sql } from "@bomberoscr/db/index";
 import {
   dispatchedStations,
   dispatchedVehicles,
@@ -7,27 +7,44 @@ import {
   stations,
   vehicles
 } from "@bomberoscr/db/schema";
+import {
+  endOfCostaRicaDay,
+  formatCostaRicaDate,
+  getCostaRicaDateKey,
+  getCostaRicaDateParts,
+  startOfCostaRicaDay,
+  startOfCostaRicaHour,
+  startOfCostaRicaYear
+} from "@bomberoscr/lib/costa-rica-time";
 import { and, desc, gte, lt } from "drizzle-orm";
+
+import {
+  costaRicaDayKey,
+  costaRicaDayOfWeek,
+  costaRicaHourKey,
+  costaRicaHourOfDay
+} from "./costa-rica-time";
 
 // ============================================================================
 // Year Recap
 // ============================================================================
 
-export async function getYearRecap(year: number) {
-  const startOfYear = new Date(year, 0, 1);
-  const endOfYear = new Date(year + 1, 0, 1);
+export async function getYearRecap(year: number, database: Database = db) {
+  const startOfYear = startOfCostaRicaYear(year);
+  const endOfYear = startOfCostaRicaYear(year + 1);
+  const incidentDay = costaRicaDayKey(incidents.incidentTimestamp);
 
-  const topIncidentDaysResults = await db
+  const topIncidentDaysResults = await database
     .select({
-      date: sql<string>`DATE(${incidents.incidentTimestamp})`,
+      date: incidentDay,
       count: sql<number>`count(*)::int`
     })
     .from(incidents)
     .where(
       and(gte(incidents.incidentTimestamp, startOfYear), lt(incidents.incidentTimestamp, endOfYear))
     )
-    .groupBy(sql`DATE(${incidents.incidentTimestamp})`)
-    .orderBy(desc(sql`count(*)`), desc(sql`DATE(${incidents.incidentTimestamp})`))
+    .groupBy(incidentDay)
+    .orderBy(desc(sql`count(*)`), desc(incidentDay))
     .limit(5);
 
   const topIncidentDays = topIncidentDaysResults.map((item) => ({
@@ -35,7 +52,7 @@ export async function getYearRecap(year: number) {
     count: Number(item.count)
   }));
 
-  const topDispatchedStationsResults = await db
+  const topDispatchedStationsResults = await database
     .select({
       name: stations.name,
       count: sql<number>`count(*)::int`
@@ -55,21 +72,23 @@ export async function getYearRecap(year: number) {
     count: Number(item.count)
   }));
 
-  const topDispatchedVehiclesResults = await db
+  // Per vehicle and the station it served the dispatches for, not its current station: a
+  // vehicle that served two stations in the year has a row for each.
+  const topDispatchedVehiclesResults = await database
     .select({
       internalNumber: vehicles.internalNumber,
       stationName: stations.name,
       count: sql<number>`count(*)::int`
     })
-    .from(vehicles)
-    .innerJoin(stations, eq(vehicles.stationId, stations.id))
-    .innerJoin(dispatchedVehicles, eq(vehicles.id, dispatchedVehicles.vehicleId))
+    .from(dispatchedVehicles)
+    .innerJoin(vehicles, eq(dispatchedVehicles.vehicleId, vehicles.id))
+    .innerJoin(stations, eq(dispatchedVehicles.stationId, stations.id))
     .innerJoin(incidents, eq(dispatchedVehicles.incidentId, incidents.id))
     .where(
       and(gte(incidents.incidentTimestamp, startOfYear), lt(incidents.incidentTimestamp, endOfYear))
     )
-    .groupBy(vehicles.id, vehicles.internalNumber, stations.name)
-    .orderBy(desc(sql`count(*)`), vehicles.internalNumber)
+    .groupBy(vehicles.id, vehicles.internalNumber, stations.id, stations.name)
+    .orderBy(desc(sql`count(*)`), vehicles.internalNumber, stations.name)
     .limit(5);
 
   const topDispatchedVehicles = topDispatchedVehiclesResults.map((item) => ({
@@ -307,13 +326,16 @@ export async function getTopResponseTimesStations({
 // Incidents by Day of Week
 // ============================================================================
 
-export async function getIncidentsByDayOfWeek({
-  startDate,
-  endDate
-}: {
-  startDate: Date;
-  endDate: Date;
-}) {
+export async function getIncidentsByDayOfWeek(
+  {
+    startDate,
+    endDate
+  }: {
+    startDate: Date;
+    endDate: Date;
+  },
+  database: Database = db
+) {
   const dayOfWeekOrder = {
     Lunes: 0,
     Martes: 1,
@@ -324,33 +346,18 @@ export async function getIncidentsByDayOfWeek({
     Domingo: 6
   };
 
-  const results = await db
+  const dayOfWeek = costaRicaDayOfWeek(incidents.incidentTimestamp);
+  const dayNames = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+  const rows = await database
     .select({
-      dayOfWeek: sql<string>`
-        CASE 
-          WHEN EXTRACT(DOW FROM ${incidents.incidentTimestamp}) = 1 THEN 'Lunes'
-          WHEN EXTRACT(DOW FROM ${incidents.incidentTimestamp}) = 2 THEN 'Martes'
-          WHEN EXTRACT(DOW FROM ${incidents.incidentTimestamp}) = 3 THEN 'Miércoles'
-          WHEN EXTRACT(DOW FROM ${incidents.incidentTimestamp}) = 4 THEN 'Jueves'
-          WHEN EXTRACT(DOW FROM ${incidents.incidentTimestamp}) = 5 THEN 'Viernes'
-          WHEN EXTRACT(DOW FROM ${incidents.incidentTimestamp}) = 6 THEN 'Sábado'
-          WHEN EXTRACT(DOW FROM ${incidents.incidentTimestamp}) = 0 THEN 'Domingo'
-        END
-      `,
+      dayOfWeek,
       count: sql<number>`count(*)::int`
     })
     .from(incidents)
-    .where(sql`${incidents.incidentTimestamp} BETWEEN ${startDate} AND ${endDate}`).groupBy(sql`
-      CASE 
-        WHEN EXTRACT(DOW FROM ${incidents.incidentTimestamp}) = 1 THEN 'Lunes'
-        WHEN EXTRACT(DOW FROM ${incidents.incidentTimestamp}) = 2 THEN 'Martes'
-        WHEN EXTRACT(DOW FROM ${incidents.incidentTimestamp}) = 3 THEN 'Miércoles'
-        WHEN EXTRACT(DOW FROM ${incidents.incidentTimestamp}) = 4 THEN 'Jueves'
-        WHEN EXTRACT(DOW FROM ${incidents.incidentTimestamp}) = 5 THEN 'Viernes'
-        WHEN EXTRACT(DOW FROM ${incidents.incidentTimestamp}) = 6 THEN 'Sábado'
-        WHEN EXTRACT(DOW FROM ${incidents.incidentTimestamp}) = 0 THEN 'Domingo'
-      END
-    `);
+    .where(sql`${incidents.incidentTimestamp} BETWEEN ${startDate} AND ${endDate}`)
+    .groupBy(dayOfWeek);
+  const results = rows.map((row) => ({ dayOfWeek: dayNames[row.dayOfWeek], count: row.count }));
 
   const sortedResults = Object.entries(dayOfWeekOrder)
     .map(([dayName, order]) => {
@@ -374,80 +381,76 @@ export async function getIncidentsByDayOfWeek({
 // ============================================================================
 
 const HOUR_IN_MS = 60 * 60 * 1000;
-const COSTA_RICA_UTC_OFFSET_HOURS = 6;
 
-function formatShiftedHourBucketKey(date: Date) {
-  const year = date.getUTCFullYear();
-  const month = `${date.getUTCMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getUTCDate()}`.padStart(2, "0");
-  const hour = `${date.getUTCHours()}`.padStart(2, "0");
-
-  return `${year}-${month}-${day} ${hour}:00:00`;
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
 }
 
-export async function getIncidentsByHourRange({
-  startDate,
-  endDate
-}: {
-  startDate: Date;
-  endDate: Date;
-}) {
-  const groupedByHour = await db
+export async function getIncidentsByHourRange(
+  {
+    startDate,
+    endDate
+  }: {
+    startDate: Date;
+    endDate: Date;
+  },
+  database: Database = db
+) {
+  const hourBucket = costaRicaHourKey(incidents.incidentTimestamp);
+  const groupedByHour = await database
     .select({
-      hourBucket: sql<string>`to_char(date_trunc('hour', ${incidents.incidentTimestamp} - interval '6 hours'), 'YYYY-MM-DD HH24:00:00')`,
+      hourBucket,
       incidents: sql<number>`count(*)::int`
     })
     .from(incidents)
     .where(
       and(gte(incidents.incidentTimestamp, startDate), lt(incidents.incidentTimestamp, endDate))
     )
-    .groupBy(sql`date_trunc('hour', ${incidents.incidentTimestamp} - interval '6 hours')`)
-    .orderBy(sql`date_trunc('hour', ${incidents.incidentTimestamp} - interval '6 hours')`);
+    .groupBy(hourBucket)
+    .orderBy(hourBucket);
 
   const incidentsByHourBucket = new Map(
     groupedByHour.map((row) => [row.hourBucket, Number(row.incidents)])
   );
 
-  const costaRicaOffsetMs = COSTA_RICA_UTC_OFFSET_HOURS * HOUR_IN_MS;
-  const shiftedStartHourMs =
-    Math.floor((startDate.getTime() - costaRicaOffsetMs) / HOUR_IN_MS) * HOUR_IN_MS;
-  const shiftedEndHourMs =
-    Math.floor((endDate.getTime() - costaRicaOffsetMs) / HOUR_IN_MS) * HOUR_IN_MS;
-  const totalBuckets = Math.max(
-    0,
-    Math.floor((shiftedEndHourMs - shiftedStartHourMs) / HOUR_IN_MS) + 1
-  );
+  const firstHourMs = startOfCostaRicaHour(startDate).getTime();
+  const lastHourMs = startOfCostaRicaHour(endDate).getTime();
+  const totalBuckets = Math.max(0, Math.floor((lastHourMs - firstHourMs) / HOUR_IN_MS) + 1);
 
   return Array.from({ length: totalBuckets }, (_, index) => {
-    const shiftedBucketDate = new Date(shiftedStartHourMs + index * HOUR_IN_MS);
-    const hourBucketKey = formatShiftedHourBucketKey(shiftedBucketDate);
-    const hourValue = shiftedBucketDate.getUTCHours();
+    const hourStart = new Date(firstHourMs + index * HOUR_IN_MS);
+    const { hour } = getCostaRicaDateParts(hourStart);
+    const hourBucketKey = `${getCostaRicaDateKey(hourStart)} ${pad(hour)}:00:00`;
 
     return {
-      hourStart: new Date(shiftedBucketDate.getTime() + costaRicaOffsetMs).toISOString(),
-      hourLabel: `${hourValue.toString().padStart(2, "0")}:00`,
+      hourStart: hourStart.toISOString(),
+      hourLabel: `${pad(hour)}:00`,
       hoursAgo: totalBuckets - index - 1,
       incidents: incidentsByHourBucket.get(hourBucketKey) ?? 0
     };
   });
 }
 
-export async function getIncidentsByHour({
-  startDate,
-  endDate
-}: {
-  startDate: Date;
-  endDate: Date;
-}) {
-  const results = await db
+export async function getIncidentsByHour(
+  {
+    startDate,
+    endDate
+  }: {
+    startDate: Date;
+    endDate: Date;
+  },
+  database: Database = db
+) {
+  const hourOfDay = costaRicaHourOfDay(incidents.incidentTimestamp);
+  const results = await database
     .select({
-      hour: sql<number>`EXTRACT(HOUR FROM ${incidents.incidentTimestamp})::int`,
+      hour: hourOfDay,
       count: sql<number>`count(*)::int`
     })
     .from(incidents)
     .where(sql`${incidents.incidentTimestamp} BETWEEN ${startDate} AND ${endDate}`)
-    .groupBy(sql`EXTRACT(HOUR FROM ${incidents.incidentTimestamp})`)
-    .orderBy(sql`EXTRACT(HOUR FROM ${incidents.incidentTimestamp})`);
+    .groupBy(hourOfDay)
+    .orderBy(hourOfDay);
 
   const allHours = Array.from({ length: 24 }, (_, i) => i);
   const hourMap = new Map(results.map((r) => [r.hour, r.count]));
@@ -463,78 +466,66 @@ export async function getIncidentsByHour({
 // Daily Incidents
 // ============================================================================
 
-export async function getDailyIncidents({
-  startDate,
-  endDate
-}: {
-  startDate: Date;
-  endDate: Date;
-}) {
-  const currentStartDate = new Date(startDate);
-  currentStartDate.setHours(0, 0, 0, 0);
+export async function getDailyIncidents(
+  {
+    startDate,
+    endDate
+  }: {
+    startDate: Date;
+    endDate: Date;
+  },
+  database: Database = db
+) {
+  // Whole Costa Rica days, and the same number of days just before.
+  const currentStartDate = startOfCostaRicaDay(startDate);
+  const currentEndDate = endOfCostaRicaDay(endDate);
+  const firstDayKey = getCostaRicaDateKey(currentStartDate);
+  const lastDayKey = getCostaRicaDateKey(currentEndDate);
 
-  const currentEndDate = new Date(endDate);
-  currentEndDate.setHours(23, 59, 59, 999);
+  const dayKeys: string[] = [];
+  for (
+    let key = firstDayKey;
+    key <= lastDayKey;
+    key = getCostaRicaDateKey(startOfCostaRicaDay(key, 1))
+  ) {
+    dayKeys.push(key);
+  }
+  const timeRange = dayKeys.length;
+  const previousDayKeys = dayKeys.map((_, index) =>
+    getCostaRicaDateKey(startOfCostaRicaDay(firstDayKey, index - timeRange))
+  );
+  const previousStartDate = startOfCostaRicaDay(firstDayKey, -timeRange);
+  const previousEndDate = new Date(currentStartDate.getTime() - 1);
 
-  const timeRange =
-    Math.ceil((currentEndDate.getTime() - currentStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const incidentDay = costaRicaDayKey(incidents.incidentTimestamp);
 
-  const previousEndDate = new Date(currentStartDate);
-  previousEndDate.setDate(previousEndDate.getDate() - 1);
-  previousEndDate.setHours(23, 59, 59, 999);
-
-  const previousStartDate = new Date(previousEndDate);
-  previousStartDate.setDate(previousStartDate.getDate() - (timeRange - 1));
-  previousStartDate.setHours(0, 0, 0, 0);
-
-  const currentPeriod = await db
+  const currentPeriod = await database
     .select({
-      date: sql<string>`DATE(${incidents.incidentTimestamp})`,
+      date: incidentDay,
       count: sql<number>`count(*)::int`
     })
     .from(incidents)
     .where(sql`${incidents.incidentTimestamp} BETWEEN ${currentStartDate} AND ${currentEndDate}`)
-    .groupBy(sql`DATE(${incidents.incidentTimestamp})`)
-    .orderBy(sql`DATE(${incidents.incidentTimestamp})`);
+    .groupBy(incidentDay)
+    .orderBy(incidentDay);
 
-  const previousPeriod = await db
+  const previousPeriod = await database
     .select({
-      date: sql<string>`DATE(${incidents.incidentTimestamp})`,
+      date: incidentDay,
       count: sql<number>`count(*)::int`
     })
     .from(incidents)
     .where(sql`${incidents.incidentTimestamp} BETWEEN ${previousStartDate} AND ${previousEndDate}`)
-    .groupBy(sql`DATE(${incidents.incidentTimestamp})`)
-    .orderBy(sql`DATE(${incidents.incidentTimestamp})`);
+    .groupBy(incidentDay)
+    .orderBy(incidentDay);
 
-  const fillMissingDates = (data: typeof currentPeriod, startDate: Date, endDate: Date) => {
-    const result = [];
-    const current = new Date(startDate);
-
-    const toLocalISOString = (date: Date) => {
-      const year = date.getFullYear();
-      const month = (date.getMonth() + 1).toString().padStart(2, "0");
-      const day = date.getDate().toString().padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    };
-
-    while (current <= endDate) {
-      const dateStr = toLocalISOString(current);
-      const existingData = data.find((d) => d.date === dateStr);
-
-      result.push({
-        date: dateStr,
-        count: existingData ? Number(existingData.count) : 0
-      });
-
-      current.setDate(current.getDate() + 1);
-    }
-
-    return result;
+  const fillMissingDates = (data: typeof currentPeriod, keys: string[]) => {
+    const counts = new Map(data.map((row) => [row.date, Number(row.count)]));
+    return keys.map((date) => ({ date, count: counts.get(date) ?? 0 }));
   };
 
-  const currentData = fillMissingDates(currentPeriod, currentStartDate, currentEndDate);
-  const previousData = fillMissingDates(previousPeriod, previousStartDate, previousEndDate);
+  const currentData = fillMissingDates(currentPeriod, dayKeys);
+  const previousData = fillMissingDates(previousPeriod, previousDayKeys);
 
   const combinedData = currentData.map((current, index) => {
     const previous = previousData[index];
@@ -546,11 +537,7 @@ export async function getDailyIncidents({
       current: current.count,
       previous: previous?.count || 0,
       displayDate: current.date
-        ? new Date(`${current.date}T00:00:00`).toLocaleDateString("es-CR", {
-            month: "short",
-            day: "numeric",
-            timeZone: "America/Costa_Rica"
-          })
+        ? formatCostaRicaDate(startOfCostaRicaDay(current.date), "dayMonth")
         : ""
     };
   });
@@ -574,16 +561,20 @@ export async function getDailyIncidents({
 // Daily Response Times
 // ============================================================================
 
-export async function getDailyResponseTimes({
-  startDate,
-  endDate
-}: {
-  startDate: Date;
-  endDate: Date;
-}) {
-  return await db
+export async function getDailyResponseTimes(
+  {
+    startDate,
+    endDate
+  }: {
+    startDate: Date;
+    endDate: Date;
+  },
+  database: Database = db
+) {
+  const incidentDay = costaRicaDayKey(incidents.incidentTimestamp);
+  return await database
     .select({
-      date: sql<string>`date_trunc('day', ${incidents.incidentTimestamp} - interval '6 hours')::date::text`,
+      date: incidentDay,
       averageResponseTimeSeconds: sql<number>`
         ROUND(
           AVG(
@@ -604,8 +595,8 @@ export async function getDailyResponseTimes({
       AND EXTRACT(EPOCH FROM (${dispatchedVehicles.arrivalTime} - ${dispatchedVehicles.dispatchedTime})) >= 60
       AND EXTRACT(EPOCH FROM (${dispatchedVehicles.arrivalTime} - ${dispatchedVehicles.dispatchedTime})) <= 10800
     `)
-    .groupBy(sql`date_trunc('day', ${incidents.incidentTimestamp} - interval '6 hours')`)
-    .orderBy(sql`date_trunc('day', ${incidents.incidentTimestamp} - interval '6 hours')`);
+    .groupBy(incidentDay)
+    .orderBy(incidentDay);
 }
 
 // ============================================================================

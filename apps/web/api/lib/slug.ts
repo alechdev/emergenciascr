@@ -1,3 +1,5 @@
+import { getCostaRicaDateKey } from "@bomberoscr/lib/costa-rica-time";
+
 // Regex patterns for slug generation
 const locationPatternRegex = / EN [^,]+,/;
 const diacriticRegex = /\p{M}/gu;
@@ -53,25 +55,22 @@ export function createIncidentSlug(title: string): string {
 }
 
 /**
- * Builds a link-ready incident slug in the format: {id}-{slug}-{yyyy-mm-dd}
+ * Builds a link-ready incident slug in the format: {id}-{slug}-{yyyy-mm-dd}, with the date the
+ * incident was reported in Costa Rica. Slugs built before used the server's (UTC) date; the
+ * incident page finds an incident by ID and redirects any other slug to this one.
  *
  * @example
- * buildIncidentSlug(1549092, "COLISION DE VEHICULO EN ...", new Date("2025-01-01"))
+ * buildIncidentSlug(1549092, "COLISION DE VEHICULO EN ...", new Date("2025-01-01T12:00:00-06:00"))
  * // "1549092-colision-de-vehiculo-2025-01-01"
  *
  * @param id - The incident ID.
  * @param title - The incident title (uses fallback if empty/null).
- * @param date - The incident date.
+ * @param date - When the incident was reported.
  * @returns A link-ready slug for the incident.
  */
 export function buildIncidentSlug(id: number, title: string | null, date: Date): string {
   const slug = createIncidentSlug(title || "incidente");
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const dateString = `${year}-${month}-${day}`;
-
-  return `${id}-${slug}-${dateString}`;
+  return `${id}-${slug}-${getCostaRicaDateKey(date)}`;
 }
 
 /**

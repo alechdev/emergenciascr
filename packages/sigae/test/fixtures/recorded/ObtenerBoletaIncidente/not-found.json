@@ -1,0 +1,42 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerBoletaIncidente",
+  "request": {
+    "incidentId": 1
+  },
+  "body": {
+    "Codigo": "03",
+    "Descripcion": "No se encontraron registros.",
+    "Id_Boleta_Incidente": 0,
+    "Consecutivo": null,
+    "Fecha": null,
+    "Hora_Aviso": null,
+    "Hora_Controlado": null,
+    "Hora_Disponible": null,
+    "Hora_Fuego_Bajo_Control": null,
+    "Hora_Hospital": null,
+    "Hora_Paciente": null,
+    "Hora_Perdidas_Detenidas": null,
+    "Hora_Todo_Claro": null,
+    "Hora_Traslado": null,
+    "Estado_Abierto": null,
+    "DesUbicacion": null,
+    "Direccion": null,
+    "Id_Provincia": 0,
+    "Id_Canton": 0,
+    "Id_Distrito": 0,
+    "Provincia": null,
+    "Canton": null,
+    "Distrito": null,
+    "CodigoTipoIncidenteDespacho": null,
+    "CodigoTipoIncidenteReal": null,
+    "NomtipoIncidenteDespacho": null,
+    "NomTipoIncidenteReal": null,
+    "Id_Etapa_Incidente": 0,
+    "DesEtapaIncidente": null,
+    "Civiles_Heridos": 0,
+    "Civiles_Fallecidos": 0,
+    "Bomberos_Heridos": 0,
+    "Bomberos_Fallecidos": 0
+  }
+}

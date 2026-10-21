@@ -1,13 +1,13 @@
-import { Queue } from "bullmq";
-import { BullMQOtel } from "bullmq-otel";
+import { createQueue } from "@/lib/jobs";
 
-import { redis } from "@/config/redis";
+/** Every minute: the latest incidents. */
+export const DISCOVERY_JOB_NAME = "incident-discovery";
+/** At boot and hourly: resume every tracked incident, then the last 6 hours of incidents. */
+export const GAP_FILL_JOB_NAME = "incident-gap-fill";
 
-export const incidentDiscoveryQueue = new Queue("incident-discovery", {
-  connection: redis,
-  telemetry: new BullMQOtel("sync-v2"),
-  defaultJobOptions: {
-    removeOnComplete: 10,
-    removeOnFail: 5
-  }
+// Both run on a schedule, so a failed run is not retried: the next one covers it.
+export const incidentDiscoveryQueue = createQueue("incident-discovery", {
+  removeOnComplete: 10,
+  removeOnFail: 10,
+  attempts: 1
 });

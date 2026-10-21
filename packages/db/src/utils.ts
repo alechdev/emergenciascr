@@ -19,3 +19,21 @@ export function conflictUpdateSetAllColumns<TTable extends PgTable>(
   }, {}) as PgUpdateSetSource<TTable>;
   return conflictUpdateSet;
 }
+
+/**
+ * `ON CONFLICT DO UPDATE` values that copy the listed columns from the proposed row, `NULL`s
+ * included, unlike {@link conflictUpdateSetAllColumns}.
+ */
+export function conflictUpdateSetColumns<TTable extends PgTable>(
+  table: TTable,
+  keys: readonly (keyof TTable["_"]["columns"] & string)[]
+): PgUpdateSetSource<TTable> {
+  const columns = getTableColumns(table) as Record<string, { name: string }>;
+  return Object.fromEntries(
+    keys.map((key) => {
+      const column = columns[key];
+      if (!column) throw new Error(`Unknown column ${key}`);
+      return [key, sql`excluded.${sql.identifier(column.name)}`];
+    })
+  ) as PgUpdateSetSource<TTable>;
+}

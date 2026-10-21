@@ -1,5 +1,6 @@
 "use client";
 
+import { formatCostaRicaDate } from "@bomberoscr/lib/costa-rica-time";
 import { localPoint } from "@visx/event";
 import { ParentSize } from "@visx/responsive";
 import { scaleBand, scaleLinear } from "@visx/scale";
@@ -158,10 +159,7 @@ function ChartInner({
     (d: Record<string, unknown>): string => {
       const value = d[xDataKey];
       if (value instanceof Date) {
-        return value.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric"
-        });
+        return formatCostaRicaDate(value, { month: "short", day: "numeric" }, "en-US");
       }
       if (typeof value === "string") {
         return value;

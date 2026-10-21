@@ -1,0 +1,33 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerUnidadesDespachadasIncidente",
+  "request": {
+    "incidentId": 1924523
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "Codigo": null,
+        "Descripcion": null,
+        "CodigoEstacion": 47,
+        "CodigoUnidad": 8505,
+        "DespachoAlarma": false,
+        "HoraBase": "0001-01-01T00:00:00",
+        "HoraDespacho": "2026-10-15T15:32:59",
+        "HoraDevolverBase": "0001-01-01T00:00:00",
+        "HoraLLegada": "0001-01-01T00:00:00",
+        "HoraRetiro": "0001-01-01T00:00:00",
+        "HoraTraslado": "0001-01-01T00:00:00",
+        "IdBoletaServicio": 0,
+        "IdBoletaUnidadDespachada": 1385880,
+        "IdVehiculo": 0,
+        "NumeroInterno": null,
+        "Traslado": false,
+        "Unidad": "M-132",
+        "UnidadCompleta": "M-132 PAVAS 1-5"
+      }
+    ]
+  }
+}

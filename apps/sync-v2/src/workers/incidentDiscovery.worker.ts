@@ -1,76 +1,59 @@
-import logger from "@bomberoscr/lib/logger";
-import { Worker } from "bullmq";
-import { BullMQOtel } from "bullmq-otel";
+import { createWorker } from "@/lib/jobs";
+import logger from "@/lib/logger";
+import {
+  DISCOVERY_JOB_NAME,
+  GAP_FILL_JOB_NAME,
+  incidentDiscoveryQueue
+} from "@/queues/incidentDiscovery.queue";
+import {
+  type DiscoveryDeps,
+  discoverLatestIncidents,
+  fillDiscoveryGap,
+  resumePolledIncidents
+} from "@/services/incidentDiscovery.service";
 
-import { redis } from "@/config/redis";
-import { metricsRegistry } from "@/config/telemetry";
-import { openIncidentsQueue } from "@/queues/openIncidents.queue";
-import { getNewIncidents } from "@/services/incidentDiscovery.service";
+const log = logger.child({ queue: incidentDiscoveryQueue.name });
 
-import type { IncidentSyncJobData } from "@/workers/openIncidents.worker";
-
-export const worker = new Worker(
-  "incident-discovery",
-  async () => {
-    const start = Date.now();
-    const newIncidents = await getNewIncidents();
-
-    if (newIncidents.isErr()) {
-      logger.error(`Error fetching new incidents: ${newIncidents.error}`);
-      return { processed: false, discoveredIncidents: 0 };
-    }
-
-    const newIncidentsIds = newIncidents.value;
-
-    if (newIncidentsIds.length === 0) {
-      metricsRegistry.jobDurationMs.record(Date.now() - start, {
-        job: "incident-discovery"
-      });
-      metricsRegistry.incidentsDiscovered.add(0);
-      return { processed: true, discoveredIncidents: 0 };
-    }
-
-    await openIncidentsQueue.addBulk(
-      newIncidentsIds.map((incidentId) => ({
-        name: "open-incident",
-        data: { incidentId } as IncidentSyncJobData,
-        opts: {
-          jobId: `open-incident-${incidentId}`,
-          delay: 0
+/**
+ * `incident-discovery` (every minute) tracks new incidents among the latest ones, and
+ * schedules listed ones that are still polled but lost their poll job.
+ * `incident-gap-fill` (at boot and hourly) first schedules every tracked incident again,
+ * which rebuilds the poll queue after Redis lost it, then tracks what the last 6 hours
+ * have that discovery missed.
+ */
+export function createIncidentDiscoveryWorker(deps: DiscoveryDeps) {
+  return createWorker<Record<string, never>, Record<string, number>>(
+    incidentDiscoveryQueue.name,
+    async (job): Promise<Record<string, number>> => {
+      if (job.name === GAP_FILL_JOB_NAME) {
+        const resumed = await resumePolledIncidents(deps);
+        log.info("tracked incidents resumed", { jobId: job.id, ...resumed });
+        const gap = await fillDiscoveryGap(deps);
+        log[gap.discovered.length > 0 ? "info" : "debug"]("gap fill finished", {
+          jobId: job.id,
+          listed: gap.listed,
+          discovered: gap.discovered.length,
+          incidentIds: gap.discovered,
+          rescheduled: gap.rescheduled
+        });
+        return { ...resumed, discovered: gap.discovered.length };
+      }
+      if (job.name !== DISCOVERY_JOB_NAME) {
+        log.info("dropped unknown job", { jobId: job.id, jobName: job.name });
+        return {};
+      }
+      const latest = await discoverLatestIncidents(deps);
+      log[latest.discovered.length > 0 || latest.rescheduled > 0 ? "info" : "debug"](
+        "discovery finished",
+        {
+          jobId: job.id,
+          discovered: latest.discovered.length,
+          incidentIds: latest.discovered,
+          rescheduled: latest.rescheduled
         }
-      }))
-    );
-
-    metricsRegistry.jobDurationMs.record(Date.now() - start, {
-      job: "incident-discovery"
-    });
-    metricsRegistry.incidentsDiscovered.add(newIncidentsIds.length);
-    return { processed: true, discoveredIncidents: newIncidentsIds.length };
-  },
-  {
-    connection: redis,
-    telemetry: new BullMQOtel("sync-v2")
-  }
-);
-
-worker.on("completed", (job) => {
-  const discoveredIncidents: number = job.returnvalue?.discoveredIncidents ?? 0;
-
-  const message =
-    discoveredIncidents === 0
-      ? "Discovery job completed - no incidents found"
-      : `Discovery job completed - ${discoveredIncidents} new incidents found`;
-
-  logger.info(message, {
-    jobId: job.id,
-    discoveredIncidents
-  });
-});
-
-worker.on("failed", (_, err) => {
-  logger.error(`Discovery job failed: ${err.message}, ${err.stack}`);
-});
-
-worker.on("error", (err) => {
-  logger.error(`Discovery worker error: ${err.message}`);
-});
+      );
+      return { discovered: latest.discovered.length, rescheduled: latest.rescheduled };
+    },
+    { concurrency: 1 }
+  );
+}

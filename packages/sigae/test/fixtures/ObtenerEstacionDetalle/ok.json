@@ -1,0 +1,21 @@
+{
+  "source": "synthetic",
+  "endpoint": "ObtenerEstacionDetalle",
+  "request": {
+    "id_estacion": 2
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "CanalRadio": "CANAL 1",
+    "ClaveEstacion": "1-1",
+    "Direccion": "SAN JOSE, AVENIDA 3",
+    "Email": "estacion@example.org",
+    "Fax": "",
+    "IdEstacion": 2,
+    "Latitud": 9.9381,
+    "Longitud": -84.0759,
+    "Nombre": "METROPOLITANA NORTE",
+    "Telefono": "2000-0000"
+  }
+}

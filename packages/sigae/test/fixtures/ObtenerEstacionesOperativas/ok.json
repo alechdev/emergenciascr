@@ -1,0 +1,16 @@
+{
+  "source": "synthetic",
+  "endpoint": "ObtenerEstacionesOperativas",
+  "request": {},
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "ClaveEstacion": "1-1",
+        "IdEstacion": 2,
+        "Nombre": "METROPOLITANA NORTE"
+      }
+    ]
+  }
+}

@@ -268,7 +268,7 @@ export const stationHighlightedIncidentSchema = z.object({
   }),
   mapImageUrl: z.string().url().nullable().openapi({
     description: "URL to the incident's map image.",
-    example: "https://api.example.com/incidents/1558658/map"
+    example: "https://api.example.com/incidents/1558658/map?v=3f2a9c1b7d4e"
   }),
   dispatchedVehiclesCount: z.number().openapi({
     description: "Number of dispatched vehicles.",
@@ -296,7 +296,7 @@ export const stationHighlightedIncidentsResponseSchema = z
           responsibleStation: "ACOSTA",
           latitude: "9.73357675239847",
           longitude: "-84.0765451393084",
-          mapImageUrl: "https://api.example.com/incidents/1558658/map",
+          mapImageUrl: "https://api.example.com/incidents/1558658/map?v=3f2a9c1b7d4e",
           dispatchedVehiclesCount: 3,
           dispatchedStationsCount: 2
         },

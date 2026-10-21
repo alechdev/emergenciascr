@@ -1,4 +1,4 @@
-import { db } from "@bomberoscr/db/index";
+import { type Database, db } from "@bomberoscr/db/index";
 import {
   dispatchedStations,
   dispatchedVehicles,
@@ -6,8 +6,11 @@ import {
   stations,
   vehicles
 } from "@bomberoscr/db/schema";
+import { startOfCostaRicaDay } from "@bomberoscr/lib/costa-rica-time";
 import { DEFAULT_TIME_RANGE } from "@bomberoscr/lib/time-range";
 import { and, asc, between, count, desc, eq, gte, ilike, lte, ne, or, sql } from "drizzle-orm";
+
+import { costaRicaDayKey } from "./costa-rica-time";
 
 import type { SQL } from "drizzle-orm";
 
@@ -187,19 +190,25 @@ export async function getStationByName({ name }: { name: string }) {
   );
 }
 
-export async function getStationIncidentsPerDay({
-  stationId,
-  days = 365
-}: {
-  stationId: number;
-  days?: number;
-}) {
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - days);
+/** Incidents per Costa Rica day, from Costa Rica midnight `days` days before today. */
+export async function getStationIncidentsPerDay(
+  {
+    stationId,
+    days = 365,
+    now = new Date()
+  }: {
+    stationId: number;
+    days?: number;
+    now?: Date;
+  },
+  database: Database = db
+) {
+  const cutoffDate = startOfCostaRicaDay(now, -days);
+  const incidentDay = costaRicaDayKey(incidents.incidentTimestamp);
 
-  return await db
+  return await database
     .select({
-      date: sql<string>`date_trunc('day', ${incidents.incidentTimestamp} - interval '6 hours')::date::text`,
+      date: incidentDay,
       count: sql<number>`count(*)::int`
     })
     .from(dispatchedStations)
@@ -207,7 +216,8 @@ export async function getStationIncidentsPerDay({
     .where(
       and(eq(dispatchedStations.stationId, stationId), gte(incidents.incidentTimestamp, cutoffDate))
     )
-    .groupBy(sql`date_trunc('day', ${incidents.incidentTimestamp} - interval '6 hours')`);
+    .groupBy(incidentDay)
+    .orderBy(incidentDay);
 }
 
 export async function getStationHighlightedIncidents({
@@ -299,10 +309,34 @@ export async function getStationCollaborations({ stationId }: { stationId: numbe
     .limit(6);
 }
 
-export async function getStationVehiclesWithStats({ stationId }: { stationId: number }) {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+/**
+ * The vehicles currently assigned to a station, with the dispatches they served for it in the
+ * last 30 days: a vehicle moved from another station doesn't bring that station's dispatches.
+ */
+export async function getStationVehiclesWithStats(
+  { stationId, now = new Date() }: { stationId: number; now?: Date },
+  database: Database = db
+) {
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  const results = await db
+  const stationDispatches = database
+    .select({
+      id: dispatchedVehicles.id,
+      vehicleId: dispatchedVehicles.vehicleId,
+      dispatchedTime: dispatchedVehicles.dispatchedTime,
+      arrivalTime: dispatchedVehicles.arrivalTime
+    })
+    .from(dispatchedVehicles)
+    .innerJoin(incidents, eq(dispatchedVehicles.incidentId, incidents.id))
+    .where(
+      and(
+        eq(dispatchedVehicles.stationId, stationId),
+        gte(incidents.incidentTimestamp, thirtyDaysAgo)
+      )
+    )
+    .as("station_dispatches");
+
+  const results = await database
     .select({
       id: vehicles.id,
       internalNumber: vehicles.internalNumber,
@@ -310,28 +344,24 @@ export async function getStationVehiclesWithStats({ stationId }: { stationId: nu
       descriptionType: vehicles.descriptionType,
       class: vehicles.class,
       descriptionOperationalStatus: vehicles.descriptionOperationalStatus,
-      incidentCount: sql<number>`count(${dispatchedVehicles.id})::int`.as("incident_count"),
+      incidentCount: sql<number>`count(${stationDispatches.id})::int`.as("incident_count"),
       avgResponseTimeSeconds: sql<number | null>`
         round(avg(
           CASE 
-            WHEN ${dispatchedVehicles.arrivalTime} > ${dispatchedVehicles.dispatchedTime}
-              AND extract(epoch from (${dispatchedVehicles.arrivalTime} - ${dispatchedVehicles.dispatchedTime})) >= 60
-              AND extract(epoch from (${dispatchedVehicles.arrivalTime} - ${dispatchedVehicles.dispatchedTime})) <= 10800
-            THEN extract(epoch from (${dispatchedVehicles.arrivalTime} - ${dispatchedVehicles.dispatchedTime}))
+            WHEN ${stationDispatches.arrivalTime} > ${stationDispatches.dispatchedTime}
+              AND extract(epoch from (${stationDispatches.arrivalTime} - ${stationDispatches.dispatchedTime})) >= 60
+              AND extract(epoch from (${stationDispatches.arrivalTime} - ${stationDispatches.dispatchedTime})) <= 10800
+            THEN extract(epoch from (${stationDispatches.arrivalTime} - ${stationDispatches.dispatchedTime}))
             ELSE NULL 
           END
         ))::int
       `.as("avg_response_time_seconds")
     })
     .from(vehicles)
-    .leftJoin(dispatchedVehicles, sql`${dispatchedVehicles.vehicleId} = ${vehicles.id}`)
-    .leftJoin(
-      incidents,
-      sql`${dispatchedVehicles.incidentId} = ${incidents.id} AND ${incidents.incidentTimestamp} >= ${thirtyDaysAgo}`
-    )
+    .leftJoin(stationDispatches, eq(stationDispatches.vehicleId, vehicles.id))
     .where(eq(vehicles.stationId, stationId))
     .groupBy(vehicles.id)
-    .orderBy(desc(sql`count(${dispatchedVehicles.id})`));
+    .orderBy(desc(sql`count(${stationDispatches.id})`), asc(vehicles.id));
 
   return results.map((row) => ({
     id: row.id,

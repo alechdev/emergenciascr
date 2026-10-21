@@ -1,7 +1,7 @@
 import {
-  formatIsoDateForSIGAE,
+  costaRicaDate,
   formatMissingEnvMessage,
-  getSigAEFetcher,
+  getSigaeClient,
   syncSingleIncident
 } from "@api/routers/admin/_lib/sigae";
 import {
@@ -11,7 +11,6 @@ import {
   SyncIncidentsResponseSchema
 } from "@api/routers/admin/_schemas";
 import { getExistingIncidentIds } from "@bomberoscr/db/queries/incidents";
-import { getIncidentListApp } from "@bomberoscr/sync-domain/api";
 import { createRoute } from "@hono/zod-openapi";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import { jsonContent } from "stoker/openapi/helpers";
@@ -56,33 +55,29 @@ export const listRoute = createRoute({
 
 export const listHandler: AppRouteHandler<typeof listRoute> = async (c) => {
   const { from, to } = c.req.valid("query");
-  const fetcherResult = getSigAEFetcher();
+  const clientResult = getSigaeClient();
 
-  if (!fetcherResult.ok) {
+  if (!clientResult.ok) {
     return c.json(
-      { message: formatMissingEnvMessage(fetcherResult.missing) },
+      { message: formatMissingEnvMessage(clientResult.missing) },
       HttpStatusCodes.SERVICE_UNAVAILABLE
     );
   }
 
-  const { fetcher } = fetcherResult;
-  const fromFormatted = formatIsoDateForSIGAE(from);
-  const toFormatted = formatIsoDateForSIGAE(to);
-
-  const incidentListResult = await getIncidentListApp({
-    fetcher,
-    from: fromFormatted,
-    to: toFormatted
+  const incidentListResult = await clientResult.client.getIncidentsBetween({
+    from: costaRicaDate(from),
+    to: costaRicaDate(to)
   });
 
-  if (incidentListResult.isErr()) {
+  if (incidentListResult.isErr() || incidentListResult.value.kind === "upstream_error") {
     return c.json(
       { message: "Failed to fetch incident list from SIGAE" },
       HttpStatusCodes.INTERNAL_SERVER_ERROR
     );
   }
 
-  const items = incidentListResult.value.items;
+  const response = incidentListResult.value;
+  const items = response.kind === "ok" ? response.data.items : [];
   const ids = items.map((i) => i.idBoletaIncidente);
   const existingIds = await getExistingIncidentIds(ids);
   const existingSet = new Set(existingIds);
@@ -143,21 +138,21 @@ export const syncHandler: AppRouteHandler<typeof syncRoute> = async (c) => {
     );
   }
 
-  const fetcherResult = getSigAEFetcher();
-  if (!fetcherResult.ok) {
+  const clientResult = getSigaeClient();
+  if (!clientResult.ok) {
     return c.json(
-      { message: formatMissingEnvMessage(fetcherResult.missing) },
+      { message: formatMissingEnvMessage(clientResult.missing) },
       HttpStatusCodes.SERVICE_UNAVAILABLE
     );
   }
 
-  const { fetcher } = fetcherResult;
+  const { client } = clientResult;
   const BATCH_SIZE = 5;
   const results: { incidentId: number; success: boolean; error?: string }[] = [];
 
   for (let i = 0; i < incidentIds.length; i += BATCH_SIZE) {
     const batch = incidentIds.slice(i, i + BATCH_SIZE);
-    const batchResults = await Promise.all(batch.map((id) => syncSingleIncident(fetcher, id)));
+    const batchResults = await Promise.all(batch.map((id) => syncSingleIncident(client, id)));
     results.push(...batchResults);
   }
 

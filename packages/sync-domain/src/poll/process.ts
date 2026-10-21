@@ -1,0 +1,202 @@
+import { resolveClosedAt } from "../lifecycle/closed-at";
+import { nextPoll } from "../lifecycle/next-poll";
+import { keepReportValues } from "../normalize/incident";
+import {
+  type NewIncidentType,
+  incidentTypeNames,
+  resolveIncidentTypes
+} from "../normalize/incident-types";
+import { normalizePoll } from "../normalize/index";
+import { dedupeAnomalies, detectAnomalies, placeholderAnomalies } from "../reconcile/anomalies";
+import { diffIncidentState, removalChanges } from "../reconcile/diff";
+import { keepKnownLocation } from "../reconcile/location";
+import { type KnownReferences, applyKnownReferences } from "../reconcile/references";
+import { applyEmptyUnitsRule } from "../reconcile/removal";
+
+import type { Anomaly, Change, IncidentState, SyncState } from "../types";
+import type { PollClassification, PollKind } from "./classify";
+
+export interface ProcessPollInput {
+  incidentId: number;
+  classification: PollClassification;
+  /** What the database holds for the incident, or `null` when it isn't stored. */
+  current: IncidentState | null;
+  syncState: SyncState;
+  /** Codes in `incident_types`, with the ancestors of the codes the poll uses. */
+  knownIncidentTypes: ReadonlySet<string>;
+  /** Known codes whose types were created from incident data, not SIGAE's type list. */
+  inferredIncidentTypes?: ReadonlySet<string>;
+  /**
+   * Stations, vehicles and geography the database has, after the on-demand fetch. Omitted:
+   * every reference counts as known (fixtures).
+   */
+  knownReferences?: KnownReferences;
+  /** `anomalyKey`s already recorded for the incident. */
+  recordedAnomalies: ReadonlySet<string>;
+  now: Date;
+}
+
+export interface ProcessPollResult {
+  kind: PollKind;
+  /** What to store for the incident after this poll; `null` when nothing is written. */
+  next: IncidentState | null;
+  /** The not-found flow decided to delete the incident and its children. */
+  deleteIncident: boolean;
+  /** Bump `modifiedAt` only when this is non-empty. */
+  changes: Change[];
+  anomalies: Anomaly[];
+  syncState: SyncState;
+  /** Incident type codes SIGAE used that `incident_types` doesn't have yet. */
+  unknownIncidentTypes: string[];
+  /** Incident types to create, parents first, before `next` is stored. */
+  newIncidentTypes: NewIncidentType[];
+}
+
+/**
+ * Everything a poll decides, without I/O: the state to store, its changes and anomalies, and
+ * the next sync state (spec section 4 pipeline, minus fetching, snapshots, reference
+ * resolution and the transaction).
+ */
+export function processPoll(input: ProcessPollInput): ProcessPollResult {
+  const { classification, current, syncState, now } = input;
+
+  if (classification.kind === "failed") {
+    const decision = nextPoll(
+      syncState,
+      {
+        kind: "failed",
+        reason: `${classification.endpoint} ${classification.reason}`
+      },
+      now
+    );
+    const issues = (classification.reportIssues ?? []).map((issue) => ({
+      ...issue,
+      entity: "incident" as const,
+      entityId: input.incidentId
+    }));
+    return idle("failed", decision.state, [
+      ...dedupeAnomalies(placeholderAnomalies(issues), input.recordedAnomalies),
+      ...decision.anomalies
+    ]);
+  }
+
+  if (classification.kind === "not_found") {
+    const decision = nextPoll(syncState, { kind: "not_found" }, now);
+    if (!decision.deleteIncident) return idle("not_found", decision.state, decision.anomalies);
+    return {
+      kind: "not_found",
+      next: null,
+      deleteIncident: true,
+      changes: current ? removalChanges(current) : [],
+      anomalies: decision.anomalies,
+      syncState: decision.state,
+      unknownIncidentTypes: [],
+      newIncidentTypes: []
+    };
+  }
+
+  const normalized = normalizePoll(input.incidentId, classification.data);
+  // On a partial report the report rule already keeps the stored geography field by field, so
+  // the location rule only finds what is still missing after it (the coordinates).
+  const reported =
+    classification.kind === "partial"
+      ? keepReportValues(current?.incident ?? null, normalized.incident)
+      : normalized.incident;
+  const location = keepKnownLocation(current?.incident ?? null, reported);
+  const types = resolveIncidentTypes(location.incident, {
+    known: input.knownIncidentTypes,
+    inferred: input.inferredIncidentTypes,
+    names: incidentTypeNames(classification.data.details)
+  });
+  const units = applyEmptyUnitsRule(
+    current?.vehicles ?? [],
+    normalized.vehicles,
+    syncState.emptyUnitsCount
+  );
+
+  const decision = nextPoll(
+    syncState,
+    {
+      kind: classification.kind,
+      isOpen: types.incident.isOpen,
+      incidentTimestamp: types.incident.incidentTimestamp
+    },
+    now
+  );
+  const closed = resolveClosedAt({
+    previous: current?.incident ?? null,
+    isOpen: types.incident.isOpen,
+    controlledAt: types.incident.controlledAt,
+    vehicles: units.vehicles,
+    syncState,
+    now
+  });
+
+  const built: IncidentState = {
+    incident: { ...types.incident, ...closed },
+    vehicles: units.vehicles,
+    stations: normalized.stations
+  };
+  const references = input.knownReferences
+    ? applyKnownReferences(built, input.knownReferences)
+    : { state: built, anomalies: [], missingStations: [] };
+  if (references.missingStations.length > 0) {
+    // Stations are required foreign keys: nothing can be stored until they are known.
+    const failure = nextPoll(
+      syncState,
+      {
+        kind: "failed",
+        reason: `MISSING_REFERENCE: unknown stations ${references.missingStations.join(", ")}`
+      },
+      now
+    );
+    return idle("failed", failure.state, [
+      ...dedupeAnomalies(references.anomalies, input.recordedAnomalies),
+      ...failure.anomalies
+    ]);
+  }
+  const next = references.state;
+  const anomalies = dedupeAnomalies(
+    [
+      ...types.anomalies,
+      ...references.anomalies,
+      ...detectAnomalies(current, next, {
+        now,
+        partialReport:
+          classification.kind === "partial"
+            ? { description: classification.reportDescription }
+            : undefined,
+        keptLocations: location.kept,
+        issues: normalized.issues,
+        reachedDone: decision.state.phase === "done" && syncState.phase !== "done"
+      }),
+      ...decision.anomalies
+    ],
+    input.recordedAnomalies
+  );
+
+  return {
+    kind: classification.kind,
+    next,
+    deleteIncident: false,
+    changes: diffIncidentState(current, next),
+    anomalies,
+    syncState: { ...decision.state, emptyUnitsCount: units.emptyUnitsCount },
+    unknownIncidentTypes: types.unknownCodes,
+    newIncidentTypes: types.created
+  };
+}
+
+/** A poll that writes nothing. It also breaks a run of zero-unit polls (spec 6.4). */
+function idle(kind: PollKind, syncState: SyncState, anomalies: Anomaly[]): ProcessPollResult {
+  return {
+    kind,
+    next: null,
+    deleteIncident: false,
+    changes: [],
+    anomalies,
+    syncState: { ...syncState, emptyUnitsCount: 0 },
+    unknownIncidentTypes: [],
+    newIncidentTypes: []
+  };
+}

@@ -1,18 +1,11 @@
+import { formatCostaRicaDate } from "@bomberoscr/lib/costa-rica-time";
+
 import { SITE_URL } from "@/lib/site";
 
 import type { StationPageData, StationPageIncident, StationPageVehicle } from "./get-station-page";
 
-const dateTimeFormat = new Intl.DateTimeFormat("es-CR", {
-  day: "2-digit",
-  month: "long",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  hour12: true
-});
-
 function formatDateTime(value: string): string {
-  return dateTimeFormat.format(new Date(value));
+  return formatCostaRicaDate(value, "longDateTime");
 }
 
 function mdCell(value: string): string {

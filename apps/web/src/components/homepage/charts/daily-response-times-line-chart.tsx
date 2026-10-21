@@ -1,3 +1,8 @@
+import {
+  formatCostaRicaDate,
+  getCostaRicaDateKey,
+  startOfCostaRicaDay
+} from "@bomberoscr/lib/costa-rica-time";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
@@ -40,34 +45,6 @@ const chartConfig = {
   }
 } satisfies ChartConfig;
 
-const dayFormatter = new Intl.DateTimeFormat("es-CR", {
-  day: "numeric",
-  month: "short",
-  timeZone: "America/Costa_Rica"
-});
-
-const tooltipDateFormatter = new Intl.DateTimeFormat("es-CR", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "America/Costa_Rica"
-});
-
-const costaRicaDateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  timeZone: "America/Costa_Rica"
-});
-
-function parseDateInCostaRica(dateString: string) {
-  return new Date(`${dateString}T00:00:00-06:00`);
-}
-
-function getCostaRicaDateKey(date: Date) {
-  return costaRicaDateKeyFormatter.format(date);
-}
-
 function getTickStep(timeRange: number) {
   if (timeRange <= 7) return 1;
   if (timeRange <= 30) return 5;
@@ -104,11 +81,11 @@ export function DailyResponseTimesLineChart() {
     }
 
     return data.data.map((item) => {
-      const date = parseDateInCostaRica(item.date);
+      const date = startOfCostaRicaDay(item.date);
 
       return {
         date,
-        label: dayFormatter.format(date),
+        label: formatCostaRicaDate(date, "dayMonth"),
         avgResponseMinutes: Number((item.averageResponseTimeSeconds / 60).toFixed(1))
       } satisfies DailyResponseTimeDatum;
     });
@@ -279,7 +256,7 @@ function CustomTooltipContent({ active, payload }: CustomTooltipProps) {
   return (
     <div className="rounded-lg border bg-background p-3 shadow-sm">
       <div className="space-y-1">
-        <div className="font-medium">{tooltipDateFormatter.format(point.date)}</div>
+        <div className="font-medium">{formatCostaRicaDate(point.date, "dayMonthYear")}</div>
         <div className="flex items-center justify-between gap-4">
           <span className="text-xs text-muted-foreground">Tiempo promedio:</span>
           <span className="font-mono text-sm font-medium">

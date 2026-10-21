@@ -1,0 +1,48 @@
+{
+  "incidentId": 1900001,
+  "fetchedAt": "2026-10-11T02:30:00.000Z",
+  "responses": {
+    "ObtenerBoletaIncidente": {
+      "body": {
+        "Codigo": "03",
+        "Descripcion": "No se encontraron registros.",
+        "Id_Boleta_Incidente": 0,
+        "Consecutivo": null,
+        "Fecha": null,
+        "Hora_Aviso": null,
+        "Estado_Abierto": null,
+        "DesUbicacion": null,
+        "Direccion": null,
+        "Id_Provincia": 0,
+        "Id_Canton": 0,
+        "Id_Distrito": 0
+      }
+    },
+    "ObtenerDetalleEmergencias": {
+      "body": {
+        "Codigo": "03",
+        "Descripcion": "No se encontraron registros.",
+        "codigo_tipo_incidente": null,
+        "fecha": null,
+        "hora_incidente": null,
+        "latitud": 0,
+        "longitud": 0,
+        "estaciones": []
+      }
+    },
+    "ObtenerEstacionesAtiendeIncidente": {
+      "body": {
+        "Codigo": "03",
+        "Descripcion": "No se encontraron registros.",
+        "Items": []
+      }
+    },
+    "ObtenerUnidadesDespachadasIncidente": {
+      "body": {
+        "Codigo": "03",
+        "Descripcion": "No se encontraron registros.",
+        "Items": []
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerProvinciaLista",
+  "request": {},
+  "body": {
+    "Codigo": "04",
+    "Descripcion": "Ha ocurrido un error con la base de datos. Detalle técnico: VIEW SERVER PERFORMANCE STATE permission was denied on object 'server', database 'master'.\nThe user does not have permission to perform this action.",
+    "Items": []
+  }
+}

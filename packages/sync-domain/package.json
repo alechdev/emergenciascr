@@ -4,22 +4,33 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./api": "./src/api.ts",
-    "./fetcher": "./src/fetcher.ts",
-    "./persist/*": "./src/persist/*.ts",
-    "./transform/*": "./src/transform/*.ts",
+    "./lifecycle": "./src/lifecycle/index.ts",
+    "./normalize": "./src/normalize/index.ts",
+    "./persist": "./src/persist/index.ts",
+    "./pipeline": "./src/pipeline/index.ts",
+    "./poll": "./src/poll/index.ts",
+    "./reconcile": "./src/reconcile/index.ts",
+    "./redact": "./src/redact/index.ts",
     "./types": "./src/types.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest run",
+    "test:tz": "TZ=UTC vitest run && TZ=America/Costa_Rica vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "capture-fixture": "bun scripts/capture-fixture.ts"
   },
   "dependencies": {
     "@bomberoscr/db": "workspace:*",
     "@bomberoscr/lib": "workspace:*",
-    "dotenv": "^16.4.7",
-    "dotenv-expand": "^11.0.1",
+    "@bomberoscr/sigae": "workspace:*",
     "neverthrow": "^8.2.0",
     "zod": "^4.0.5"
   },
   "devDependencies": {
     "@bomberoscr/typescript-config": "workspace:*",
-    "@typescript/native-preview": "^7.0.0-dev.20260127.1"
+    "@types/node": "^20.19.1",
+    "@typescript/native-preview": "^7.0.0-dev.20260127.1",
+    "vitest": "4.0.18"
   }
 }

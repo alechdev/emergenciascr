@@ -1,4 +1,4 @@
-import { toIsoStringOrNull } from "@api/lib/utils/incidents/formatters";
+import { getDispatchedVehicleLabel, toIsoStringOrNull } from "@api/lib/utils/incidents/formatters";
 
 type DispatchedVehicleSummary = {
   internalNumber: string;
@@ -39,6 +39,7 @@ function buildDispatchedStationsSummary(incident: {
     arrivalTime: Date | null;
     departureTime: Date | null;
     vehicle: { internalNumber: string } | null;
+    vehicleInternalNumber: string | null;
     station: { id: number; name: string } | null;
   }>;
 }): StationSummary[] {
@@ -78,7 +79,7 @@ function buildDispatchedStationsSummary(incident: {
     }
 
     stationMap.get(stationId)?.vehicles.push({
-      internalNumber: vehicle.vehicle?.internalNumber ?? "N/A",
+      internalNumber: getDispatchedVehicleLabel(vehicle),
       dispatchTime: toIsoStringOrNull(vehicle.dispatchedTime),
       arrivalTime: toIsoStringOrNull(vehicle.arrivalTime),
       departureTime: toIsoStringOrNull(vehicle.departureTime)

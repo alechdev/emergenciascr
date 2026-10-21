@@ -1,19 +1,14 @@
 import env from "@api/env";
+import { db } from "@bomberoscr/db/index";
+import { type SigaeClient, createSigaeClient } from "@bomberoscr/sigae/client";
 import {
-  getIncidentDetails,
-  getIncidentReport,
-  getStationsAttendingIncident,
-  getVehiclesDispatchedToIncident
-} from "@bomberoscr/sync-domain/api";
-import { createFetcher } from "@bomberoscr/sync-domain/fetcher";
-import { upsertIncident } from "@bomberoscr/sync-domain/persist/upsertIncident";
+  type ReferenceResolver,
+  createReferenceResolver,
+  describeError,
+  syncIncident
+} from "@bomberoscr/sync-domain/pipeline";
 
-import type {
-  ObtenerEstacionesAtiendeIncidente,
-  ObtenerUnidadesDespachadasIncidente
-} from "@bomberoscr/sync-domain/types";
-
-type SigAEFetcher = ReturnType<typeof createFetcher>;
+import { syncResult } from "./sync-result";
 
 const SIGAE_ENV_KEYS = [
   "SIGAE_API_URL",
@@ -23,10 +18,11 @@ const SIGAE_ENV_KEYS = [
   "SIGAE_COD_SYS"
 ] as const;
 
-let cachedFetcher: SigAEFetcher | null = null;
+let cachedClient: SigaeClient | null = null;
+const resolvers = new WeakMap<SigaeClient, ReferenceResolver>();
 
-function getSigAEFetcher():
-  | { ok: true; fetcher: SigAEFetcher }
+function getSigaeClient():
+  | { ok: true; client: SigaeClient }
   | { ok: false; missing: (typeof SIGAE_ENV_KEYS)[number][] } {
   const baseUrl = env.SIGAE_API_URL;
   const ip = env.SIGAE_IP;
@@ -39,19 +35,13 @@ function getSigAEFetcher():
     return { ok: false, missing };
   }
 
-  if (!cachedFetcher) {
-    cachedFetcher = createFetcher({
-      baseUrl,
-      credentials: {
-        IP: ip,
-        Password: password,
-        Usuario: user,
-        codSistema: codSys
-      }
-    });
-  }
+  cachedClient ??= createSigaeClient({
+    baseUrl,
+    credentials: { user, password, systemCode: codSys, ip },
+    proxy: env.SIGAE_PROXY_URL
+  });
 
-  return { ok: true, fetcher: cachedFetcher };
+  return { ok: true, client: cachedClient };
 }
 
 function formatMissingEnvMessage(missing: readonly string[]) {
@@ -59,53 +49,35 @@ function formatMissingEnvMessage(missing: readonly string[]) {
   return `Admin synchronization is disabled. Missing ${label}: ${missing.join(", ")}`;
 }
 
-function formatIsoDateForSIGAE(isoDate: string) {
-  const [year, month, day] = isoDate.split("-");
-  return `${month}/${day}/${year}`;
+/** Noon in Costa Rica on a `YYYY-MM-DD` date, so the client sends that same date. */
+function costaRicaDate(isoDate: string): Date {
+  return new Date(`${isoDate}T12:00:00-06:00`);
 }
 
-async function syncSingleIncident(fetcher: SigAEFetcher, incidentId: number) {
-  const results = await Promise.all([
-    getIncidentDetails({ fetcher, id: incidentId }),
-    getIncidentReport({ fetcher, id: incidentId }),
-    getStationsAttendingIncident({ fetcher, id: incidentId }),
-    getVehiclesDispatchedToIncident({ fetcher, id: incidentId })
-  ]);
-
-  const [incidentDetailsResult, incidentReportResult, stationsResult, vehiclesResult] = results;
-
-  if (incidentDetailsResult.isErr()) {
-    return { incidentId, success: false, error: "Failed to fetch incident details" };
-  }
-  if (incidentReportResult.isErr()) {
-    return { incidentId, success: false, error: "Failed to fetch incident report" };
-  }
-  if (stationsResult.isErr()) {
-    return { incidentId, success: false, error: "Failed to fetch stations" };
-  }
-  if (vehiclesResult.isErr()) {
-    return { incidentId, success: false, error: "Failed to fetch vehicles" };
+/**
+ * Polls one incident through the sync pipeline, as sync-v2 does: snapshots, changes,
+ * anomalies and the sync state are recorded too. It runs even for incidents sync-v2 no
+ * longer polls; one that ends up `active` or `settling` is picked up by sync-v2's next
+ * hourly resume. An incident sync-v2 never tracked only starts being tracked when SIGAE
+ * answers for it, so a not-found here never leads to its deletion.
+ */
+async function syncSingleIncident(client: SigaeClient, incidentId: number) {
+  let references = resolvers.get(client);
+  if (!references) {
+    references = createReferenceResolver({ db, sigae: client });
+    resolvers.set(client, references);
   }
 
   try {
-    await upsertIncident({
+    const outcome = await syncIncident(
+      { db, sigae: client, references, now: () => new Date() },
       incidentId,
-      incidentDetails: incidentDetailsResult.value,
-      incidentReport: incidentReportResult.value,
-      stationsAttending: (stationsResult.value as unknown as ObtenerEstacionesAtiendeIncidente)
-        .Items,
-      vehiclesDispatched: (vehiclesResult.value as unknown as ObtenerUnidadesDespachadasIncidente)
-        .Items
-    });
-    return { incidentId, success: true };
+      { force: true }
+    );
+    return syncResult(outcome);
   } catch (error) {
-    return {
-      incidentId,
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error"
-    };
+    return { incidentId, success: false, error: describeError(error) };
   }
 }
 
-export { formatIsoDateForSIGAE, formatMissingEnvMessage, getSigAEFetcher, syncSingleIncident };
-export type { SigAEFetcher };
+export { costaRicaDate, formatMissingEnvMessage, getSigaeClient, syncSingleIncident };

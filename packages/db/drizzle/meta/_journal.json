@@ -36,6 +36,13 @@
       "when": 1792173512049,
       "tag": "20261016175832_vehicle-station-history",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792565187752,
+      "tag": "20261021064627_incidents-coordinates-cleared-upstream",
+      "breakpoints": true
     }
   ]
 }

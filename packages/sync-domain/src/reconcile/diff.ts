@@ -28,6 +28,7 @@ export const INCIDENT_FIELDS = [
   "responsibleStation",
   "latitude",
   "longitude",
+  "coordinatesClearedUpstream",
   "isOpen",
   "controlledAt",
   "fireUnderControlAt",

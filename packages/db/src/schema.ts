@@ -140,6 +140,8 @@ export const incidents = pgTable(
     importantDetails: text().notNull(),
     latitude: numeric().notNull(),
     longitude: numeric().notNull(),
+    /** SIGAE sends the coordinates as unknown: `latitude`/`longitude` are the last known ones. */
+    coordinatesClearedUpstream: boolean().notNull().default(false),
     provinceId: integer().references(() => provinces.id),
     cantonId: integer().references(() => cantons.id),
     districtId: integer().references(() => districts.id),

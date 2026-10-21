@@ -125,6 +125,7 @@ describe("normalizeIncident (spec 6.3)", () => {
       responsibleStation: 2,
       latitude: "9.9",
       longitude: "-84.1",
+      coordinatesClearedUpstream: false,
       isOpen: false,
       controlledAt: cr("2026-10-10T21:02:40"),
       fireUnderControlAt: cr("2026-10-10T20:51:07"),

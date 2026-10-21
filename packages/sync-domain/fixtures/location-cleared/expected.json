@@ -52,6 +52,7 @@
         "responsibleStation": 2,
         "latitude": "9.9",
         "longitude": "-84.1",
+        "coordinatesClearedUpstream": false,
         "isOpen": true,
         "controlledAt": null,
         "fireUnderControlAt": null,
@@ -93,6 +94,15 @@
       }
     },
     {
+      "poll": "002.json",
+      "entity": "incident",
+      "entityId": 1900001,
+      "field": "coordinatesClearedUpstream",
+      "kind": "changed",
+      "oldValue": false,
+      "newValue": true
+    },
+    {
       "poll": "004.json",
       "entity": "incident",
       "entityId": 1900001,
@@ -109,6 +119,15 @@
       "kind": "changed",
       "oldValue": "-84.1",
       "newValue": "-84.1009"
+    },
+    {
+      "poll": "004.json",
+      "entity": "incident",
+      "entityId": 1900001,
+      "field": "coordinatesClearedUpstream",
+      "kind": "changed",
+      "oldValue": true,
+      "newValue": false
     }
   ],
   "anomalies": [
@@ -189,6 +208,7 @@
         "responsibleStation": 2,
         "latitude": "9.9012",
         "longitude": "-84.1009",
+        "coordinatesClearedUpstream": false,
         "isOpen": true,
         "controlledAt": null,
         "fireUnderControlAt": null,

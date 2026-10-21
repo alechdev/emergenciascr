@@ -48,6 +48,7 @@ const INCIDENT_COLUMNS = [
   "responsibleStation",
   "latitude",
   "longitude",
+  "coordinatesClearedUpstream",
   "isOpen",
   "controlledAt",
   "fireUnderControlAt",

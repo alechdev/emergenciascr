@@ -40,6 +40,8 @@ export interface IncidentRow {
   /** `"0"` when unknown; the web relies on it. */
   latitude: string;
   longitude: string;
+  /** SIGAE sends the coordinates as unknown and the stored ones are kept (spec section 6.3). */
+  coordinatesClearedUpstream: boolean;
   isOpen: boolean;
   controlledAt: Date | null;
   fireUnderControlAt: Date | null;

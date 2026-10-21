@@ -49,6 +49,7 @@ export async function loadIncidentState(
     responsibleStation: row.responsibleStation,
     latitude: row.latitude,
     longitude: row.longitude,
+    coordinatesClearedUpstream: row.coordinatesClearedUpstream,
     isOpen: row.isOpen,
     controlledAt: row.controlledAt,
     fireUnderControlAt: row.fireUnderControlAt,

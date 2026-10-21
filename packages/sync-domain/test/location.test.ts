@@ -39,10 +39,23 @@ function run(input: PollInput, current: IncidentState | null, recorded = new Set
 }
 
 describe("known locations SIGAE clears (spec 6.3)", () => {
-  it("cleared coordinates keep the stored pair, without changes or regressions", () => {
+  it("cleared coordinates keep the stored pair and flag it, without regressions", () => {
     const result = run(noCoordinates, incidentState());
-    expect(result.next?.incident).toMatchObject({ latitude: "9.9", longitude: "-84.1" });
-    expect(result.changes).toEqual([]);
+    expect(result.next?.incident).toMatchObject({
+      latitude: "9.9",
+      longitude: "-84.1",
+      coordinatesClearedUpstream: true
+    });
+    expect(result.changes).toEqual([
+      {
+        entity: "incident",
+        entityId: INCIDENT_ID,
+        field: "coordinatesClearedUpstream",
+        kind: "changed",
+        oldValue: false,
+        newValue: true
+      }
+    ]);
     expect(result.anomalies).toEqual([
       {
         code: "LOCATION_CLEARED_UPSTREAM",
@@ -60,8 +73,12 @@ describe("known locations SIGAE clears (spec 6.3)", () => {
   it("one coordinate cleared keeps the stored pair, never a half pair", () => {
     for (const details of [{ latitud: 0 }, { longitud: null }, { latitud: 9.95, longitud: 0 }]) {
       const result = run({ details: { body: detailsBody(details) } }, incidentState());
-      expect(result.next?.incident).toMatchObject({ latitude: "9.9", longitude: "-84.1" });
-      expect(result.changes).toEqual([]);
+      expect(result.next?.incident).toMatchObject({
+        latitude: "9.9",
+        longitude: "-84.1",
+        coordinatesClearedUpstream: true
+      });
+      expect(fields(result.changes)).toEqual(["coordinatesClearedUpstream:changed"]);
       expect(codes(result.anomalies)).toEqual(["LOCATION_CLEARED_UPSTREAM"]);
     }
     const half = run(
@@ -69,6 +86,19 @@ describe("known locations SIGAE clears (spec 6.3)", () => {
       incidentState()
     );
     expect(half.anomalies[0]?.details.received).toEqual({ latitude: "9.95", longitude: "0" });
+  });
+
+  it("known coordinates sent again clear the flag", () => {
+    const flagged = run(noCoordinates, incidentState()).next;
+    expect(flagged?.incident.coordinatesClearedUpstream).toBe(true);
+    const back = run({}, flagged);
+    expect(back.next?.incident).toMatchObject({
+      latitude: "9.9",
+      longitude: "-84.1",
+      coordinatesClearedUpstream: false
+    });
+    expect(fields(back.changes)).toEqual(["coordinatesClearedUpstream:changed"]);
+    expect(back.anomalies).toEqual([]);
   });
 
   it("new known coordinates replace the stored ones", () => {
@@ -98,7 +128,8 @@ describe("known locations SIGAE clears (spec 6.3)", () => {
     expect(result.next?.incident).toMatchObject({
       provinceId: 1,
       cantonId: 101,
-      districtId: 10101
+      districtId: 10101,
+      coordinatesClearedUpstream: false
     });
     expect(result.changes).toEqual([]);
     expect(result.anomalies).toEqual([
@@ -189,9 +220,10 @@ describe("known locations SIGAE clears (spec 6.3)", () => {
       cantonId: 101,
       districtId: 10101,
       latitude: "9.9",
-      longitude: "-84.1"
+      longitude: "-84.1",
+      coordinatesClearedUpstream: true
     });
-    expect(result.changes).toEqual([]);
+    expect(fields(result.changes)).toEqual(["coordinatesClearedUpstream:changed"]);
     expect(result.anomalies).toEqual([
       expect.objectContaining({ code: "UPSTREAM_PARTIAL_REPORT" }),
       expect.objectContaining({
@@ -210,7 +242,7 @@ describe("known locations SIGAE clears (spec 6.3)", () => {
     ]);
     const recorded = new Set(first.anomalies.map(anomalyKey));
     const again = run({ ...noCoordinates, ...noGeography }, first.next, recorded);
-    expect(again.next?.incident).toEqual(current.incident);
+    expect(again.next?.incident).toEqual({ ...current.incident, coordinatesClearedUpstream: true });
     expect(again.changes).toEqual([]);
     expect(again.anomalies).toEqual([]);
   });
@@ -229,6 +261,11 @@ describe("keepKnownLocation", () => {
       report: { body: reportBody({ Estado_Abierto: "false", Direccion: "OTRO" }) }
     }).incident;
     const { incident } = keepKnownLocation(stored, next);
-    expect(incident).toEqual({ ...next, latitude: "9.9", longitude: "-84.1" });
+    expect(incident).toEqual({
+      ...next,
+      latitude: "9.9",
+      longitude: "-84.1",
+      coordinatesClearedUpstream: true
+    });
   });
 });

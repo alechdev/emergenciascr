@@ -52,6 +52,7 @@ export function normalizeIncident(
     responsibleStation: responsibleStation(stations),
     latitude: coordinate(details.latitud),
     longitude: coordinate(details.longitud),
+    coordinatesClearedUpstream: false,
     isOpen: report.Estado_Abierto === "true",
     controlledAt: normalizeDate(report.Hora_Controlado, "controlledAt", "Hora_Controlado", source),
     fireUnderControlAt: normalizeDate(

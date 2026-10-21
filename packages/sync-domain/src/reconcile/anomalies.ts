@@ -36,7 +36,11 @@ const INCIDENT_TIME_FIELDS = [
 ] as const satisfies readonly (keyof IncidentRow)[];
 
 /** Derived by the sync, not reported by SIGAE, so they can't regress upstream. */
-const DERIVED_INCIDENT_FIELDS: ReadonlySet<string> = new Set(["closedAt", "closedAtSource"]);
+const DERIVED_INCIDENT_FIELDS: ReadonlySet<string> = new Set([
+  "closedAt",
+  "closedAtSource",
+  "coordinatesClearedUpstream"
+]);
 
 /**
  * Anomalies describing a state of the data rather than an event. They are recorded once per

@@ -43,7 +43,8 @@ type Location = Pick<
  * value still replaces it.
  *
  * - Coordinates are a pair: either one missing while both stored are known keeps both, so a
- *   half pair is never stored over a full one.
+ *   half pair is never stored over a full one. Kept coordinates set
+ *   `coordinatesClearedUpstream` until SIGAE sends known ones again.
  * - Province, canton and district are a unit: all three missing while any stored one is known
  *   keeps the stored three. When SIGAE sends some of them, what it sent is stored, so a new
  *   province is never mixed with an old canton.
@@ -64,6 +65,7 @@ export function keepKnownLocation(
     kept.push(keptLocation("coordinates", COORDINATE_FIELDS, stored, next));
     incident.latitude = stored.latitude;
     incident.longitude = stored.longitude;
+    incident.coordinatesClearedUpstream = true;
   }
 
   if (

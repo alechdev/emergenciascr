@@ -151,6 +151,7 @@ Wire the core into the workers (section 4 pipeline, section 8).
 - [x] Vehicle assignment history: `vehicle_station_history` migration, written in the same transaction as every vehicle details upsert (12h job and on-demand), with integration tests (section 5.2, 9).
 - [x] Incident type codes SIGAE's type list lacks: create the type from the incident's names, else fall back to the nearest known ancestor; the type sync adopts SIGAE's ID and name later (section 6.3, 9), with unit and integration tests.
 - [x] A known location SIGAE clears is kept: coordinates as a pair, province, canton and district as a unit, `LOCATION_CLEARED_UPSTREAM` once per field group (section 6.3, 7), with unit tests and the `location-cleared` fixture.
+- [x] Kept coordinates are flagged (`incidents.coordinatesClearedUpstream`, section 5.1, 6.3), and map images follow the coordinates (section 11 item 8): a moved incident gets a new map URL and stored image instead of keeping its first map forever.
 - [x] Units-at-station snapshots drop `HoraAtencionAPie` from items without attention on foot, so polls that differ only in SIGAE's clock time store one snapshot (section 5.2), with redaction, pipeline and integration tests.
 
 **Done when**

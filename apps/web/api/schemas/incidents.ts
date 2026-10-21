@@ -306,8 +306,8 @@ export const incidentByIdResponse = z
       example: "SAN JOSE"
     }),
     mapImageUrl: z.string().url().nullable().openapi({
-      description: "URL to the incident's map image.",
-      example: "https://api.example.com/incidents/1550734/map"
+      description: "URL to the incident's map image. It changes when the coordinates do.",
+      example: "https://api.example.com/incidents/1550734/map?v=3f2a9c1b7d4e"
     }),
     dispatchType: incidentTypeSchema.nullable().openapi({
       description: "General type assigned by dispatch."

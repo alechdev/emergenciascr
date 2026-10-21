@@ -1,4 +1,5 @@
 import env from "@api/env";
+import { buildMapVersion } from "@api/lib/utils/incidents/map-utils";
 
 function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
@@ -12,10 +13,14 @@ export function getApiBaseUrl(): string {
 }
 
 /**
- * Build the URL for an incident's map image.
+ * Build the URL for an incident's map image at the given coordinates.
  */
-export function buildMapImageUrl(incidentId: number): string {
-  return `${getApiBaseUrl()}/incidents/${incidentId}/map`;
+export function buildMapImageUrl(
+  incidentId: number,
+  latitude: number | string,
+  longitude: number | string
+): string {
+  return `${getApiBaseUrl()}/incidents/${incidentId}/map?v=${buildMapVersion(latitude, longitude)}`;
 }
 
 /**

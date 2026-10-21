@@ -256,6 +256,7 @@ export async function getIncidentById({ id }: { id: number }, database: Database
       importantDetails: true,
       latitude: true,
       longitude: true,
+      coordinatesClearedUpstream: true,
       dispatchIncidentCode: true,
       specificDispatchIncidentCode: true,
       incidentCode: true,

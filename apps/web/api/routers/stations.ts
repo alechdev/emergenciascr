@@ -315,7 +315,7 @@ app.openapi(
           ...incident,
           incidentTimestamp: incident.incidentTimestamp.toISOString(),
           mapImageUrl: isValidCoordinates(incident.latitude, incident.longitude)
-            ? buildMapImageUrl(incident.id)
+            ? buildMapImageUrl(incident.id, incident.latitude, incident.longitude)
             : null
         }))
       },

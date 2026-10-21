@@ -15,8 +15,10 @@ import {
 import {
   buildImgproxyUrl,
   buildMapboxUrl,
+  buildMapVersion,
   buildOriginalSourceUrl,
-  getS3Key
+  getS3Key,
+  hasMapCoordinates
 } from "@api/lib/utils/incidents/map-utils";
 import { generateOgImage } from "@api/lib/utils/incidents/og-image";
 import { buildIncidentResponseTimes } from "@api/lib/utils/incidents/response-times";
@@ -39,7 +41,7 @@ import {
   getIncidents,
   getIncidentTimelineData
 } from "@bomberoscr/db/queries/incidents";
-import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
+import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import * as HttpStatusPhrases from "stoker/http-status-phrases";
 import { jsonContent } from "stoker/openapi/helpers";
@@ -285,7 +287,9 @@ app.openapi(
           latitude: coordinates.latitude,
           longitude: coordinates.longitude,
           isTemporaryCoordinates: coordinates.isTemporaryCoordinates,
-          mapImageUrl: coordinates.hasStoredCoordinates ? buildMapImageUrl(incident.id) : null,
+          mapImageUrl: coordinates.hasStoredCoordinates
+            ? buildMapImageUrl(incident.id, coordinates.latitude, coordinates.longitude)
+            : null,
           dispatchType: buildIncidentType(
             incident.dispatchIncidentCode,
             incident.dispatchIncidentType
@@ -373,7 +377,12 @@ app.openapi(
       cantonName: incident.canton?.name ?? null
     });
 
-    const ttlSeconds = incident.isOpen ? ONE_MINUTE_SECONDS : THREE_HOURS_SECONDS;
+    // Coordinates kept while SIGAE sends them as unknown usually come back, sometimes moved,
+    // and the map URL changes with them.
+    const ttlSeconds =
+      incident.isOpen || incident.coordinatesClearedUpstream
+        ? ONE_MINUTE_SECONDS
+        : THREE_HOURS_SECONDS;
     c.header("Cache-Control", buildCacheControlHeader(ttlSeconds));
 
     return c.json(
@@ -393,7 +402,9 @@ app.openapi(
         longitude: coordinates.longitude,
         isTemporaryCoordinates: coordinates.isTemporaryCoordinates,
         cantonName: incident.canton?.name ?? null,
-        mapImageUrl: coordinates.hasStoredCoordinates ? buildMapImageUrl(incident.id) : null,
+        mapImageUrl: coordinates.hasStoredCoordinates
+          ? buildMapImageUrl(incident.id, coordinates.latitude, coordinates.longitude)
+          : null,
         dispatchType: buildIncidentType(
           incident.dispatchIncidentCode,
           incident.dispatchIncidentType?.name
@@ -573,7 +584,12 @@ app.openapi(
     description: "Retrieve the generated map image for an incident",
     tags: ["Incidents"],
     request: {
-      params: incidentByIdRequest.pick({ id: true })
+      params: incidentByIdRequest.pick({ id: true }),
+      query: z.object({
+        v: z.string().optional().openapi({
+          description: "Map version from `mapImageUrl`; other values redirect to the current one"
+        })
+      })
     },
     responses: {
       [HttpStatusCodes.OK]: {
@@ -605,6 +621,9 @@ app.openapi(
           }
         }
       },
+      [HttpStatusCodes.MOVED_TEMPORARILY]: {
+        description: "Redirect to the map for the incident's current coordinates"
+      },
       [HttpStatusCodes.BAD_REQUEST]: jsonContent(
         createMessageObjectSchema("Invalid coordinates"),
         "Invalid coordinates"
@@ -621,8 +640,27 @@ app.openapi(
   }),
   async (c) => {
     const { id } = c.req.valid("param");
+    const { v } = c.req.valid("query");
 
-    const sourceUrl = buildOriginalSourceUrl(id);
+    const incident = await getIncidentCoordinatesById({ id });
+    if (!incident) {
+      return c.json({ message: "Incident not found" }, HttpStatusCodes.NOT_FOUND);
+    }
+    if (!hasMapCoordinates(incident.latitude, incident.longitude)) {
+      return c.json({ message: "Invalid coordinates" }, HttpStatusCodes.BAD_REQUEST);
+    }
+
+    const version = buildMapVersion(incident.latitude, incident.longitude);
+    if (v !== version) {
+      // Old links and pages cached before the coordinates moved land on the current map.
+      c.header("Cache-Control", buildCacheControlHeader(ONE_MINUTE_SECONDS));
+      return c.redirect(
+        buildMapImageUrl(id, incident.latitude, incident.longitude),
+        HttpStatusCodes.MOVED_TEMPORARILY
+      );
+    }
+
+    const sourceUrl = buildOriginalSourceUrl(id, version);
     const imgproxyUrl = buildImgproxyUrl(sourceUrl);
     const acceptHeader = c.req.header("accept");
 
@@ -657,13 +695,15 @@ app.openapi(
 app.openapi(
   createRoute({
     method: "get",
-    path: "/{id}/map/original",
+    path: "/{id}/map/original/{version}",
     summary: "Retrieve original incident map image",
     operationId: "getIncidentOriginalMap",
     description: "Retrieve the original map image for an incident from Mapbox",
     tags: ["Incidents"],
     request: {
-      params: incidentByIdRequest.pick({ id: true }),
+      params: incidentByIdRequest.pick({ id: true }).extend({
+        version: z.string().openapi({ description: "Map version for the current coordinates" })
+      }),
       query: adminAuthedRouteRequestSchema
     },
     responses: {
@@ -697,14 +737,14 @@ app.openapi(
     }
   }),
   async (c) => {
-    const { id } = c.req.valid("param");
+    const { id, version } = c.req.valid("param");
     const { token } = c.req.valid("query");
 
     if (token !== env.IMGPROXY_TOKEN) {
       return c.json({ message: "Unauthorized" }, HttpStatusCodes.UNAUTHORIZED);
     }
 
-    const s3Key = getS3Key(id);
+    const s3Key = getS3Key(id, version);
 
     const cachedImage = await getFromS3(s3Key);
     if (cachedImage) {
@@ -720,13 +760,16 @@ app.openapi(
       return c.json({ message: "Incident not found" }, HttpStatusCodes.NOT_FOUND);
     }
 
-    const latitude = Number(incident.latitude);
-    const longitude = Number(incident.longitude);
-
-    if (!latitude || !longitude || latitude === 0 || longitude === 0) {
+    if (!hasMapCoordinates(incident.latitude, incident.longitude)) {
       return c.json({ message: "Invalid coordinates" }, HttpStatusCodes.BAD_REQUEST);
     }
+    // The coordinates moved since the version was handed out: never store another map under it.
+    if (buildMapVersion(incident.latitude, incident.longitude) !== version) {
+      return c.json({ message: "Incident not found" }, HttpStatusCodes.NOT_FOUND);
+    }
 
+    const latitude = Number(incident.latitude);
+    const longitude = Number(incident.longitude);
     const mapboxUrl = buildMapboxUrl(latitude, longitude);
     const mapboxResponse = await fetch(mapboxUrl);
 

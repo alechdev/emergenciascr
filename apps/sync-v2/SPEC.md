@@ -590,7 +590,7 @@ Merge `sync-v2` into `main`, migrate the prod database in place, and replace v1 
 - **Workflows:** `main` gets a migrate job and a sync-v2 image build next to `build-app.yaml`; the web and sync deploys need the migrate job, and a failing migration stops the deploy.
 - **Infrastructure:** Redis for sync-v2, `SIGAE_PROXY_URL`, an OTLP endpoint with `deployment.environment.name=production`, and the dashboard. v1's service is stopped and removed.
 - **Alerting:** none at first. Which conditions page someone (no SIGAE response, incidents in `failed`, queue backlog) is decided from the prod dashboard.
-- **Switch:** back up the prod database, stop v1, mark the baseline, run the migration, deploy the new web and sync-v2, run `adopt-legacy-open` (it takes about half an hour and runs next to sync-v2), then check health, the dashboard, new incidents and a few pages. Rollback is restoring the backup and redeploying the previous images and v1; whatever sync-v2 stored since the switch is lost, so go or no-go is decided within the first hours.
+- **Switch:** back up the prod database, stop v1, mark the baseline, run the migration, deploy the new web and sync-v2, run `adopt-legacy-open` (5 minutes in the rehearsal; it runs next to sync-v2), then check health, the dashboard, new incidents and a few pages. Rollback is restoring the backup and redeploying the previous images and v1; whatever sync-v2 stored since the switch is lost, so go or no-go is decided within the first hours.
 
 ## 15. Plan
 
@@ -599,3 +599,4 @@ The phased plan, with tasks, dependencies and completion checks, is in `PLAN.md`
 ## 16. Open questions
 
 - **Handoff window:** at the switch, gap fill tracks incidents reported in the last 6 hours (section 8.1). Incidents from 6 to 72 hours earlier that v1 already saw closed keep v1's last data unless the first gap fill looks back 72 hours (the ones still open are polled by `adopt-legacy-open`, section 14). Decide during the rehearsal.
+- **Legacy open incidents SIGAE no longer has:** in the rehearsal, 431 of the 626 incidents `adopt-legacy-open` polled answered not found (reported from March 2025 to October 2026, 401 with dispatched units). They stay open and untracked: leave them, mark them closed, or delete them like the not-found flow (section 8.4) would.

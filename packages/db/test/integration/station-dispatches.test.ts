@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { getIncidentById } from "../../src/queries/incidents";
-import { getStationVehiclesWithStats } from "../../src/queries/stations";
+import { getStationVehiclesWithStats, getStationsOverview } from "../../src/queries/stations";
 import { getYearRecap } from "../../src/queries/stats";
 import { dispatchedVehicles, incidents, stations, vehicles } from "../../src/schema";
 import { TEST_DATABASE_URL, type TestDatabase, openTestDatabase, resetDatabase } from "./harness";
@@ -147,6 +147,20 @@ describe.skipIf(!TEST_DATABASE_URL)("station views follow the station of each di
         vehicle: row.vehicle?.internalNumber
       }))
     ).toEqual([{ stationId: STATION_A, station: "ESTACION PRUEBA A", vehicle: "M-701" }]);
+  });
+
+  it("the overview averages the stations with 10 dispatches in the last 30 days", async () => {
+    // Only A reaches 10 (3 + 10); B's 2 recent dispatches stay out of the average.
+    await db
+      .insert(dispatchedVehicles)
+      .values(
+        Array.from({ length: 10 }, () => dispatch(4, daysAgo(10), STATION_A, STAYED_AT_A, 300))
+      );
+    const overview = await getStationsOverview({ now: NOW }, db);
+    expect(overview).toMatchObject({
+      operativeVehiclesCount: 3,
+      averageResponseTimeSeconds: Math.round((300 + 500 + 360 + 10 * 300) / 13)
+    });
   });
 
   it("the annual recap labels each vehicle with the station it served", async () => {

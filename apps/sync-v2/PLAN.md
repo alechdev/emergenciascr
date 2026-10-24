@@ -233,9 +233,10 @@ Merge `sync-v2` into `main`, migrate the prod database in place and replace v1 (
 
 **Tasks**
 
-- [ ] Rehearsal on a local restore of a prod dump: schema drift check against the baseline, drift fixes, baseline marked as applied, `apps/migrate` run and timed.
-- [ ] The new web against the migrated copy: incident pages (old and new), stats, slugs and their 301s, maps.
-- [ ] sync-v2 against the migrated copy for a while: it picks up existing rows (the first poll diffs v1's data) and new incidents.
+- [x] Rehearsal on a local restore of a prod dump: schema drift check against the baseline, drift fixes, baseline marked as applied, `apps/migrate` run and timed.
+- [x] The new web against the migrated copy: incident pages (old and new), stats, slugs and their 301s, maps.
+- [x] sync-v2 against the migrated copy for a while: it picks up existing rows (the first poll diffs v1's data) and new incidents.
+- [x] Fixes from the rehearsal: the adoption script, placeholder dates read as year 2001, v1's untracked open incidents (`adopt-legacy-open`), and the stations overview query.
 - [ ] Decide the handoff window (spec section 16).
 - [ ] Runbook from the rehearsal: exact commands, backup, timings, checks and rollback.
 - [ ] Before the switch: explicit histogram buckets (`packages/sigae/src/client/telemetry.ts`), the BullMQ `removeOnComplete` race, the `tsx` dev dependency, `dispatched_vehicles` indexes, a CI test workflow, and a regenerated API client (`src/lib/api/*.gen.ts`).

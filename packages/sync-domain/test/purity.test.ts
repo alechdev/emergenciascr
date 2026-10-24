@@ -8,7 +8,12 @@ const CORE = ["poll", "normalize", "reconcile", "lifecycle", "redact"];
 const CORE_FILES = ["types.ts"];
 
 /** Packages the core may load at runtime. None of them touch the database, Redis or env. */
-const RUNTIME_IMPORTS = new Set(["@bomberoscr/sigae/dates", "neverthrow", "node:crypto"]);
+const RUNTIME_IMPORTS = new Set([
+  "@bomberoscr/lib/missing-date",
+  "@bomberoscr/sigae/dates",
+  "neverthrow",
+  "node:crypto"
+]);
 /** Packages the core may only import types from. */
 const TYPE_IMPORTS = new Set(["@bomberoscr/sigae/client"]);
 

@@ -377,20 +377,22 @@ export async function getStationVehiclesWithStats(
   }));
 }
 
-export async function getStationsOverview() {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const now = new Date();
+export async function getStationsOverview(
+  { now = new Date() }: { now?: Date } = {},
+  database: Database = db
+) {
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   const [operativeStationsResult, operativeVehiclesResult, avgResponseTimeResult] =
     await Promise.all([
-      db
+      database
         .select({
           count: sql<number>`count(*)::int`
         })
         .from(stations)
         .where(eq(stations.isOperative, true)),
 
-      db
+      database
         .select({
           count: sql<number>`count(*)::int`
         })
@@ -402,10 +404,10 @@ export async function getStationsOverview() {
           )
         ),
 
-      db.execute(sql`
+      database.execute(sql`
       WITH valid_dispatches AS (
         SELECT 
-          ${dispatchedVehicles.stationId},
+          ${dispatchedVehicles.stationId} AS station_id,
           EXTRACT(EPOCH FROM (${dispatchedVehicles.arrivalTime} - ${dispatchedVehicles.dispatchedTime})) as response_time
         FROM ${dispatchedVehicles}
         INNER JOIN ${incidents} ON ${dispatchedVehicles.incidentId} = ${incidents.id}

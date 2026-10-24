@@ -9,13 +9,11 @@ import {
   jsonb,
   numeric,
   pgTable,
-  text,
-  timestamp
+  text
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 
-/** Every timestamp is an instant (`timestamptz`); the API returns them as UTC ISO strings. */
-const timestamptz = () => timestamp({ withTimezone: true });
+import { timestamptz } from "./timestamptz";
 
 export const stations = pgTable("stations", {
   id: integer().primaryKey(),

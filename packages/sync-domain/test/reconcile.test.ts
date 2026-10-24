@@ -73,6 +73,33 @@ describe("diffIncidentState", () => {
     ]);
   });
 
+  it("a placeholder date stored by the legacy sync is unknown", () => {
+    const legacy = new Date("0001-01-01T05:36:13Z");
+    const stored = incidentState({ units: units(unit({ HoraLLegada: "2026-10-10T20:33:45" })) });
+    const before = {
+      ...stored,
+      vehicles: stored.vehicles.map((row) => ({
+        ...row,
+        arrivalTime: legacy,
+        baseReturnTime: legacy
+      }))
+    };
+    const after = incidentState({ units: units(unit({ HoraLLegada: "2026-10-10T20:33:45" })) });
+
+    expect(diffIncidentState(before, after)).toEqual([
+      {
+        entity: "dispatched_vehicle",
+        entityId: 5200101,
+        field: "arrivalTime",
+        kind: "set",
+        oldValue: "0001-01-01T05:36:13.000Z",
+        newValue: "2026-10-11T02:33:45.000Z"
+      }
+    ]);
+    expect(after.vehicles[0]?.baseReturnTime).toBeNull();
+    expect(codes(detectAnomalies(before, after, { now }))).toEqual([]);
+  });
+
   it("unit added and unit removed", () => {
     const before = incidentState({ units: units(unit()) });
     const after = incidentState({ units: units(unit({ IdBoletaUnidadDespachada: 5200102 })) });

@@ -1,3 +1,5 @@
+import { isMissingDate } from "@bomberoscr/lib/missing-date";
+
 import { toJson } from "../types";
 
 import type {
@@ -60,7 +62,8 @@ const COORDINATE_FIELDS: ReadonlySet<string> = new Set(["latitude", "longitude"]
 /**
  * Field-level changes from the stored state to the next one. New and deleted rows produce a
  * single `added` / `removed` change with the whole row; existing rows produce `set`,
- * `changed` or `cleared` per field.
+ * `changed` or `cleared` per field. A field unknown before and after (see {@link isMissing})
+ * has no change.
  */
 export function diffIncidentState(current: IncidentState | null, next: IncidentState): Change[] {
   return [
@@ -106,6 +109,7 @@ function diffRows<Row extends { id: number }>(
       const oldValue = previous[field] as FieldValue;
       const newValue = row[field] as FieldValue;
       if (sameValue(oldValue, newValue)) continue;
+      if (isMissing(field, oldValue) && isMissing(field, newValue)) continue;
       changes.push({
         entity,
         entityId: row.id,
@@ -149,9 +153,13 @@ export function sameValue(a: FieldValue, b: FieldValue): boolean {
   return a === b;
 }
 
-/** Whether a stored value means "unknown": `NULL`, an empty string or a `"0"` coordinate. */
+/**
+ * Whether a stored value means "unknown": `NULL`, an empty string, a `"0"` coordinate, or a
+ * placeholder date (the legacy sync stored SIGAE's `0001-01-01` instead of `NULL`).
+ */
 export function isMissing(field: string, value: FieldValue): boolean {
   if (value === null || value === "") return true;
+  if (value instanceof Date) return isMissingDate(value);
   return COORDINATE_FIELDS.has(field) && Number(value) === 0;
 }
 

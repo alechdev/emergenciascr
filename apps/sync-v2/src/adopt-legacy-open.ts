@@ -46,7 +46,15 @@ try {
   logger.error("adopting legacy open incidents failed", { error });
   exitCode = 1;
 } finally {
-  await Promise.allSettled([closeDb(), sigae.close()]);
+  const closed = await Promise.allSettled([closeDb(), sigae.close()]);
+  for (const [index, outcome] of closed.entries()) {
+    if (outcome.status === "fulfilled") continue;
+    logger.error("closing a connection failed", {
+      connection: index === 0 ? "database" : "sigae",
+      error: outcome.reason
+    });
+    exitCode = 1;
+  }
 }
 // Not `process.exit()`: the process ends once the logs are written.
 process.exitCode = exitCode;

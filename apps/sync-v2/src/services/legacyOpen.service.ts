@@ -27,10 +27,14 @@ export interface LegacyOpenResult {
    */
   skipped: number[];
   /**
-   * Not found upstream, or the poll failed: not tracked and not deleted, though the poll's
-   * snapshots and anomalies are stored. A later run tries them again.
+   * Not found upstream: not tracked and not deleted, though the poll's snapshots and
+   * anomalies are stored. A later run tries them again.
    */
   notFound: number[];
+  /**
+   * The poll failed (SIGAE or the database) or threw, reported through `onFailed`. A later
+   * run retries the ones still untracked.
+   */
   failed: number[];
 }
 

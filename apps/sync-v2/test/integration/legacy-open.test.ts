@@ -152,6 +152,7 @@ describe.skipIf(!INTEGRATION)("adopting the legacy sync's open incidents", () =>
       settling: [ids.closedRecently],
       active: [ids.stillOpen],
       openTooLong: [ids.openTooLong],
+      skipped: [],
       notFound: [ids.notFound],
       failed: []
     });
@@ -199,5 +200,65 @@ describe.skipIf(!INTEGRATION)("adopting the legacy sync's open incidents", () =>
       .from(schema.incidents)
       .where(operators.eq(schema.incidents.id, ids.notFound));
     expect(kept).toHaveLength(1);
+  });
+
+  it("keeps going past a poll that throws, and leaves a superseded one to the service", async () => {
+    const { adopt, operators, persist, pipeline, schema } = modules;
+    const clock = fakeClock();
+    const ids = { throws: 1900201, superseded: 1900202, closed: 1900203 };
+    const reportedAt = new Date(clock.now().getTime() - 40 * DAY);
+    const upstream = new Map<number, Upstream>(
+      Object.values(ids).map((id) => [id, { reportedAt, isOpen: true }])
+    );
+    let serviceTracks: number | null = null;
+    const sigae = fakeSigae(async (call) => {
+      const id = incidentIdOf(call);
+      if (id === serviceTracks) {
+        // The running service tracks and polls it while the adoption waits for SIGAE.
+        serviceTracks = null;
+        await persist.trackNewIncidents(db, [{ incidentId: id, firstSeenAt: clock.now() }]);
+        await db
+          .update(schema.incidentSyncState)
+          .set({ lastPolledAt: new Date(clock.now().getTime() + MINUTE) })
+          .where(operators.eq(schema.incidentSyncState.incidentId, id));
+      }
+      const state = upstream.get(id);
+      return state ? answer(id, call.endpoint, state) : { body: { ...NOT_FOUND } };
+    });
+    const deps = {
+      db,
+      sigae: sigae.client,
+      references: pipeline.createReferenceResolver({ db, sigae: sigae.client, now: clock.now }),
+      now: clock.now
+    };
+    for (const id of upstream.keys()) await pipeline.syncIncident(deps, id);
+    await db.delete(schema.incidentSyncState);
+
+    clock.advance(MINUTE);
+    for (const id of upstream.keys()) upstream.set(id, { reportedAt, isOpen: false });
+    serviceTracks = ids.superseded;
+    let calls = 0;
+    const failures: [number, string][] = [];
+    const result = await adopt.adoptLegacyOpenIncidents(
+      {
+        ...deps,
+        // The first poll (the lowest ID) breaks before it reads anything.
+        now: () => {
+          if (calls++ === 0) throw new Error("clock broke");
+          return clock.now();
+        }
+      },
+      { concurrency: 1, onFailed: (id, reason) => failures.push([id, reason]) }
+    );
+
+    expect(result).toMatchObject({
+      found: 3,
+      closed: [ids.closed],
+      skipped: [ids.superseded],
+      failed: [ids.throws]
+    });
+    expect(failures).toEqual([[ids.throws, "clock broke"]]);
+    expect(await persist.loadSyncState(db, ids.throws)).toBeNull();
+    expect((await persist.loadSyncState(db, ids.superseded))?.phase).toBe("active");
   });
 });

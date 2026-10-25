@@ -62,15 +62,18 @@ describe.skipIf(!TEST_DATABASE_URL)("timestamptz columns", () => {
   describe.each(["UTC", "America/Costa_Rica"])("in a %s session", (timeZone) => {
     let db: TestDatabase;
 
-    beforeAll(() => {
+    beforeAll(async () => {
       db = databaseInTimeZone(timeZone);
+      const shown = await db.execute<{ TimeZone: string }>(sql`show timezone`);
+      expect(shown.rows[0]?.TimeZone).toBe(timeZone);
     });
     afterAll(async () => {
       await db?.$client.end();
     });
 
     it("reads year 1 as year 1, not 2001", async () => {
-      // In Costa Rica, Postgres sends year 1 with a local mean time offset: `-05:36:13`.
+      // UTC sends `0001-01-01 05:36:13+00`; Costa Rica sends the same instant with its local
+      // mean time offset, `0001-01-01 00:00:00-05:36:13`.
       const [row] = await db.select().from(dispatchedVehicles).where(eq(dispatchedVehicles.id, 1));
       expect(row?.arrivalTime?.toISOString()).toBe(LEGACY_PLACEHOLDER);
       expect(row?.baseReturnTime?.toISOString()).toBe(LEGACY_PLACEHOLDER);

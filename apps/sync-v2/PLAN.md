@@ -249,7 +249,7 @@ Merge `sync-v2` into `main`, migrate the prod database in place and replace v1 (
 
 **Done when**
 
-- [ ] The rehearsal migrates a prod copy cleanly, and the new web shows its history correctly.
+- [x] The rehearsal migrates a prod copy cleanly, and the new web shows its history correctly.
 - [ ] A failing migration stops the deploy.
 - [ ] Prod runs sync-v2: new incidents appear, none end in `failed`, queues stay flat, and the dashboard shows live data.
 - [ ] v1 is stopped and removed.

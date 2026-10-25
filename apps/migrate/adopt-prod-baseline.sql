@@ -23,7 +23,7 @@ BEGIN
   END IF;
 END $$;
 
--- The news objects, from the baseline.
+-- The news objects, from the baseline, unless they all exist (checked below).
 DO $$
 DECLARE
   present int := (to_regtype('public.media_type') IS NOT NULL)::int
@@ -61,6 +61,32 @@ BEGIN
   ALTER TABLE "news_article_media" ADD CONSTRAINT "news_article_media_articleId_news_articles_id_fk" FOREIGN KEY ("articleId") REFERENCES "public"."news_articles"("id") ON DELETE no action ON UPDATE no action;
   ALTER TABLE "news_articles" ADD CONSTRAINT "news_articles_incidentId_incidents_id_fk" FOREIGN KEY ("incidentId") REFERENCES "public"."incidents"("id") ON DELETE no action ON UPDATE no action;
   ALTER TABLE "news_articles" ADD CONSTRAINT "news_articles_outletId_news_outlets_id_fk" FOREIGN KEY ("outletId") REFERENCES "public"."news_outlets"("id") ON DELETE no action ON UPDATE no action;
+END $$;
+
+-- The news objects must match the baseline before it is marked applied: their columns,
+-- keys and enum labels, hashed. The expected hash comes from a database migrated to the
+-- baseline only. NOT NULL constraints are left out (Postgres 18 lists them in pg_constraint,
+-- older versions don't); `is_nullable` covers them.
+DO $$
+DECLARE
+  fingerprint text := concat_ws(E'\n',
+    (SELECT string_agg(format('%s.%s %s %s %s', table_name, column_name, udt_name, is_nullable,
+              coalesce(column_default, '')), ', ' ORDER BY table_name, column_name)
+       FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name IN ('news_article_media', 'news_articles', 'news_outlets')),
+    (SELECT string_agg(format('%s %s', conname, pg_get_constraintdef(oid)), ', ' ORDER BY conname)
+       FROM pg_constraint
+      WHERE contype IN ('p', 'f', 'u', 'c')
+        AND conrelid IN ('public.news_article_media'::regclass, 'public.news_articles'::regclass,
+              'public.news_outlets'::regclass)),
+    (SELECT string_agg(enumlabel, ', ' ORDER BY enumsortorder)
+       FROM pg_enum WHERE enumtypid = 'public.media_type'::regtype));
+BEGIN
+  IF md5(fingerprint) <> '945a2469fcd9bd95b0b58fadd0ec62cd' THEN
+    RAISE EXCEPTION 'the news objects differ from the baseline: compare them by hand'
+      USING DETAIL = fingerprint;
+  END IF;
 END $$;
 
 -- Same table drizzle's migrator creates.

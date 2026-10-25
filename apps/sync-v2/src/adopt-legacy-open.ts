@@ -25,6 +25,9 @@ try {
       signal: controller.signal,
       onPolled: (polled, found) => {
         if (polled % 50 === 0) logger.info("legacy open incidents polled", { polled, found });
+      },
+      onFailed: (incidentId, reason) => {
+        logger.warn("legacy open incident poll failed", { incidentId, error: reason });
       }
     }
   );
@@ -33,6 +36,7 @@ try {
   logger.info("legacy open incidents adopted", {
     found,
     ...counts,
+    aborted: controller.signal.aborted,
     durationMs: Math.round(performance.now() - startedAt),
     notFoundIds: result.notFound,
     failedIds: result.failed
@@ -42,6 +46,7 @@ try {
   logger.error("adopting legacy open incidents failed", { error });
   exitCode = 1;
 } finally {
-  await closeDb();
+  await Promise.allSettled([closeDb(), sigae.close()]);
 }
-process.exit(exitCode);
+// Not `process.exit()`: the process ends once the logs are written.
+process.exitCode = exitCode;

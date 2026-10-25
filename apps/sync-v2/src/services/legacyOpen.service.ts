@@ -4,6 +4,7 @@ import { LIFECYCLE } from "@bomberoscr/sync-domain/lifecycle";
 import {
   type SyncIncidentDeps,
   type SyncIncidentOutcome,
+  describeError,
   syncIncident
 } from "@bomberoscr/sync-domain/pipeline";
 
@@ -20,7 +21,15 @@ export interface LegacyOpenResult {
   active: number[];
   /** Still open upstream past the open cap: `done` with `OPEN_TOO_LONG`. */
   openTooLong: number[];
-  /** Not found upstream, or the poll failed: nothing tracked, a later run tries them again. */
+  /**
+   * Another poll stored a newer answer meanwhile (the running service started tracking it):
+   * that poll's result stands.
+   */
+  skipped: number[];
+  /**
+   * Not found upstream, or the poll failed: not tracked and not deleted, though the poll's
+   * snapshots and anomalies are stored. A later run tries them again.
+   */
   notFound: number[];
   failed: number[];
 }
@@ -43,6 +52,8 @@ export async function adoptLegacyOpenIncidents(
     signal?: AbortSignal;
     /** After each poll, with how many are done out of `found`. */
     onPolled?: (polled: number, found: number) => void;
+    /** For each incident in `failed`, with why (redacted, see `describeError`). */
+    onFailed?: (incidentId: number, reason: string) => void;
   } = {}
 ): Promise<LegacyOpenResult> {
   const candidates = await deps.db
@@ -58,6 +69,7 @@ export async function adoptLegacyOpenIncidents(
     settling: [],
     active: [],
     openTooLong: [],
+    skipped: [],
     notFound: [],
     failed: []
   };
@@ -68,11 +80,20 @@ export async function adoptLegacyOpenIncidents(
     while (next < candidates.length && !options.signal?.aborted) {
       const candidate = candidates[next++];
       if (!candidate) break;
-      const outcome = await syncIncident(deps, candidate.id, {
-        force: true,
-        signal: options.signal
-      });
-      await settle(deps, candidate, outcome, result);
+      try {
+        const outcome = await syncIncident(deps, candidate.id, {
+          force: true,
+          signal: options.signal
+        });
+        const reason = await settle(deps, candidate, outcome, result);
+        if (reason !== null) {
+          result.failed.push(candidate.id);
+          options.onFailed?.(candidate.id, reason);
+        }
+      } catch (error) {
+        result.failed.push(candidate.id);
+        options.onFailed?.(candidate.id, describeError(error));
+      }
       options.onPolled?.(++polled, candidates.length);
     }
   };
@@ -85,26 +106,35 @@ export async function adoptLegacyOpenIncidents(
   return result;
 }
 
+/** Files the incident under its outcome; returns why it failed, or `null`. */
 async function settle(
   deps: SyncIncidentDeps,
   candidate: { id: number; incidentTimestamp: Date },
   outcome: SyncIncidentOutcome,
   result: LegacyOpenResult
-): Promise<void> {
+): Promise<string | null> {
   const { id } = candidate;
-  if (outcome.kind === "not_found") return void result.notFound.push(id);
-  if (outcome.kind !== "ok" && outcome.kind !== "partial") return void result.failed.push(id);
+  if (outcome.kind === "skipped") return push(result.skipped, id);
+  if (outcome.kind === "not_found") return push(result.notFound, id);
+  if (outcome.kind !== "ok" && outcome.kind !== "partial") {
+    return outcome.reason ?? outcome.kind;
+  }
 
   const { phase } = outcome.syncState;
-  if (phase === "active") return void result.active.push(id);
-  if (phase === "done") return void result.openTooLong.push(id);
-  if (phase !== "settling") return void result.failed.push(id);
+  if (phase === "active") return push(result.active, id);
+  if (phase === "done") return push(result.openTooLong, id);
+  if (phase !== "settling") return `unexpected phase after the poll: ${phase}`;
 
   const reportedFor = deps.now().getTime() - candidate.incidentTimestamp.getTime();
-  if (reportedFor < LIFECYCLE.settlingWindow) return void result.settling.push(id);
+  if (reportedFor < LIFECYCLE.settlingWindow) return push(result.settling, id);
   await deps.db
     .update(incidentSyncState)
     .set({ phase: "done", nextPollAt: null })
     .where(and(eq(incidentSyncState.incidentId, id), eq(incidentSyncState.phase, "settling")));
-  result.closed.push(id);
+  return push(result.closed, id);
+}
+
+function push(ids: number[], id: number): null {
+  ids.push(id);
+  return null;
 }

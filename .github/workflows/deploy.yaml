@@ -3,8 +3,9 @@ name: Deploy
 # Builds the images and deploys them to the server. A push to main deploys an app when its
 # version changes (apps/web/package.json, apps/sync-v2/package.json); a manual run deploys the
 # apps it selects. Every deploy also builds the migrate image, which the server's deploy hooks
-# run before starting the new release: a failed migration stops the deploy, the hook answers
-# with an error, and this run fails.
+# run before starting the new release: a failed migration stops the deploy. This run only sees
+# that failure when the hooks wait for the deploy script and answer with its status
+# (`include-command-output-in-response` and `-on-error` in the server's hooks.yaml).
 on:
   workflow_dispatch:
     inputs:

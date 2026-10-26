@@ -77,26 +77,12 @@ jobs:
     env:
       DEPLOY_WEB: ${{ needs.changes.outputs.web }}
       DEPLOY_SYNC_V2: ${{ needs.changes.outputs.sync_v2 }}
+      # v1's image is emergenciascr/sync; sync-v2 gets its own so v1's stays for a rollback.
+      MIGRATE_IMAGE: emergenciascr/migrate
+      FRONTEND_IMAGE: emergenciascr/frontend
+      SYNC_V2_IMAGE: emergenciascr/sync-v2
     steps:
       - uses: actions/checkout@v4
-      - name: Check the deploy settings
-        env:
-          MIGRATE_IMAGE_NAME: ${{ secrets.MIGRATE_IMAGE_NAME }}
-          FRONTEND_IMAGE_NAME: ${{ secrets.FRONTEND_IMAGE_NAME }}
-          SYNC_V2_IMAGE_NAME: ${{ secrets.SYNC_V2_IMAGE_NAME }}
-        run: |
-          missing=()
-          [ -n "$MIGRATE_IMAGE_NAME" ] || missing+=(MIGRATE_IMAGE_NAME)
-          if [ "$DEPLOY_WEB" = "true" ] && [ -z "$FRONTEND_IMAGE_NAME" ]; then
-            missing+=(FRONTEND_IMAGE_NAME)
-          fi
-          if [ "$DEPLOY_SYNC_V2" = "true" ] && [ -z "$SYNC_V2_IMAGE_NAME" ]; then
-            missing+=(SYNC_V2_IMAGE_NAME)
-          fi
-          if [ "${#missing[@]}" -gt 0 ]; then
-            echo "::error::Missing repository secrets: ${missing[*]}"
-            exit 1
-          fi
       - name: Connect to Tailscale
         uses: tailscale/github-action@v4
         with:
@@ -129,7 +115,7 @@ jobs:
         id: migrate-meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.REGISTRY }}/${{ secrets.MIGRATE_IMAGE_NAME }}
+          images: ${{ secrets.REGISTRY }}/${{ env.MIGRATE_IMAGE }}
           tags: |
             type=raw,value=latest
             type=sha
@@ -148,7 +134,7 @@ jobs:
         if: env.DEPLOY_WEB == 'true'
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.REGISTRY }}/${{ secrets.FRONTEND_IMAGE_NAME }}
+          images: ${{ secrets.REGISTRY }}/${{ env.FRONTEND_IMAGE }}
           tags: |
             type=raw,value=latest
             type=raw,value=${{ needs.changes.outputs.web_version }}
@@ -174,7 +160,7 @@ jobs:
         if: env.DEPLOY_SYNC_V2 == 'true'
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.REGISTRY }}/${{ secrets.SYNC_V2_IMAGE_NAME }}
+          images: ${{ secrets.REGISTRY }}/${{ env.SYNC_V2_IMAGE }}
           tags: |
             type=raw,value=latest
             type=raw,value=${{ needs.changes.outputs.sync_v2_version }}

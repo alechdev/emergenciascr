@@ -1,0 +1,42 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerBoletaIncidente",
+  "request": {
+    "incidentId": 1924515
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Id_Boleta_Incidente": 1924515,
+    "Consecutivo": "48864-2026",
+    "Fecha": "2026-10-15T00:00:00",
+    "Hora_Aviso": "2026-10-15T14:16:04",
+    "Hora_Controlado": "2026-10-15T14:40:43",
+    "Hora_Disponible": "0001-01-01T00:00:00",
+    "Hora_Fuego_Bajo_Control": "0001-01-01T00:00:00",
+    "Hora_Hospital": "0001-01-01T00:00:00",
+    "Hora_Paciente": "0001-01-01T00:00:00",
+    "Hora_Perdidas_Detenidas": "0001-01-01T00:00:00",
+    "Hora_Todo_Claro": "0001-01-01T00:00:00",
+    "Hora_Traslado": "0001-01-01T00:00:00",
+    "Estado_Abierto": "false",
+    "DesUbicacion": "UBICACION DE PRUEBA",
+    "Direccion": "DIRECCION DE PRUEBA",
+    "Id_Provincia": 0,
+    "Id_Canton": 0,
+    "Id_Distrito": 0,
+    "Provincia": "",
+    "Canton": "",
+    "Distrito": "",
+    "CodigoTipoIncidenteDespacho": "5.2.2.3.1",
+    "CodigoTipoIncidenteReal": "5.2.2.3.1",
+    "NomtipoIncidenteDespacho": "ESCAPE LPG EN ESTRUCTURA",
+    "NomTipoIncidenteReal": "ESCAPE LPG EN ESTRUCTURA",
+    "Id_Etapa_Incidente": 0,
+    "DesEtapaIncidente": null,
+    "Civiles_Heridos": 0,
+    "Civiles_Fallecidos": 0,
+    "Bomberos_Heridos": 0,
+    "Bomberos_Fallecidos": 0
+  }
+}

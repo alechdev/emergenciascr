@@ -1,0 +1,25 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerEstacionesAtiendeIncidente",
+  "request": {
+    "incidentId": 1924505
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "Codigo": null,
+        "Descripcion": null,
+        "AtencionAPie": false,
+        "ClaveEstacion": "3-1",
+        "DestipoServicio": "RESPONSABLE",
+        "HoraAtencionAPie": "2026-10-15T15:37:49",
+        "IdBoletaEstacionAtiende": 1240367,
+        "IdEstacion": 71,
+        "IdTipoServicio": 1,
+        "NombreEstacion": "3-1 TURRIALBA"
+      }
+    ]
+  }
+}

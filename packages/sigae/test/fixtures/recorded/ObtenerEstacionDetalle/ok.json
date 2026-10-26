@@ -1,0 +1,21 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerEstacionDetalle",
+  "request": {
+    "id_estacion": 43
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "CanalRadio": "1",
+    "ClaveEstacion": "1-1",
+    "Direccion": "SAN JOSE, SAN JOSE, HOSPITAL, AVENIDA 16, CALLES 17 Y 19.",
+    "Email": "estacion@example.test",
+    "Fax": "0000-0000",
+    "IdEstacion": 43,
+    "Latitud": 9.92673664229612,
+    "Longitud": -84.0809890489258,
+    "Nombre": "METROPOLITANA SUR",
+    "Telefono": "0000-0000"
+  }
+}

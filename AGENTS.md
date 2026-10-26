@@ -19,10 +19,17 @@ Keep API feature logic close to its boundary (`api/` route + schema + DB query).
 - `bun run dev:web` / `bun run dev:sync`: run one process.
 - `bun run lint:check`: run lint checks for web.
 - `bun run format:check`: verify formatting for web.
-- `bun run --cwd apps/web test`: run web tests (Vitest).
+- `bun run --cwd apps/web test`: run web tests (Vitest); `test:tz` runs them under `TZ=UTC` and `TZ=America/Costa_Rica`.
 - `bun run --cwd apps/sync-v2 test`: run sync-v2 tests (Vitest).
+- `bun run --cwd packages/sigae test`: run SIGAE client tests (Vitest); `test:tz` runs them on Node and Bun under `TZ=UTC` and `TZ=America/Costa_Rica`.
+- `bun run --cwd packages/sync-domain test`: run the pure sync core and fixture tests (Vitest); `test:tz` runs them under `TZ=UTC` and `TZ=America/Costa_Rica`.
+- `bun run test:integration`: run the sync-domain, sync-v2 and db query integration tests against throwaway Postgres and Redis containers (needs Docker), under both time zones. A package's own `test:integration` runs against servers you started yourself instead, given a loopback `TEST_DATABASE_URL` (database name with `test`, empty or created by the tests); `apps/sync-v2` also needs a loopback `TEST_REDIS_URL` (a database other than 0, like `/15`).
 - Optional: `bun run --cwd apps/web dev:api` runs Hono alone (standalone) for debugging.
   For DB tasks, use `packages/db` scripts (example: `bun run --cwd packages/db drizzle:generate`).
+- Schema changes ship as committed migrations: edit `packages/db/src/schema.ts`, run
+  `bun run --cwd packages/db drizzle:generate --name <change>`, and apply them with
+  `bun run --cwd apps/migrate start` (reads `DRIZZLE_POSTGRES_URL`). Keep `drizzle:push` for
+  local throwaway databases only.
 
 ## Coding Style & Naming Conventions
 

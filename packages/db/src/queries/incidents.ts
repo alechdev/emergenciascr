@@ -1,4 +1,4 @@
-import { db } from "@bomberoscr/db/index";
+import { type Database, db } from "@bomberoscr/db/index";
 import {
   cantons,
   dispatchedStations,
@@ -150,6 +150,8 @@ export async function getIncidents(params: GetIncidentsParams) {
       EEConsecutive: incidents.EEConsecutive,
       address: incidents.address,
       incidentTimestamp: incidents.incidentTimestamp,
+      closedAt: incidents.closedAt,
+      closedAtSource: incidents.closedAtSource,
       modifiedAt: incidents.modifiedAt,
       importantDetails: incidents.importantDetails,
       latitude: incidents.latitude,
@@ -239,8 +241,8 @@ export async function getIncidents(params: GetIncidentsParams) {
   };
 }
 
-export async function getIncidentById({ id }: { id: number }) {
-  return await db.query.incidents.findFirst({
+export async function getIncidentById({ id }: { id: number }, database: Database = db) {
+  return await database.query.incidents.findFirst({
     where: eq(incidents.id, id),
     columns: {
       id: true,
@@ -248,10 +250,13 @@ export async function getIncidentById({ id }: { id: number }) {
       EEConsecutive: true,
       address: true,
       incidentTimestamp: true,
+      closedAt: true,
+      closedAtSource: true,
       modifiedAt: true,
       importantDetails: true,
       latitude: true,
       longitude: true,
+      coordinatesClearedUpstream: true,
       dispatchIncidentCode: true,
       specificDispatchIncidentCode: true,
       incidentCode: true,
@@ -320,10 +325,16 @@ export async function getIncidentById({ id }: { id: number }) {
           }
         }
       },
+      syncState: {
+        columns: {
+          phase: true
+        }
+      },
       dispatchedVehicles: {
         columns: {
           id: true,
           stationId: true,
+          vehicleInternalNumber: true,
           dispatchedTime: true,
           arrivalTime: true,
           departureTime: true,
@@ -357,11 +368,13 @@ export async function getIncidentTimelineData({ id }: { id: number }) {
       id: true,
       incidentTimestamp: true,
       isOpen: true,
+      closedAt: true,
       modifiedAt: true
     },
     with: {
       dispatchedVehicles: {
         columns: {
+          vehicleInternalNumber: true,
           dispatchedTime: true,
           arrivalTime: true,
           departureTime: true
@@ -391,9 +404,15 @@ export async function getIncidentResponseTimesData({ id }: { id: number }) {
       isOpen: true
     },
     with: {
+      syncState: {
+        columns: {
+          phase: true
+        }
+      },
       dispatchedVehicles: {
         columns: {
           id: true,
+          vehicleInternalNumber: true,
           dispatchedTime: true,
           arrivalTime: true,
           departureTime: true,

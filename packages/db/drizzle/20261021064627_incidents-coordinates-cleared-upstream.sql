@@ -1,0 +1,1 @@
+ALTER TABLE "incidents" ADD COLUMN "coordinatesClearedUpstream" boolean DEFAULT false NOT NULL;

@@ -161,7 +161,8 @@ const getIncidentPage = createServerFn({ method: "GET" })
         arrivalTime: vehicle.arrivalTime,
         departureTime: vehicle.departureTime,
         station: { name: vehicle.station?.name ?? "Estación desconocida" },
-        vehicle: vehicle.vehicle
+        vehicle: vehicle.vehicle,
+        vehicleInternalNumber: vehicle.vehicleInternalNumber
       }))
     ).map((event) => ({
       id: event.id,
@@ -199,7 +200,9 @@ const getIncidentPage = createServerFn({ method: "GET" })
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
         cantonName: incident.canton?.name ?? null,
-        mapImageUrl: coordinates.hasStoredCoordinates ? buildMapImageUrl(incident.id) : null,
+        mapImageUrl: coordinates.hasStoredCoordinates
+          ? buildMapImageUrl(incident.id, coordinates.latitude, coordinates.longitude)
+          : null,
         dispatchTypeName: incident.dispatchIncidentType?.name ?? null,
         specificDispatchTypeName: incident.specificDispatchIncidentType?.name ?? null,
         actualTypeName: incident.incidentType?.name ?? null,

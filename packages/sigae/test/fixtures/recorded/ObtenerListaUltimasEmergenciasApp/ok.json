@@ -1,0 +1,55 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerListaUltimasEmergenciasApp",
+  "request": {
+    "numero_registros": 50
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "items": [
+      {
+        "codigoTipoIncidente": "6.",
+        "codigoTipoIncidenteDespacho": "6.",
+        "consecutivoEE": "48872-26",
+        "direccion": "DIRECCION DE PRUEBA",
+        "estacionResponsable": "47",
+        "fecha": "2026-10-15T00:00:00",
+        "horaIncidente": "2026-10-15T15:32:59",
+        "idBoletaIncidente": 1924523,
+        "tipoIncidente": "CANINO",
+        "tipoIncidenteDespacho": "CANINO"
+      },
+      {
+        "codigoTipoIncidente": "6.",
+        "codigoTipoIncidenteDespacho": "6.",
+        "consecutivoEE": "48871-26",
+        "direccion": "DIRECCION DE PRUEBA",
+        "estacionResponsable": "54",
+        "fecha": "2026-10-15T00:00:00",
+        "horaIncidente": "2026-10-15T15:28:12",
+        "idBoletaIncidente": 1924522,
+        "tipoIncidente": "SERPIENTE",
+        "tipoIncidenteDespacho": "SERPIENTE"
+      },
+      {
+        "codigoTipoIncidente": "5.",
+        "codigoTipoIncidenteDespacho": "5.",
+        "consecutivoEE": "48870-26",
+        "direccion": "DIRECCION DE PRUEBA",
+        "estacionResponsable": "56",
+        "fecha": "2026-10-15T00:00:00",
+        "horaIncidente": "2026-10-15T14:58:11",
+        "idBoletaIncidente": 1924521,
+        "tipoIncidente": "ESCAPE LPG EN ESTRUCTURA",
+        "tipoIncidenteDespacho": "ESCAPE LPG EN ESTRUCTURA"
+      }
+    ],
+    "itemsFecha": [
+      {
+        "CantidadEmergencias": 50,
+        "Fecha": "2026-10-15T00:00:00"
+      }
+    ]
+  }
+}

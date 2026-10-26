@@ -1,0 +1,50 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerListaEmergenciasApp",
+  "request": {
+    "FechaDesde": "2026-10-14",
+    "FechaHasta": "2026-10-15"
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "items": [
+      {
+        "codigoTipoIncidente": "5",
+        "codigoTipoIncidenteDespacho": "5",
+        "consecutivoEE": "48870-26",
+        "direccion": "DIRECCION DE PRUEBA",
+        "estacionResponsable": "56",
+        "fecha": "2026-10-15T00:00:00",
+        "horaIncidente": "2026-10-15T14:58:11",
+        "idBoletaIncidente": 1924521,
+        "tipoIncidente": "ESCAPE LPG EN ESTRUCTURA",
+        "tipoIncidenteDespacho": "ESCAPE LPG EN ESTRUCTURA"
+      },
+      {
+        "codigoTipoIncidente": "11",
+        "codigoTipoIncidenteDespacho": "5",
+        "consecutivoEE": "48869-26",
+        "direccion": "DIRECCION DE PRUEBA",
+        "estacionResponsable": "48",
+        "fecha": "2026-10-15T00:00:00",
+        "horaIncidente": "2026-10-15T14:53:12",
+        "idBoletaIncidente": 1924520,
+        "tipoIncidente": "INCIDENTE DECLINADO, RECURSOS DEVUELTOS",
+        "tipoIncidenteDespacho": "C.C. EN LINEAS SECUNDARIAS"
+      },
+      {
+        "codigoTipoIncidente": "5",
+        "codigoTipoIncidenteDespacho": "5",
+        "consecutivoEE": "48868-26",
+        "direccion": "DIRECCION DE PRUEBA",
+        "estacionResponsable": "77",
+        "fecha": "2026-10-15T00:00:00",
+        "horaIncidente": "2026-10-15T14:45:15",
+        "idBoletaIncidente": 1924519,
+        "tipoIncidente": "C.C. EN LINEAS PRIMARIAS",
+        "tipoIncidenteDespacho": "C.C. EN TRANSFORMADORES"
+      }
+    ]
+  }
+}

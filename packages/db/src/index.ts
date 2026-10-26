@@ -18,17 +18,19 @@ export {
   or,
   sql
 } from "drizzle-orm";
-import * as schema from "@bomberoscr/db/schema";
-import { drizzle } from "drizzle-orm/node-postgres";
-
+import { type Database, createDatabase } from "./client";
 import env from "./env";
 
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+const database = createDatabase(env.DRIZZLE_POSTGRES_URL);
 
-export const db: NodePgDatabase<typeof schema> = drizzle(env.DRIZZLE_POSTGRES_URL, {
-  schema
-});
+export const db: Database = database;
 
-export type Db = typeof db;
+/** Ends the connection pool, for a clean shutdown. */
+export function closeDb(): Promise<void> {
+  return database.$client.end();
+}
+
+export type Db = Database;
+export type { Database, Transaction } from "./client";
 
 export default db;

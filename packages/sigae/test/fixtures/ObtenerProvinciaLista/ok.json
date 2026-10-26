@@ -1,0 +1,21 @@
+{
+  "source": "synthetic",
+  "endpoint": "ObtenerProvinciaLista",
+  "request": {},
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "CodigoProvincia": "1",
+        "IdProvincia": 1,
+        "Provincia": "SAN JOSE"
+      },
+      {
+        "CodigoProvincia": "2",
+        "IdProvincia": 2,
+        "Provincia": "ALAJUELA"
+      }
+    ]
+  }
+}

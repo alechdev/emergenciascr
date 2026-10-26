@@ -1,0 +1,19 @@
+{
+  "source": "synthetic",
+  "endpoint": "ObtenerEstadoDisponibilidadUnidades",
+  "request": {},
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "Descripcion": "DISPONIBLE",
+        "IdGrupoClasificacion": 1
+      },
+      {
+        "Descripcion": "EN INCIDENTE",
+        "IdGrupoClasificacion": 2
+      }
+    ]
+  }
+}

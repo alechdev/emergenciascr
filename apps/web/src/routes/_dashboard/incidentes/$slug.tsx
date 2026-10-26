@@ -20,6 +20,7 @@ import {
 } from "@/components/incidents/details/vehicle-response-times";
 import { JsonLdScript } from "@/components/seo/json-ld-script";
 import { markdownResponse, prefersMarkdown, splitMarkdownPathSlug } from "@/lib/accepts-markdown";
+import { buildIncidentDescription } from "@/lib/incident-description";
 import { buildIncidentJsonLd } from "@/lib/json-ld";
 import { SITE_URL } from "@/lib/site";
 import { getIncidentPage } from "@/server/incidents/get-incident-page";
@@ -89,12 +90,6 @@ export const Route = createFileRoute("/_dashboard/incidentes/$slug")({
     if (!loaderData) return {};
     const { incident, stations } = loaderData;
 
-    const formattedDate = new Date(incident.incidentTimestamp).toLocaleDateString("es-CR", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric"
-    });
-
     const dispatchedStationsCount = stations.length;
     const dispatchedVehiclesCount = stations.reduce(
       (acc, station) => acc + station.vehicles.length,
@@ -108,7 +103,7 @@ export const Route = createFileRoute("/_dashboard/incidentes/$slug")({
     });
     const robotsContent = getIncidentRobotsContent(indexable);
 
-    const description = `Incidente reportado el ${formattedDate}${incident.address ? ` en ${incident.address}` : ""}. EE-${incident.EEConsecutive}. ${dispatchedStationsCount} estación(es) y ${dispatchedVehiclesCount} unidad(es) despachadas.`;
+    const description = buildIncidentDescription(incident, stations);
 
     const titleWithLocation = incident.title;
     const fullUrl = `${SITE_URL}/incidentes/${incident.slug}`;
@@ -164,12 +159,7 @@ function IncidentDetailSkeleton() {
 function IncidenteDetailPage() {
   const { incident, stations } = Route.useLoaderData();
 
-  const dispatchedStationsCount = stations.length;
-  const dispatchedVehiclesCount = stations.reduce(
-    (acc, station) => acc + station.vehicles.length,
-    0
-  );
-  const description = `Incidente reportado el ${new Date(incident.incidentTimestamp).toLocaleDateString("es-CR", { day: "2-digit", month: "long", year: "numeric" })} en ${incident.address}. EE-${incident.EEConsecutive}. ${dispatchedStationsCount} estación(es) y ${dispatchedVehiclesCount} unidad(es) despachadas.`;
+  const description = buildIncidentDescription(incident, stations);
 
   const jsonLd = buildIncidentJsonLd({
     title: incident.title,

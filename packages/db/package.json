@@ -4,7 +4,10 @@
   "exports": {
     "./utils": "./src/utils.ts",
     "./index": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./operators": "./src/operators.ts",
     "./schema": "./src/schema.ts",
+    "./migrate": "./src/migrate.ts",
     "./queries/incidents": "./src/queries/incidents.ts",
     "./queries/stations": "./src/queries/stations.ts",
     "./queries/stats": "./src/queries/stats.ts",
@@ -18,6 +21,8 @@
   },
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsgo --noEmit",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "drizzle:migrate": "drizzle-kit migrate",
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:push": "drizzle-kit push",
@@ -30,11 +35,14 @@
     "dotenv-expand": "^12.0.2",
     "drizzle-orm": "^0.44.3",
     "drizzle-zod": "^0.8.2",
+    "pg": "^8.18.0",
     "zod": "^4.0.5"
   },
   "devDependencies": {
     "@bomberoscr/typescript-config": "workspace:*",
+    "@types/pg": "^8.6.1",
     "@typescript/native-preview": "^7.0.0-dev.20260127.1",
-    "drizzle-kit": "^0.31.4"
+    "drizzle-kit": "^0.31.4",
+    "vitest": "4.0.18"
   }
 }

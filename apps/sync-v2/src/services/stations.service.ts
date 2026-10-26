@@ -1,134 +1,51 @@
 import { db } from "@bomberoscr/db/index";
-import { stations as stationsTable } from "@bomberoscr/db/schema";
-import { conflictUpdateSetAllColumns } from "@bomberoscr/db/utils";
-import {
-  getOperativeStations,
-  getStationDetails,
-  getStationsList
-} from "@bomberoscr/sync-domain/api";
-import { ResultAsync } from "neverthrow";
+import { upsertListedStation, upsertStationDetails } from "@bomberoscr/sync-domain/persist";
+import { ResultAsync, okAsync } from "neverthrow";
 
-import { fetcher } from "@/config/fetcher";
+import { sigae } from "@/config/sigae";
+import { SyncError } from "@/lib/errors";
+import { expectOk } from "@/lib/sigae";
 
-export type StationSyncError = {
-  type: "api_error" | "database_error";
-  resource: string;
-  error: unknown;
-};
+export interface StationJobData {
+  id: number;
+  isOperative: boolean;
+  name: string;
+  stationKey: string;
+}
 
-export function syncStations(): ResultAsync<string, StationSyncError> {
+/** Every station SIGAE lists, with whether it is operative. */
+export function listStations(): ResultAsync<StationJobData[], SyncError> {
   return ResultAsync.combine([
-    getStationsList({ fetcher }).mapErr(
-      (error) =>
-        ({
-          type: "api_error",
-          resource: "stations_list",
-          error
-        }) as const
-    ),
-    getOperativeStations({ fetcher }).mapErr(
-      (error) =>
-        ({
-          type: "api_error",
-          resource: "operative_stations",
-          error
-        }) as const
-    )
-  ]).andThen(([stationList, operativeStations]) => {
-    const stationDetailPromises = stationList.Items.map((station) => {
-      return getStationDetails({ fetcher, id: station.IdEstacion })
-        .mapErr(
-          (error) =>
-            ({
-              type: "api_error",
-              resource: `station_details:${station.IdEstacion}`,
-              error
-            }) as const
-        )
-        .map((detailedStation) => {
-          const isOperative = operativeStations.Items.some(
-            (operativeStation) => operativeStation.IdEstacion === station.IdEstacion
-          );
-          return {
-            id: station.IdEstacion,
-            name: station.Nombre,
-            stationKey: station.ClaveEstacion,
-            radioChannel: detailedStation.CanalRadio,
-            latitude: detailedStation.Latitud.toString(),
-            longitude: detailedStation.Longitud.toString(),
-            address: detailedStation.Direccion,
-            phoneNumber: detailedStation.Telefono,
-            fax: detailedStation.Fax,
-            email: detailedStation.Email,
-            isOperative: isOperative
-          };
-        });
-    });
-
-    return ResultAsync.combine(stationDetailPromises).andThen((stations) => {
-      return ResultAsync.fromPromise(
-        db
-          .insert(stationsTable)
-          .values(stations)
-          .onConflictDoUpdate({
-            target: stationsTable.id,
-            set: conflictUpdateSetAllColumns(stationsTable)
-          }),
-        (error) =>
-          ({
-            type: "database_error",
-            resource: "syncStations",
-            error
-          }) as const
-      ).map(() => `Synced ${stations.length} stations.`);
-    });
+    expectOk(sigae.getStations(), "stations list"),
+    expectOk(sigae.getOperativeStations(), "operative stations")
+  ]).map(([stationList, operativeStations]) => {
+    const operative = new Set(operativeStations.items.map((station) => station.IdEstacion));
+    return stationList.items.map((station) => ({
+      id: station.IdEstacion,
+      isOperative: operative.has(station.IdEstacion),
+      name: station.Nombre,
+      stationKey: station.ClaveEstacion
+    }));
   });
 }
 
-export function syncSingleStation(
-  id: number,
-  isOperative: boolean,
-  fallbackName?: string,
-  fallbackStationKey?: string
-): ResultAsync<string, StationSyncError> {
-  return getStationDetails({ fetcher, id })
-    .mapErr(
-      (error) =>
-        ({
-          type: "api_error",
-          resource: `station_details:${id}`,
-          error
-        }) as const
-    )
-    .andThen((detailedStation) => {
-      const stationRow = {
-        id,
-        name: detailedStation.Nombre ?? fallbackName ?? "",
-        stationKey: detailedStation.ClaveEstacion ?? fallbackStationKey ?? "",
-        radioChannel: detailedStation.CanalRadio,
-        latitude: detailedStation.Latitud.toString(),
-        longitude: detailedStation.Longitud.toString(),
-        address: detailedStation.Direccion,
-        phoneNumber: detailedStation.Telefono,
-        fax: detailedStation.Fax,
-        email: detailedStation.Email,
-        isOperative
-      };
+export function syncSingleStation(station: StationJobData): ResultAsync<void, SyncError> {
+  const { id } = station;
+  return sigae
+    .getStationDetails(id)
+    .mapErr((cause) => new SyncError(`station ${id} details: SIGAE request failed`, { cause }))
+    .andThen((response) =>
+      response.kind === "not_found"
+        ? store(id, upsertListedStation(db, station))
+        : expectOk(okAsync(response), `station ${id} details`).andThen((details) =>
+            store(id, upsertStationDetails(db, id, details, station))
+          )
+    );
+}
 
-      return ResultAsync.fromPromise(
-        db
-          .insert(stationsTable)
-          .values(stationRow)
-          .onConflictDoUpdate({
-            target: stationsTable.id,
-            set: conflictUpdateSetAllColumns(stationsTable)
-          }),
-        (error) =>
-          ({
-            type: "database_error",
-            resource: "syncSingleStation",
-            error
-          }) as const
-      ).map(() => `Synced station ${id}.`);
-    });
+function store(id: number, write: Promise<void>): ResultAsync<void, SyncError> {
+  return ResultAsync.fromPromise(
+    write,
+    (cause) => new SyncError(`failed to store station ${id}`, { cause })
+  );
 }

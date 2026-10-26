@@ -1,0 +1,37 @@
+{
+  "source": "synthetic",
+  "endpoint": "ObtenerEstacionesAtiendeIncidente",
+  "request": {
+    "incidentId": 1900001
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "Codigo": null,
+        "Descripcion": null,
+        "AtencionAPie": false,
+        "ClaveEstacion": "1-1",
+        "DestipoServicio": "RESPONSABLE",
+        "HoraAtencionAPie": "0001-01-01T00:00:00",
+        "IdBoletaEstacionAtiende": 3400101,
+        "IdEstacion": 2,
+        "IdTipoServicio": 1,
+        "NombreEstacion": "METROPOLITANA NORTE"
+      },
+      {
+        "Codigo": null,
+        "Descripcion": null,
+        "AtencionAPie": true,
+        "ClaveEstacion": "1-4",
+        "DestipoServicio": "APOYO",
+        "HoraAtencionAPie": "2026-10-10T20:40:00",
+        "IdBoletaEstacionAtiende": 3400102,
+        "IdEstacion": 5,
+        "IdTipoServicio": 2,
+        "NombreEstacion": "PAVAS"
+      }
+    ]
+  }
+}

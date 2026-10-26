@@ -1,0 +1,119 @@
+# sync-v2 against live SIGAE with its own Postgres, Redis and telemetry (Grafana LGTM).
+# Run it through ./compose.sh, which passes apps/sync-v2/.env for the SIGAE variables only.
+# Every published port is on loopback. See README.md.
+name: emcr-sync-local
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: sync
+      POSTGRES_PASSWORD: sync-local
+      POSTGRES_DB: emergenciascr_v2_local
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:25432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "sync", "-d", "emergenciascr_v2_local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis:/data
+    ports:
+      - "127.0.0.1:26379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    logging: *logging
+
+  migrate:
+    image: emcr-migrate:local
+    build:
+      context: ../../..
+      dockerfile: apps/migrate/Dockerfile
+    environment:
+      TZ: UTC
+      DRIZZLE_POSTGRES_URL: postgres://sync:sync-local@postgres:5432/emergenciascr_v2_local
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    logging: *logging
+
+  otel:
+    image: grafana/otel-lgtm:0.37.0
+    environment:
+      # Export failures (Loki refusing logs, for example) show in `compose.sh logs otel`.
+      ENABLE_LOGS_OTELCOL: "true"
+      # Loki refuses every push ("Ingester is shutting down") once the disk holding its WAL is
+      # 90% used, counting reserved blocks. 0.95 still stops it with about 1 GB left on a
+      # nearly full disk, before Postgres runs out.
+      LOKI_EXTRA_ARGS: -ingester.wal-disk-full-threshold=0.95
+    volumes:
+      - otel:/data
+    ports:
+      - "127.0.0.1:23000:3000"
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+    logging: *logging
+
+  sync-v2:
+    image: emcr-sync-v2:local
+    build:
+      context: ../../..
+      dockerfile: apps/sync-v2/Dockerfile
+    environment:
+      TZ: UTC
+      NODE_ENV: production
+      LOG_LEVEL: info
+      DRIZZLE_POSTGRES_URL: postgres://sync:sync-local@postgres:5432/emergenciascr_v2_local
+      REDIS_URL: redis://redis:6379
+      SIGAE_API_URL: ${SIGAE_API_URL:?SIGAE_API_URL is missing from apps/sync-v2/.env}
+      SIGAE_IP: ${SIGAE_IP:?SIGAE_IP is missing from apps/sync-v2/.env}
+      SIGAE_USER: ${SIGAE_USER:?SIGAE_USER is missing from apps/sync-v2/.env}
+      SIGAE_PASSWORD: ${SIGAE_PASSWORD:?SIGAE_PASSWORD is missing from apps/sync-v2/.env}
+      SIGAE_COD_SYS: ${SIGAE_COD_SYS:?SIGAE_COD_SYS is missing from apps/sync-v2/.env}
+      SIGAE_PROXY_URL: ${SIGAE_PROXY_URL:-}
+      HEALTH_PORT: "8080"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel:4318
+      OTEL_SERVICE_NAME: sync-v2
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment.name=local-24h
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      otel:
+        condition: service_healthy
+    # The service waits up to 30 s for running jobs and exits by 45 s.
+    stop_grace_period: 60s
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  postgres:
+  redis:
+  otel:

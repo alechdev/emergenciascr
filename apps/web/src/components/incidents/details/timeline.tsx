@@ -1,3 +1,5 @@
+import { formatCostaRicaDate, isSameCostaRicaDay } from "@bomberoscr/lib/costa-rica-time";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Timeline,
@@ -19,27 +21,9 @@ type TimelineEvent = {
 };
 
 function formatEventDate(date: Date, incidentDate: Date): string {
-  const sameDay =
-    date.getFullYear() === incidentDate.getFullYear() &&
-    date.getMonth() === incidentDate.getMonth() &&
-    date.getDate() === incidentDate.getDate();
-
-  if (sameDay) {
-    return date.toLocaleTimeString("es-CR", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true
-    });
-  }
-
-  return date.toLocaleString("es-CR", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true
-  });
+  return isSameCostaRicaDay(date, incidentDate)
+    ? formatCostaRicaDate(date, "paddedTime")
+    : formatCostaRicaDate(date, "shortDateTime");
 }
 
 export function IncidentTimeline() {

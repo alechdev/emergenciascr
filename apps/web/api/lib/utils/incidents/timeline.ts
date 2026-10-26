@@ -1,4 +1,5 @@
-import { isUndefinedDate } from "@api/lib/utils/incidents/formatters";
+import { getDispatchedVehicleLabel } from "@api/lib/utils/incidents/formatters";
+import { isKnownDate } from "@bomberoscr/lib/missing-date";
 
 type TimelineEvent = {
   id: string;
@@ -8,13 +9,20 @@ type TimelineEvent = {
 };
 
 function buildTimelineEvents(
-  incident: { id: number; incidentTimestamp: Date; isOpen: boolean; modifiedAt: Date | null },
+  incident: {
+    id: number;
+    incidentTimestamp: Date;
+    isOpen: boolean;
+    closedAt: Date | null;
+    modifiedAt: Date | null;
+  },
   vehicles: Array<{
     dispatchedTime: Date | null;
     arrivalTime: Date | null;
     departureTime: Date | null;
     station: { name: string };
     vehicle: { internalNumber: string } | null;
+    vehicleInternalNumber: string | null;
   }>
 ): TimelineEvent[] {
   type Kind = "dispatch" | "arrival" | "departure";
@@ -44,16 +52,16 @@ function buildTimelineEvents(
   });
 
   for (const v of vehicles) {
-    const vehicleLabel = v.vehicle?.internalNumber || "N/A";
+    const vehicleLabel = getDispatchedVehicleLabel(v);
     const stationLabel = v.station.name;
 
-    if (!isUndefinedDate(v.dispatchedTime) && v.dispatchedTime) {
+    if (isKnownDate(v.dispatchedTime)) {
       pushEvent("dispatch", v.dispatchedTime, stationLabel, vehicleLabel);
     }
-    if (!isUndefinedDate(v.arrivalTime) && v.arrivalTime) {
+    if (isKnownDate(v.arrivalTime)) {
       pushEvent("arrival", v.arrivalTime, stationLabel, vehicleLabel);
     }
-    if (!isUndefinedDate(v.departureTime) && v.departureTime) {
+    if (isKnownDate(v.departureTime)) {
       pushEvent("departure", v.departureTime, stationLabel, vehicleLabel);
     }
   }
@@ -132,10 +140,12 @@ function buildTimelineEvents(
     }
   }
 
-  if (!incident.isOpen && incident.modifiedAt && !isUndefinedDate(incident.modifiedAt)) {
+  // Incidents closed before sync-v2 recorded closedAt only have the last modification time.
+  const closedAt = isKnownDate(incident.closedAt) ? incident.closedAt : incident.modifiedAt;
+  if (!incident.isOpen && isKnownDate(closedAt)) {
     events.push({
       id: `incident:${incident.id}:closed`,
-      date: incident.modifiedAt,
+      date: closedAt,
       title: "Incidente cerrado"
     });
   }

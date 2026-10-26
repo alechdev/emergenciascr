@@ -1,13 +1,13 @@
 {
   "extends": "@bomberoscr/typescript-config/base.json",
   "compilerOptions": {
-    "module": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node"],
     "paths": {
       "@/*": ["./src/*"]
     },
-    "outDir": "./dist",
-    "declaration": true,
-    "declarationDir": "./dist"
+    "noEmit": true
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist"]

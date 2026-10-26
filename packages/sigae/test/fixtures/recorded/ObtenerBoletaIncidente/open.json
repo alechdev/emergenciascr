@@ -1,0 +1,42 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerBoletaIncidente",
+  "request": {
+    "incidentId": 1924523
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Id_Boleta_Incidente": 1924523,
+    "Consecutivo": "48872-2026",
+    "Fecha": "2026-10-15T00:00:00",
+    "Hora_Aviso": "2026-10-15T15:32:59",
+    "Hora_Controlado": "0001-01-01T00:00:00",
+    "Hora_Disponible": "0001-01-01T00:00:00",
+    "Hora_Fuego_Bajo_Control": "0001-01-01T00:00:00",
+    "Hora_Hospital": "0001-01-01T00:00:00",
+    "Hora_Paciente": "0001-01-01T00:00:00",
+    "Hora_Perdidas_Detenidas": "0001-01-01T00:00:00",
+    "Hora_Todo_Claro": "0001-01-01T00:00:00",
+    "Hora_Traslado": "0001-01-01T00:00:00",
+    "Estado_Abierto": "true",
+    "DesUbicacion": "UBICACION DE PRUEBA",
+    "Direccion": "DIRECCION DE PRUEBA",
+    "Id_Provincia": 0,
+    "Id_Canton": 0,
+    "Id_Distrito": 0,
+    "Provincia": "",
+    "Canton": "",
+    "Distrito": "",
+    "CodigoTipoIncidenteDespacho": "6.2.1",
+    "CodigoTipoIncidenteReal": "",
+    "NomtipoIncidenteDespacho": "CANINO",
+    "NomTipoIncidenteReal": "",
+    "Id_Etapa_Incidente": 0,
+    "DesEtapaIncidente": null,
+    "Civiles_Heridos": 0,
+    "Civiles_Fallecidos": 0,
+    "Bomberos_Heridos": 0,
+    "Bomberos_Fallecidos": 0
+  }
+}

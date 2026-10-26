@@ -153,7 +153,8 @@ export const dispatchedVehicleSchema = z
       example: 3527
     }),
     internalNumber: z.string().openapi({
-      description: "The internal vehicle number.",
+      description:
+        "The internal vehicle number. For a vehicle SIGAE doesn't list, the number sent with the dispatch; `N/A` without one.",
       example: "M-46"
     }),
     plate: z.string().openapi({
@@ -164,8 +165,8 @@ export const dispatchedVehicleSchema = z
       description: "The vehicle type.",
       example: "EMERGENCIA"
     }),
-    dispatchedTime: z.string().openapi({
-      description: "Time when the vehicle was dispatched.",
+    dispatchedTime: z.string().nullable().openapi({
+      description: "Time when the vehicle was dispatched, or null when SIGAE has none.",
       example: "2025-11-23T23:19:44.000Z"
     }),
     arrivalTime: z.string().nullable().openapi({
@@ -273,6 +274,16 @@ export const incidentByIdResponse = z
       description: "The timestamp when the incident was last modified.",
       example: "2025-11-23T23:45:12.000Z"
     }),
+    closedAt: z.string().nullable().openapi({
+      description:
+        "When the incident was closed. Null while it is open, and for incidents closed before this time was recorded; their timeline uses `modifiedAt` instead.",
+      example: "2025-11-23T23:45:12.000Z"
+    }),
+    closedAtSource: z.enum(["observed", "estimated"]).nullable().openapi({
+      description:
+        "How `closedAt` was found. `observed`: the first poll that saw the incident closed. `estimated`: it was already closed when first seen, or closed while the sync was down (the latest unit departure, else the control time, else the first-seen time).",
+      example: "observed"
+    }),
     importantDetails: z.string().openapi({
       description: "The important details of the incident.",
       example: "BODEGAS CERRADAS"
@@ -295,8 +306,8 @@ export const incidentByIdResponse = z
       example: "SAN JOSE"
     }),
     mapImageUrl: z.string().url().nullable().openapi({
-      description: "URL to the incident's map image.",
-      example: "https://api.example.com/incidents/1550734/map"
+      description: "URL to the incident's map image. It changes when the coordinates do.",
+      example: "https://api.example.com/incidents/1550734/map?v=3f2a9c1b7d4e"
     }),
     dispatchType: incidentTypeSchema.nullable().openapi({
       description: "General type assigned by dispatch."
@@ -425,7 +436,8 @@ export const incidentResponseTimeItemSchema = z
       example: 126634
     }),
     isEnRoute: z.boolean().openapi({
-      description: "Whether the vehicle is still en route (departed but not returned).",
+      description:
+        "Whether the vehicle is returning to base: it left the scene less than 2 hours ago without a base return time, and the incident is still being synced. Otherwise a missing base return time is unknown.",
       example: false
     })
   })

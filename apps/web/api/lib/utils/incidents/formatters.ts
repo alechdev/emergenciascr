@@ -1,9 +1,7 @@
-function isUndefinedDate(date?: Date | null): boolean {
-  return !date || date.getFullYear() === 1;
-}
+import { isKnownDate } from "@bomberoscr/lib/missing-date";
 
 function toIsoStringOrNull(date?: Date | null): string | null {
-  return isUndefinedDate(date) ? null : (date?.toISOString() ?? null);
+  return isKnownDate(date) ? date.toISOString() : null;
 }
 
 function formatListSpanish(items: string[]): string {
@@ -57,8 +55,19 @@ function getIncidentTitle(
   return `${baseTitle} EN ${locationParts.join(", ")}`;
 }
 
+/**
+ * A dispatched unit's label: its vehicle's number, else the number SIGAE sent with a vehicle
+ * it doesn't know (stored with `vehicleId` `NULL`).
+ */
+function getDispatchedVehicleLabel(dispatched: {
+  vehicle: { internalNumber: string } | null;
+  vehicleInternalNumber: string | null;
+}): string {
+  return dispatched.vehicle?.internalNumber || dispatched.vehicleInternalNumber || "N/A";
+}
+
 function calculateTimeDiffInSeconds(end?: Date | null, start?: Date | null): number {
-  if (!end || !start || isUndefinedDate(end) || isUndefinedDate(start)) {
+  if (!isKnownDate(end) || !isKnownDate(start)) {
     return 0;
   }
   return Math.floor((end.getTime() - start.getTime()) / 1000);
@@ -67,8 +76,8 @@ function calculateTimeDiffInSeconds(end?: Date | null, start?: Date | null): num
 export {
   calculateTimeDiffInSeconds,
   formatIncidentTypes,
+  getDispatchedVehicleLabel,
   getIncidentTitle,
   getLocation,
-  isUndefinedDate,
   toIsoStringOrNull
 };

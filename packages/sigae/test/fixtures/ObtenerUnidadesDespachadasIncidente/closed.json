@@ -1,0 +1,73 @@
+{
+  "source": "synthetic",
+  "endpoint": "ObtenerUnidadesDespachadasIncidente",
+  "request": {
+    "incidentId": 1900001
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "Codigo": null,
+        "Descripcion": null,
+        "CodigoEstacion": 2,
+        "CodigoUnidad": 140,
+        "DespachoAlarma": false,
+        "HoraBase": "2026-10-10T21:55:31",
+        "HoraDespacho": "2026-10-10T20:26:02",
+        "HoraDevolverBase": "0001-01-01T00:00:00",
+        "HoraLLegada": "2026-10-10T20:33:45",
+        "HoraRetiro": "2026-10-10T21:40:10",
+        "HoraTraslado": "0001-01-01T00:00:00",
+        "IdBoletaServicio": 0,
+        "IdBoletaUnidadDespachada": 5200101,
+        "IdVehiculo": 140,
+        "NumeroInterno": "M-12",
+        "Traslado": false,
+        "Unidad": "M-12",
+        "UnidadCompleta": "M-12 M-12"
+      },
+      {
+        "Codigo": null,
+        "Descripcion": null,
+        "CodigoEstacion": 2,
+        "CodigoUnidad": 152,
+        "DespachoAlarma": false,
+        "HoraBase": "0001-01-01T00:00:00",
+        "HoraDespacho": "2026-10-10T20:26:02",
+        "HoraDevolverBase": "0001-01-01T00:00:00",
+        "HoraLLegada": "2026-10-10T20:35:12",
+        "HoraRetiro": "2026-10-10T21:41:00",
+        "HoraTraslado": "0001-01-01T00:00:00",
+        "IdBoletaServicio": 0,
+        "IdBoletaUnidadDespachada": 5200102,
+        "IdVehiculo": 152,
+        "NumeroInterno": "M-20",
+        "Traslado": false,
+        "Unidad": "M-20",
+        "UnidadCompleta": "M-20 M-20"
+      },
+      {
+        "Codigo": null,
+        "Descripcion": null,
+        "CodigoEstacion": 5,
+        "CodigoUnidad": 0,
+        "DespachoAlarma": false,
+        "HoraBase": "0001-01-01T00:00:00",
+        "HoraDespacho": "2026-10-10T20:40:00",
+        "HoraDevolverBase": "0001-01-01T00:00:00",
+        "HoraLLegada": "0001-01-01T00:00:00",
+        "HoraRetiro": "0001-01-01T00:00:00",
+        "HoraTraslado": "0001-01-01T00:00:00",
+        "IdBoletaServicio": 0,
+        "IdBoletaUnidadDespachada": 5200103,
+        "IdVehiculo": 0,
+        "NumeroInterno": null,
+        "Traslado": false,
+        "Unidad": "ATENCION A PIE",
+        "UnidadCompleta": "ATENCION A PIE"
+      }
+    ]
+  }
+}

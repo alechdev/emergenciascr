@@ -1,0 +1,924 @@
+{
+  "id": "10d2a33c-f633-4f69-b92c-c8a938a1cf39",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.cantons": {
+      "name": "cantons",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provinceId": {
+          "name": "provinceId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "cantons_provinceId_provinces_id_fk": {
+          "name": "cantons_provinceId_provinces_id_fk",
+          "tableFrom": "cantons",
+          "tableTo": "provinces",
+          "columnsFrom": ["provinceId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.dispatched_stations": {
+      "name": "dispatched_stations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "stationId": {
+          "name": "stationId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "incidentId": {
+          "name": "incidentId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "serviceTypeId": {
+          "name": "serviceTypeId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "attentionOnFoot": {
+          "name": "attentionOnFoot",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "dispatched_stations_stationId_stations_id_fk": {
+          "name": "dispatched_stations_stationId_stations_id_fk",
+          "tableFrom": "dispatched_stations",
+          "tableTo": "stations",
+          "columnsFrom": ["stationId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "dispatched_stations_incidentId_incidents_id_fk": {
+          "name": "dispatched_stations_incidentId_incidents_id_fk",
+          "tableFrom": "dispatched_stations",
+          "tableTo": "incidents",
+          "columnsFrom": ["incidentId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.dispatched_vehicles": {
+      "name": "dispatched_vehicles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "vehicleId": {
+          "name": "vehicleId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "incidentId": {
+          "name": "incidentId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stationId": {
+          "name": "stationId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dispatchedTime": {
+          "name": "dispatchedTime",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "arrivalTime": {
+          "name": "arrivalTime",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "departureTime": {
+          "name": "departureTime",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "baseReturnTime": {
+          "name": "baseReturnTime",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attentionOnFoot": {
+          "name": "attentionOnFoot",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "dispatched_vehicles_vehicleId_vehicles_id_fk": {
+          "name": "dispatched_vehicles_vehicleId_vehicles_id_fk",
+          "tableFrom": "dispatched_vehicles",
+          "tableTo": "vehicles",
+          "columnsFrom": ["vehicleId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "dispatched_vehicles_incidentId_incidents_id_fk": {
+          "name": "dispatched_vehicles_incidentId_incidents_id_fk",
+          "tableFrom": "dispatched_vehicles",
+          "tableTo": "incidents",
+          "columnsFrom": ["incidentId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "dispatched_vehicles_stationId_stations_id_fk": {
+          "name": "dispatched_vehicles_stationId_stations_id_fk",
+          "tableFrom": "dispatched_vehicles",
+          "tableTo": "stations",
+          "columnsFrom": ["stationId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.districts": {
+      "name": "districts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cantonId": {
+          "name": "cantonId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "districts_cantonId_cantons_id_fk": {
+          "name": "districts_cantonId_cantons_id_fk",
+          "tableFrom": "districts",
+          "tableTo": "cantons",
+          "columnsFrom": ["cantonId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.incident_types": {
+      "name": "incident_types",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "incidentCode": {
+          "name": "incidentCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "incident_types_parent_id_incident_types_id_fk": {
+          "name": "incident_types_parent_id_incident_types_id_fk",
+          "tableFrom": "incident_types",
+          "tableTo": "incident_types",
+          "columnsFrom": ["parent_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "incident_types_incidentCode_unique": {
+          "name": "incident_types_incidentCode_unique",
+          "nullsNotDistinct": false,
+          "columns": ["incidentCode"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.incidents": {
+      "name": "incidents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "incidentCode": {
+          "name": "incidentCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "specificIncidentCode": {
+          "name": "specificIncidentCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dispatchIncidentCode": {
+          "name": "dispatchIncidentCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "specificDispatchIncidentCode": {
+          "name": "specificDispatchIncidentCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "EEConsecutive": {
+          "name": "EEConsecutive",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "responsibleStation": {
+          "name": "responsibleStation",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "incidentTimestamp": {
+          "name": "incidentTimestamp",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "importantDetails": {
+          "name": "importantDetails",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "latitude": {
+          "name": "latitude",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "longitude": {
+          "name": "longitude",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provinceId": {
+          "name": "provinceId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cantonId": {
+          "name": "cantonId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "districtId": {
+          "name": "districtId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isOpen": {
+          "name": "isOpen",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "modifiedAt": {
+          "name": "modifiedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "incidents_latitude_idx": {
+          "name": "incidents_latitude_idx",
+          "columns": [
+            {
+              "expression": "latitude",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "incidents_longitude_idx": {
+          "name": "incidents_longitude_idx",
+          "columns": [
+            {
+              "expression": "longitude",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "incidents_latitude_longitude_idx": {
+          "name": "incidents_latitude_longitude_idx",
+          "columns": [
+            {
+              "expression": "latitude",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "longitude",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "incidents_incidentCode_incident_types_incidentCode_fk": {
+          "name": "incidents_incidentCode_incident_types_incidentCode_fk",
+          "tableFrom": "incidents",
+          "tableTo": "incident_types",
+          "columnsFrom": ["incidentCode"],
+          "columnsTo": ["incidentCode"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "incidents_specificIncidentCode_incident_types_incidentCode_fk": {
+          "name": "incidents_specificIncidentCode_incident_types_incidentCode_fk",
+          "tableFrom": "incidents",
+          "tableTo": "incident_types",
+          "columnsFrom": ["specificIncidentCode"],
+          "columnsTo": ["incidentCode"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "incidents_dispatchIncidentCode_incident_types_incidentCode_fk": {
+          "name": "incidents_dispatchIncidentCode_incident_types_incidentCode_fk",
+          "tableFrom": "incidents",
+          "tableTo": "incident_types",
+          "columnsFrom": ["dispatchIncidentCode"],
+          "columnsTo": ["incidentCode"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "incidents_specificDispatchIncidentCode_incident_types_incidentCode_fk": {
+          "name": "incidents_specificDispatchIncidentCode_incident_types_incidentCode_fk",
+          "tableFrom": "incidents",
+          "tableTo": "incident_types",
+          "columnsFrom": ["specificDispatchIncidentCode"],
+          "columnsTo": ["incidentCode"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "incidents_responsibleStation_stations_id_fk": {
+          "name": "incidents_responsibleStation_stations_id_fk",
+          "tableFrom": "incidents",
+          "tableTo": "stations",
+          "columnsFrom": ["responsibleStation"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "incidents_provinceId_provinces_id_fk": {
+          "name": "incidents_provinceId_provinces_id_fk",
+          "tableFrom": "incidents",
+          "tableTo": "provinces",
+          "columnsFrom": ["provinceId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "incidents_cantonId_cantons_id_fk": {
+          "name": "incidents_cantonId_cantons_id_fk",
+          "tableFrom": "incidents",
+          "tableTo": "cantons",
+          "columnsFrom": ["cantonId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "incidents_districtId_districts_id_fk": {
+          "name": "incidents_districtId_districts_id_fk",
+          "tableFrom": "incidents",
+          "tableTo": "districts",
+          "columnsFrom": ["districtId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.news_article_media": {
+      "name": "news_article_media",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "media_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "articleId": {
+          "name": "articleId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "news_article_media_articleId_news_articles_id_fk": {
+          "name": "news_article_media_articleId_news_articles_id_fk",
+          "tableFrom": "news_article_media",
+          "tableTo": "news_articles",
+          "columnsFrom": ["articleId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.news_articles": {
+      "name": "news_articles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "aiSummary": {
+          "name": "aiSummary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "incidentId": {
+          "name": "incidentId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "publishedAt": {
+          "name": "publishedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outletId": {
+          "name": "outletId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "news_articles_incidentId_incidents_id_fk": {
+          "name": "news_articles_incidentId_incidents_id_fk",
+          "tableFrom": "news_articles",
+          "tableTo": "incidents",
+          "columnsFrom": ["incidentId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "news_articles_outletId_news_outlets_id_fk": {
+          "name": "news_articles_outletId_news_outlets_id_fk",
+          "tableFrom": "news_articles",
+          "tableTo": "news_outlets",
+          "columnsFrom": ["outletId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.news_outlets": {
+      "name": "news_outlets",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.provinces": {
+      "name": "provinces",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.stations": {
+      "name": "stations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stationKey": {
+          "name": "stationKey",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "radioChannel": {
+          "name": "radioChannel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "latitude": {
+          "name": "latitude",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "longitude": {
+          "name": "longitude",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phoneNumber": {
+          "name": "phoneNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fax": {
+          "name": "fax",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isOperative": {
+          "name": "isOperative",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.vehicle_disponibility": {
+      "name": "vehicle_disponibility",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.vehicles": {
+      "name": "vehicles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "internalNumber": {
+          "name": "internalNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "plate": {
+          "name": "plate",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stationId": {
+          "name": "stationId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descriptionType": {
+          "name": "descriptionType",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "class": {
+          "name": "class",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descriptionOperationalStatus": {
+          "name": "descriptionOperationalStatus",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "vehicles_stationId_stations_id_fk": {
+          "name": "vehicles_stationId_stations_id_fk",
+          "tableFrom": "vehicles",
+          "tableTo": "stations",
+          "columnsFrom": ["stationId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "vehicles_internalNumber_unique": {
+          "name": "vehicles_internalNumber_unique",
+          "nullsNotDistinct": false,
+          "columns": ["internalNumber"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.media_type": {
+      "name": "media_type",
+      "schema": "public",
+      "values": ["image", "video"]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

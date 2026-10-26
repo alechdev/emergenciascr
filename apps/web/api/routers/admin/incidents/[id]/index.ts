@@ -1,6 +1,6 @@
 import {
   formatMissingEnvMessage,
-  getSigAEFetcher,
+  getSigaeClient,
   syncSingleIncident
 } from "@api/routers/admin/_lib/sigae";
 import {
@@ -47,15 +47,15 @@ export const route = createRoute({
 
 export const handler: AppRouteHandler<typeof route> = async (c) => {
   const { id } = c.req.valid("param");
-  const fetcherResult = getSigAEFetcher();
+  const clientResult = getSigaeClient();
 
-  if (!fetcherResult.ok) {
+  if (!clientResult.ok) {
     return c.json(
-      { message: formatMissingEnvMessage(fetcherResult.missing) },
+      { message: formatMissingEnvMessage(clientResult.missing) },
       HttpStatusCodes.SERVICE_UNAVAILABLE
     );
   }
 
-  const result = await syncSingleIncident(fetcherResult.fetcher, id);
+  const result = await syncSingleIncident(clientResult.client, id);
   return c.json(result, HttpStatusCodes.OK);
 };

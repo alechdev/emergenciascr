@@ -1,5 +1,6 @@
 "use client";
 
+import { formatCostaRicaDate } from "@bomberoscr/lib/costa-rica-time";
 import { motion, useSpring } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -108,11 +109,11 @@ export function ChartTooltip({
       return barXAccessor(tooltipData.point);
     }
     // For vertical charts, use the date
-    return xAccessor(tooltipData.point).toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric"
-    });
+    return formatCostaRicaDate(
+      xAccessor(tooltipData.point),
+      { weekday: "short", month: "short", day: "numeric" },
+      "en-US"
+    );
   }, [tooltipData, isHorizontal, barXAccessor, xAccessor]);
 
   // Use portal to render into the chart container

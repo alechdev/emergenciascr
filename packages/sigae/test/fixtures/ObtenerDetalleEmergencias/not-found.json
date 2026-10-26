@@ -1,0 +1,26 @@
+{
+  "source": "synthetic",
+  "endpoint": "ObtenerDetalleEmergencias",
+  "request": {
+    "incidentId": 1
+  },
+  "body": {
+    "Codigo": "03",
+    "Descripcion": "No se encontraron registros.",
+    "codigo_tipo_incidente": null,
+    "codigo_tipo_incidente_despacho": null,
+    "codigo_tipo_incidente_despacho_esp": null,
+    "codigo_tipo_incidente_esp": null,
+    "consecutivo_EE": null,
+    "direccion": null,
+    "fecha": "0001-01-01T00:00:00",
+    "hora_incidente": "0001-01-01T00:00:00",
+    "latitud": 0,
+    "longitud": 0,
+    "tipo_incidente": null,
+    "tipo_incidente_despacho": null,
+    "tipo_incidente_despacho_esp": null,
+    "tipo_incidente_esp": null,
+    "estaciones": []
+  }
+}

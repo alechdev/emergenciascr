@@ -1,0 +1,42 @@
+{
+  "source": "synthetic",
+  "endpoint": "ObtenerBoletaIncidente",
+  "request": {
+    "incidentId": 1900001
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Id_Boleta_Incidente": 1900001,
+    "Consecutivo": "51234-2026",
+    "Fecha": "2026-10-10T00:00:00",
+    "Hora_Aviso": "2026-10-10T20:25:19",
+    "Hora_Controlado": "2026-10-10T21:02:40",
+    "Hora_Disponible": "0001-01-01T00:00:00",
+    "Hora_Fuego_Bajo_Control": "2026-10-10T20:51:07",
+    "Hora_Hospital": "0001-01-01T00:00:00",
+    "Hora_Paciente": "0001-01-01T00:00:00",
+    "Hora_Perdidas_Detenidas": "0001-01-01T00:00:00",
+    "Hora_Todo_Claro": "2026-10-10T21:30:00.1270000",
+    "Hora_Traslado": "0001-01-01T00:00:00",
+    "Estado_Abierto": "false",
+    "DesUbicacion": "SAN JOSE SAN JOSE CARMEN 100 METROS NORTE DEL PARQUE",
+    "Direccion": "VIVIENDA DE DOS PLANTAS",
+    "Id_Provincia": 1,
+    "Id_Canton": 101,
+    "Id_Distrito": 10101,
+    "Provincia": "SAN JOSE",
+    "Canton": "SAN JOSE",
+    "Distrito": "CARMEN",
+    "CodigoTipoIncidenteDespacho": "2.1.",
+    "CodigoTipoIncidenteReal": "2.1.3.1",
+    "NomtipoIncidenteDespacho": "INCENDIO",
+    "NomTipoIncidenteReal": "VIVIENDA",
+    "Id_Etapa_Incidente": 4,
+    "DesEtapaIncidente": "CERRADO",
+    "Civiles_Heridos": 0,
+    "Civiles_Fallecidos": 0,
+    "Bomberos_Heridos": 0,
+    "Bomberos_Fallecidos": 0
+  }
+}

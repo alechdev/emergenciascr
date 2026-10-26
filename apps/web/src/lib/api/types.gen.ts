@@ -144,6 +144,14 @@ export type ListIncidentsResponses = {
              */
             modifiedAt: string;
             /**
+             * When the incident was closed. Null while it is open, and for incidents closed before this time was recorded; their timeline uses `modifiedAt` instead.
+             */
+            closedAt: string | null;
+            /**
+             * How `closedAt` was found. `observed`: the first poll that saw the incident closed. `estimated`: it was already closed when first seen, or closed while the sync was down (the latest unit departure, else the control time, else the first-seen time).
+             */
+            closedAtSource: 'observed' | 'estimated' | null;
+            /**
              * The important details of the incident.
              */
             importantDetails: string;
@@ -160,7 +168,7 @@ export type ListIncidentsResponses = {
              */
             isTemporaryCoordinates: boolean;
             /**
-             * URL to the incident's map image.
+             * URL to the incident's map image. It changes when the coordinates do.
              */
             mapImageUrl: string | null;
             /**
@@ -315,6 +323,14 @@ export type GetIncidentByIdResponses = {
          */
         modifiedAt: string;
         /**
+         * When the incident was closed. Null while it is open, and for incidents closed before this time was recorded; their timeline uses `modifiedAt` instead.
+         */
+        closedAt: string | null;
+        /**
+         * How `closedAt` was found. `observed`: the first poll that saw the incident closed. `estimated`: it was already closed when first seen, or closed while the sync was down (the latest unit departure, else the control time, else the first-seen time).
+         */
+        closedAtSource: 'observed' | 'estimated' | null;
+        /**
          * The important details of the incident.
          */
         importantDetails: string;
@@ -335,7 +351,7 @@ export type GetIncidentByIdResponses = {
          */
         cantonName: string | null;
         /**
-         * URL to the incident's map image.
+         * URL to the incident's map image. It changes when the coordinates do.
          */
         mapImageUrl: string | null;
         /**
@@ -460,7 +476,7 @@ export type GetIncidentByIdResponses = {
                  */
                 id: number;
                 /**
-                 * The internal vehicle number.
+                 * The internal vehicle number. For a vehicle SIGAE doesn't list, the number sent with the dispatch; `N/A` without one.
                  */
                 internalNumber: string;
                 /**
@@ -472,9 +488,9 @@ export type GetIncidentByIdResponses = {
                  */
                 type: string;
                 /**
-                 * Time when the vehicle was dispatched.
+                 * Time when the vehicle was dispatched, or null when SIGAE has none.
                  */
-                dispatchedTime: string;
+                dispatchedTime: string | null;
                 /**
                  * Time when the vehicle arrived at the scene.
                  */
@@ -604,7 +620,7 @@ export type GetIncidentResponseTimesResponses = {
              */
             totalTimeSeconds: number;
             /**
-             * Whether the vehicle is still en route (departed but not returned).
+             * Whether the vehicle is returning to base: it left the scene less than 2 hours ago without a base return time, and the incident is still being synced. Otherwise a missing base return time is unknown.
              */
             isEnRoute: boolean;
         }>;
@@ -647,7 +663,12 @@ export type GetIncidentMapData = {
     path: {
         id: number | null;
     };
-    query?: never;
+    query?: {
+        /**
+         * Map version from `mapImageUrl`; other values redirect to the current one
+         */
+        v?: string;
+    };
     url: '/incidents/{id}/map';
 };
 
@@ -687,6 +708,10 @@ export type GetIncidentOriginalMapData = {
     body?: never;
     path: {
         id: number | null;
+        /**
+         * Map version for the current coordinates
+         */
+        version: string;
     };
     query: {
         /**
@@ -694,7 +719,7 @@ export type GetIncidentOriginalMapData = {
          */
         token: string;
     };
-    url: '/incidents/{id}/map/original';
+    url: '/incidents/{id}/map/original/{version}';
 };
 
 export type GetIncidentOriginalMapErrors = {
@@ -1366,7 +1391,7 @@ export type GetYearRecapResponses = {
              */
             internalNumber: string;
             /**
-             * Station name assigned to the vehicle.
+             * Station the vehicle served these dispatches for. A vehicle that served two stations in the year has an entry for each.
              */
             stationName: string;
             /**

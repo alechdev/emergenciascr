@@ -72,7 +72,7 @@ export const getIncidentMap = <ThrowOnError extends boolean = false>(options: Op
  *
  * Retrieve the original map image for an incident from Mapbox
  */
-export const getIncidentOriginalMap = <ThrowOnError extends boolean = false>(options: Options<GetIncidentOriginalMapData, ThrowOnError>) => (options.client ?? client).get<GetIncidentOriginalMapResponses, GetIncidentOriginalMapErrors, ThrowOnError>({ url: '/incidents/{id}/map/original', ...options });
+export const getIncidentOriginalMap = <ThrowOnError extends boolean = false>(options: Options<GetIncidentOriginalMapData, ThrowOnError>) => (options.client ?? client).get<GetIncidentOriginalMapResponses, GetIncidentOriginalMapErrors, ThrowOnError>({ url: '/incidents/{id}/map/original/{version}', ...options });
 
 /**
  * List stations

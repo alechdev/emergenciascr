@@ -1,3 +1,10 @@
+import {
+  formatCostaRicaDate,
+  getCostaRicaYear,
+  isSameCostaRicaDay
+} from "@bomberoscr/lib/costa-rica-time";
+import { isKnownDate } from "@bomberoscr/lib/missing-date";
+
 import { SITE_URL } from "@/lib/site";
 
 import type {
@@ -6,47 +13,17 @@ import type {
   IncidentPageStation
 } from "./get-incident-page";
 
-const dateTimeFormat = new Intl.DateTimeFormat("es-CR", {
-  day: "2-digit",
-  month: "long",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  hour12: true
-});
-
-const timeFormat = new Intl.DateTimeFormat("es-CR", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: true
-});
-
-const dateTimeShortFormat = new Intl.DateTimeFormat("es-CR", {
-  year: "numeric",
-  month: "short",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: true
-});
-
 function joinTypes(...names: Array<string | null | undefined>): string {
   return names.filter((name): name is string => Boolean(name)).join(", ");
 }
 
-function isUsableDate(value: string | null | undefined): value is string {
-  if (!value) return false;
-  const year = new Date(value).getFullYear();
-  return Number.isFinite(year) && year > 1970;
-}
-
 function formatDateTime(value: string): string {
-  return dateTimeFormat.format(new Date(value));
+  return formatCostaRicaDate(value, "longDateTime");
 }
 
 function formatClock(value: string | null | undefined): string {
-  if (!isUsableDate(value)) return "—";
-  return timeFormat.format(new Date(value));
+  if (!isKnownDate(value)) return "—";
+  return formatCostaRicaDate(value, "paddedTime");
 }
 
 function formatSeconds(seconds: number): string {
@@ -133,14 +110,11 @@ function timelineSection(page: IncidentPageData): string {
     return "## Cronología\n\nSin eventos registrados.";
   }
 
-  const incidentDay = new Date(page.incident.incidentTimestamp);
+  const incidentDay = page.incident.incidentTimestamp;
   const lines = page.timeline.map((event) => {
-    const date = new Date(event.date);
-    const sameDay =
-      date.getFullYear() === incidentDay.getFullYear() &&
-      date.getMonth() === incidentDay.getMonth() &&
-      date.getDate() === incidentDay.getDate();
-    const when = sameDay ? timeFormat.format(date) : dateTimeShortFormat.format(date);
+    const when = isSameCostaRicaDay(event.date, incidentDay)
+      ? formatCostaRicaDate(event.date, "paddedTime")
+      : formatCostaRicaDate(event.date, "shortDateTime");
     const description = event.description ? `: ${event.description}` : "";
     return `- **${when}** — ${event.title}${description}`;
   });
@@ -148,11 +122,11 @@ function timelineSection(page: IncidentPageData): string {
   return `## Cronología\n\n${lines.join("\n")}`;
 }
 
-function contextSection(page: IncidentPageData): string | null {
+function contextSection(page: IncidentPageData, now: Date): string | null {
   const { incident } = page;
   if (incident.statistics.currentYearCount <= 0) return null;
 
-  const currentYear = new Date().getFullYear();
+  const currentYear = getCostaRicaYear(now);
   const isCurrentYear = incident.statistics.currentYear === currentYear;
   const count = incident.statistics.currentYearCount;
   const typeDisplay =
@@ -188,7 +162,7 @@ function contextSection(page: IncidentPageData): string | null {
   return `## Contexto\n\n${text}`;
 }
 
-export function incidentPageToMarkdown(page: IncidentPageData): string {
+export function incidentPageToMarkdown(page: IncidentPageData, now = new Date()): string {
   const { incident } = page;
   const url = `${SITE_URL}/incidentes/${incident.slug}`;
   const status = incident.isOpen ? "abierto" : "cerrado";
@@ -200,7 +174,7 @@ export function incidentPageToMarkdown(page: IncidentPageData): string {
     `- Estado: ${status}`,
     `- Expediente: EE-${incident.EEConsecutive}`,
     `- Reportado: ${formatDateTime(incident.incidentTimestamp)}`,
-    incident.modifiedAt && isUsableDate(incident.modifiedAt)
+    isKnownDate(incident.modifiedAt)
       ? `- Última actualización: ${formatDateTime(incident.modifiedAt)}`
       : null,
     incident.address ? `- Dirección: ${incident.address}` : null,
@@ -225,7 +199,7 @@ export function incidentPageToMarkdown(page: IncidentPageData): string {
     stationsSection(page.stations),
     responseTimesSection(page.responseTimes),
     timelineSection(page),
-    contextSection(page),
+    contextSection(page, now),
     `## Enlaces\n\n${links.join("\n")}`,
     "_Emergencias CR es un sitio independiente. No es el sitio oficial del Benemérito Cuerpo de Bomberos de Costa Rica._"
   ].filter((section): section is string => Boolean(section));

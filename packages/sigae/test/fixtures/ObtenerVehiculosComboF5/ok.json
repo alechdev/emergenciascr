@@ -1,0 +1,19 @@
+{
+  "source": "synthetic",
+  "endpoint": "ObtenerVehiculosComboF5",
+  "request": {},
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "IdVehiculo": 140,
+        "NumeroInterno": "M-12"
+      },
+      {
+        "IdVehiculo": 152,
+        "NumeroInterno": "M-20"
+      }
+    ]
+  }
+}

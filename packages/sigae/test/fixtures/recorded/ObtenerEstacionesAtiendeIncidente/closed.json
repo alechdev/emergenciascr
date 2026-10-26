@@ -1,0 +1,25 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerEstacionesAtiendeIncidente",
+  "request": {
+    "incidentId": 1924515
+  },
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "Codigo": null,
+        "Descripcion": null,
+        "AtencionAPie": false,
+        "ClaveEstacion": "1-4",
+        "DestipoServicio": "RESPONSABLE",
+        "HoraAtencionAPie": "2026-10-15T15:37:40",
+        "IdBoletaEstacionAtiende": 1240377,
+        "IdEstacion": 46,
+        "IdTipoServicio": 1,
+        "NombreEstacion": "1-4 DESAMPARADOS"
+      }
+    ]
+  }
+}

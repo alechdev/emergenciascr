@@ -1,0 +1,29 @@
+{
+  "source": "recorded",
+  "endpoint": "ObtenerCantonesLista",
+  "request": {},
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "Canton": "SAN JOSE",
+        "CodigoCanton": "101 ",
+        "IdCanton": 26,
+        "IdProvincia": 1
+      },
+      {
+        "Canton": "ESCAZU",
+        "CodigoCanton": "102 ",
+        "IdCanton": 27,
+        "IdProvincia": 1
+      },
+      {
+        "Canton": "DESAMPARADOS",
+        "CodigoCanton": "103 ",
+        "IdCanton": 28,
+        "IdProvincia": 1
+      }
+    ]
+  }
+}

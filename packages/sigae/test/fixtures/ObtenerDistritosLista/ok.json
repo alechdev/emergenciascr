@@ -1,0 +1,23 @@
+{
+  "source": "synthetic",
+  "endpoint": "ObtenerDistritosLista",
+  "request": {},
+  "body": {
+    "Codigo": "00",
+    "Descripcion": "Proceso realizado satisfactoriamente",
+    "Items": [
+      {
+        "Codigo_Distrito": "10101",
+        "Distrito": "CARMEN",
+        "Id_Canton": 101,
+        "Id_Distrito": 10101
+      },
+      {
+        "Codigo_Distrito": "10102",
+        "Distrito": "MERCED",
+        "Id_Canton": 101,
+        "Id_Distrito": 10102
+      }
+    ]
+  }
+}

@@ -1,0 +1,194 @@
+name: Deploy
+
+# Builds the images and deploys them to the server. A push to main deploys an app when its
+# version changes (apps/web/package.json, apps/sync-v2/package.json); a manual run deploys the
+# apps it selects. Every deploy also builds the migrate image, which the server's deploy hooks
+# run before starting the new release: a failed migration stops the deploy. This run only sees
+# that failure when the hooks wait for the deploy script and answer with its status
+# (`include-command-output-in-response` and `-on-error` in the server's hooks.yaml).
+on:
+  workflow_dispatch:
+    inputs:
+      web:
+        description: Deploy the web app
+        type: boolean
+        default: false
+      sync_v2:
+        description: Deploy sync-v2
+        type: boolean
+        default: false
+  push:
+    branches: ["main"]
+    paths:
+      - "apps/web/package.json"
+      - "apps/sync-v2/package.json"
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.pick.outputs.web }}
+      web_version: ${{ steps.pick.outputs.web_version }}
+      sync_v2: ${{ steps.pick.outputs.sync_v2 }}
+      sync_v2_version: ${{ steps.pick.outputs.sync_v2_version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pick the apps to deploy
+        id: pick
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BEFORE: ${{ github.event.before }}
+          INPUT_WEB: ${{ inputs.web }}
+          INPUT_SYNC_V2: ${{ inputs.sync_v2 }}
+        run: |
+          echo "web_version=$(jq -r .version apps/web/package.json)" >> "$GITHUB_OUTPUT"
+          echo "sync_v2_version=$(jq -r .version apps/sync-v2/package.json)" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            # The server deploys the "latest" tags, which only main may move.
+            if [ "$REF" != "refs/heads/main" ]; then
+              echo "::error::Deploys only run from main, not $REF."
+              exit 1
+            fi
+            if [ "$INPUT_WEB" != "true" ] && [ "$INPUT_SYNC_V2" != "true" ]; then
+              echo "::error::Select at least one app to deploy."
+              exit 1
+            fi
+            echo "web=$INPUT_WEB" >> "$GITHUB_OUTPUT"
+            echo "sync_v2=$INPUT_SYNC_V2" >> "$GITHUB_OUTPUT"
+          else
+            .github/scripts/version-changed.sh web apps/web/package.json "$BEFORE"
+            .github/scripts/version-changed.sh sync_v2 apps/sync-v2/package.json "$BEFORE"
+          fi
+  deploy:
+    needs: changes
+    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.sync_v2 == 'true'
+    # One deploy at a time: the server pulls mutable "latest" tags, so an older run finishing
+    # last would deploy older code or older migrations. Scoped to this job so a run that
+    # deploys nothing can't displace a pending deploy. GitHub keeps one pending job per group:
+    # a pending deploy displaced by a newer one is cancelled, and its apps need a manual run.
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_WEB: ${{ needs.changes.outputs.web }}
+      DEPLOY_SYNC_V2: ${{ needs.changes.outputs.sync_v2 }}
+      # v1's image is emergenciascr/sync; sync-v2 gets its own so v1's stays for a rollback.
+      MIGRATE_IMAGE: emergenciascr/migrate
+      FRONTEND_IMAGE: emergenciascr/frontend
+      SYNC_V2_IMAGE: emergenciascr/sync-v2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TAILSCALE_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TAILSCALE_CLIENT_SECRET }}
+          tags: tag:ci
+      - name: Add registry host entry
+        env:
+          SERVER_IP: ${{ secrets.TAILSCALE_SERVER_IP }}
+          REGISTRY_HOST: ${{ secrets.REGISTRY_HOST }}
+          REGISTRY_PORT: ${{ secrets.REGISTRY_PORT }}
+        run: |
+          echo "$SERVER_IP $REGISTRY_HOST" | sudo tee -a /etc/hosts
+          getent hosts "$REGISTRY_HOST"
+          curl -fsS -k "https://$REGISTRY_HOST:$REGISTRY_PORT/v2/" || true
+      - name: Login to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            network=host
+
+      # Every image is pushed before any hook runs, so a failed build deploys nothing.
+      - name: Extract migrate image metadata
+        id: migrate-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.REGISTRY }}/${{ env.MIGRATE_IMAGE }}
+          tags: |
+            type=raw,value=latest
+            type=sha
+      - name: Build and push the migrate image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./apps/migrate/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.migrate-meta.outputs.tags }}
+          labels: ${{ steps.migrate-meta.outputs.labels }}
+
+      - name: Extract web image metadata
+        id: web-meta
+        if: env.DEPLOY_WEB == 'true'
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.REGISTRY }}/${{ env.FRONTEND_IMAGE }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ needs.changes.outputs.web_version }}
+            type=sha
+      - name: Build and push the web image
+        if: env.DEPLOY_WEB == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./apps/web/Dockerfile
+          platforms: linux/amd64
+          build-args: |
+            VITE_BASE=${{ secrets.VITE_BASE }}
+            VITE_MAPBOX_TOKEN=${{ secrets.VITE_MAPBOX_TOKEN }}
+            VITE_SERVER_URL=${{ secrets.VITE_SERVER_URL }}
+            VITE_SITE_URL=${{ secrets.VITE_SITE_URL }}
+          push: true
+          tags: ${{ steps.web-meta.outputs.tags }}
+          labels: ${{ steps.web-meta.outputs.labels }}
+
+      - name: Extract sync-v2 image metadata
+        id: sync-v2-meta
+        if: env.DEPLOY_SYNC_V2 == 'true'
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.REGISTRY }}/${{ env.SYNC_V2_IMAGE }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ needs.changes.outputs.sync_v2_version }}
+            type=sha
+      - name: Build and push the sync-v2 image
+        if: env.DEPLOY_SYNC_V2 == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./apps/sync-v2/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.sync-v2-meta.outputs.tags }}
+          labels: ${{ steps.sync-v2-meta.outputs.labels }}
+
+      # Each hook runs the migrate image, then starts the new release. The hooks reply once the
+      # deploy script ends, with an error status when it fails (a failed migration included).
+      - name: Deploy web
+        if: env.DEPLOY_WEB == 'true'
+        env:
+          DEPLOY_WEBHOOK_BASE_URL: ${{ secrets.DEPLOY_WEBHOOK_BASE_URL }}
+        run: |
+          curl --fail-with-body -sS --max-time 900 -X POST \
+            "$DEPLOY_WEBHOOK_BASE_URL/hooks/emergenciascr-frontend"
+      - name: Deploy sync-v2
+        if: env.DEPLOY_SYNC_V2 == 'true'
+        env:
+          DEPLOY_WEBHOOK_BASE_URL: ${{ secrets.DEPLOY_WEBHOOK_BASE_URL }}
+        run: |
+          curl --fail-with-body -sS --max-time 900 -X POST \
+            "$DEPLOY_WEBHOOK_BASE_URL/hooks/emergenciascr-sync-v2"

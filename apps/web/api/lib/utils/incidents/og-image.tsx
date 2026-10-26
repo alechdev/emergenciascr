@@ -1,3 +1,4 @@
+import { formatCostaRicaDate } from "@bomberoscr/lib/costa-rica-time";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "takumi-js/response";
@@ -126,13 +127,7 @@ function createIncidentBackgroundDataUrl() {
 }
 
 function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("es-CR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
+  return formatCostaRicaDate(date, "longDatePaddedTime");
 }
 
 function truncateText(text: string | null | undefined, maxLength: number): string {

@@ -1,3 +1,4 @@
+import { formatCostaRicaDate, startOfCostaRicaDay } from "@bomberoscr/lib/costa-rica-time";
 import { WarningIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -35,25 +36,8 @@ type RankedTopFiveChartDatum = RankedTopFiveDatum & {
 
 const numberFormatter = new Intl.NumberFormat("es-CR");
 
-const longDateFormatter = new Intl.DateTimeFormat("es-CR", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  timeZone: "America/Costa_Rica"
-});
-
-const shortDateFormatter = new Intl.DateTimeFormat("es-CR", {
-  day: "numeric",
-  month: "short",
-  timeZone: "America/Costa_Rica"
-});
-
 function formatNumber(value: number) {
   return numberFormatter.format(value);
-}
-
-function parseDateInCostaRica(dateString: string) {
-  return new Date(`${dateString}T00:00:00-06:00`);
 }
 
 function compactLabel(value: string, maxLength = 11) {
@@ -285,10 +269,10 @@ function AnnualRecapBoard({ data }: { data: GetYearRecapResponse }) {
   const topIncidentDays = useMemo(
     () =>
       data.topIncidentDays.map((item) => {
-        const parsedDate = parseDateInCostaRica(item.date);
+        const parsedDate = startOfCostaRicaDay(item.date);
         return {
-          label: longDateFormatter.format(parsedDate),
-          shortLabel: shortDateFormatter.format(parsedDate),
+          label: formatCostaRicaDate(parsedDate, "weekdayDayMonth"),
+          shortLabel: formatCostaRicaDate(parsedDate, "dayMonth"),
           value: item.count
         } satisfies TopFiveDatum;
       }),

@@ -1,6 +1,7 @@
-import { db } from "@bomberoscr/db/index";
+import { type Database, db } from "@bomberoscr/db/index";
 import { incidents } from "@bomberoscr/db/schema";
-import { and, between, eq, sql } from "drizzle-orm";
+import { getCostaRicaYear, startOfCostaRicaYear } from "@bomberoscr/lib/costa-rica-time";
+import { and, eq, gte, lt, sql } from "drizzle-orm";
 
 interface IncidentForStats {
   incidentTimestamp: Date;
@@ -10,58 +11,49 @@ interface IncidentForStats {
   cantonName: string | null;
 }
 
-async function getIncidentStatistics(incident: IncidentForStats) {
-  const year = incident.incidentTimestamp.getFullYear();
+async function getIncidentStatistics(incident: IncidentForStats, database: Database = db) {
+  const year = getCostaRicaYear(incident.incidentTimestamp);
   const previousYear = year - 1;
 
   const incidentTypeCode = incident.specificIncidentCode || incident.incidentCode;
   const cantonId = incident.cantonId;
 
-  // Calculate year boundaries for the incident's year and previous year
-  const incidentYearStart = new Date(year, 0, 1);
-  const incidentYearEnd = new Date(year, 11, 31, 23, 59, 59);
-  const previousYearStart = new Date(previousYear, 0, 1);
-  const previousYearEnd = new Date(previousYear, 11, 31, 23, 59, 59);
+  // Costa Rica years, from midnight on 1 January to the next one
+  const inYear = (target: number) =>
+    and(
+      gte(incidents.incidentTimestamp, startOfCostaRicaYear(target)),
+      lt(incidents.incidentTimestamp, startOfCostaRicaYear(target + 1))
+    );
 
   const [typeInYear, typeInCanton, typeInPreviousYear] = await Promise.all([
     // Count of this incident type in the incident's year (full year)
     incidentTypeCode
-      ? db
+      ? database
           .select({ count: sql<number>`count(*)::int` })
           .from(incidents)
-          .where(
-            and(
-              eq(incidents.specificIncidentCode, incidentTypeCode),
-              between(incidents.incidentTimestamp, incidentYearStart, incidentYearEnd)
-            )
-          )
+          .where(and(eq(incidents.specificIncidentCode, incidentTypeCode), inYear(year)))
       : Promise.resolve([{ count: 0 }]),
 
     // Count of this incident type in the incident's canton for that year
     cantonId && incidentTypeCode
-      ? db
+      ? database
           .select({ count: sql<number>`count(*)::int` })
           .from(incidents)
           .where(
             and(
               eq(incidents.cantonId, cantonId),
               eq(incidents.specificIncidentCode, incidentTypeCode),
-              between(incidents.incidentTimestamp, incidentYearStart, incidentYearEnd)
+              inYear(year)
             )
           )
       : Promise.resolve([{ count: 0 }]),
 
     // Count of this incident type in the previous year (for comparison)
     incidentTypeCode
-      ? db
+      ? database
           .select({ count: sql<number>`count(*)::int` })
           .from(incidents)
-          .where(
-            and(
-              eq(incidents.specificIncidentCode, incidentTypeCode),
-              between(incidents.incidentTimestamp, previousYearStart, previousYearEnd)
-            )
-          )
+          .where(and(eq(incidents.specificIncidentCode, incidentTypeCode), inYear(previousYear)))
       : Promise.resolve([{ count: 0 }])
   ]);
 

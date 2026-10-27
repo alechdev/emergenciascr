@@ -99,6 +99,12 @@ describe("formatIncidentDetails", () => {
     );
   });
 
+  it("capitalizes station names as long as the longest one", () => {
+    expect(
+      formatIncidentDetails("ESTACION UNIDAD OPERATIVA DE EMERGENCIAS MEDICAS Y RESCATE REPORTA")
+    ).toBe("Estación Unidad Operativa de Emergencias Médicas y Rescate reporta");
+  });
+
   it("leaves mixed-case text as written", () => {
     expect(formatIncidentDetails("Revisión de alarma")).toBe("Revisión de alarma");
   });
@@ -136,6 +142,15 @@ describe("formatAddress", () => {
     );
     expect(formatAddress("FRENTE A LAS INSTALACIONES DEL MOPT O DEL INA")).toBe(
       "Frente a las Instalaciones del MOPT o del INA"
+    );
+  });
+
+  it("keeps a lone letter that names a building or unit", () => {
+    expect(formatAddress("CONDOMINIO LAS BRISAS EDIFICIO A, CASA 30 A")).toBe(
+      "Condominio las Brisas Edificio A, Casa 30 A"
+    );
+    expect(formatAddress("CASA 53 A DEL CEMENTERIO, CASA A MANO DERECHA")).toBe(
+      "Casa 53 A del Cementerio, Casa a Mano Derecha"
     );
   });
 });

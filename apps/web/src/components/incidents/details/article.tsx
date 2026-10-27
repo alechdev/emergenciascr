@@ -9,12 +9,7 @@ import { Link } from "@tanstack/react-router";
 
 import { RelativeTime } from "@/components/ui/relative-time";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  buildIncidentDeck,
-  formatIncidentHeadline,
-  formatPlaceName,
-  getAttentionSeconds
-} from "@/lib/incident-editorial";
+import { buildIncidentDeck, getAttentionSeconds } from "@/lib/incident-editorial";
 import { Route } from "@/routes/_dashboard/incidentes/$slug";
 
 const tenMinutesInMs = 600_000;
@@ -62,7 +57,6 @@ function calculateResponseTime(dispatchTime: Date, arrivalTime: Date): string {
 export function IncidentHeader() {
   const { incident, stations, responseTimes, timeline } = Route.useLoaderData();
 
-  const headline = formatIncidentHeadline(incident.title, incident);
   const attentionSeconds = getAttentionSeconds(incident.incidentTimestamp, timeline);
   const deck = buildIncidentDeck({
     isOpen: incident.isOpen,
@@ -75,7 +69,7 @@ export function IncidentHeader() {
     <header>
       <IncidentOpenStatus />
       <h1 className="font-serif text-4xl leading-[1.05] tracking-tight text-balance sm:text-6xl">
-        {headline}
+        {incident.headline}
       </h1>
       {deck && <p className="mt-5 max-w-2xl text-lg leading-relaxed text-pretty">{deck}</p>}
       <IncidentLeadFigure />
@@ -144,7 +138,7 @@ function IncidentLeadFigure() {
       </div>
       {incident.address && (
         <figcaption className="mt-3 text-center text-sm text-balance text-muted-foreground">
-          {formatPlaceName(incident.address)}
+          {incident.address}
         </figcaption>
       )}
     </figure>
@@ -152,7 +146,7 @@ function IncidentLeadFigure() {
 }
 
 function formatLocality(...names: (string | null)[]): string | null {
-  const places = names.filter((name): name is string => Boolean(name)).map(formatPlaceName);
+  const places = names.filter((name): name is string => Boolean(name));
   // A district often shares its canton's name ("Puriscal, Puriscal").
   const unique = places.filter((place, index) => places.indexOf(place) === index);
   return unique.length > 0 ? unique.join(", ") : null;
@@ -191,14 +185,11 @@ export function IncidentStory() {
           {formatCostaRicaDate(incidentTimestamp, bylineDateFormat)}, al ser{" "}
           {formatArticleForTime(incidentTimestamp)} {formatCostaRicaDate(incidentTimestamp, "time")}
         </time>
-        , Bomberos recibe una alerta de "<span className="lowercase">{alertType}</span>"
-        {locality ? ` en ${locality}.` : "."}
+        , Bomberos recibe una alerta de "{alertType}"{locality ? ` en ${locality}.` : "."}
         {addressInStory && " En la dirección:"}
       </p>
       {addressInStory && (
-        <blockquote className="text-base text-foreground">
-          {formatPlaceName(incident.address)}
-        </blockquote>
+        <blockquote className="text-base text-foreground">{incident.address}</blockquote>
       )}
       <DispatchParagraphs />
       <ClassificationParagraph />
@@ -250,7 +241,7 @@ function DispatchParagraphs() {
           <Link
             to={`/estaciones/$name`}
             params={{ name: responsibleStation.name }}>
-            {formatPlaceName(responsibleStation.name)}
+            {responsibleStation.displayName}
           </Link>{" "}
           como responsable
           {responsibleStation.vehicles.length > 0 && (
@@ -306,7 +297,7 @@ function DispatchParagraphs() {
                 <Link
                   to={`/estaciones/$name`}
                   params={{ name: s.name }}>
-                  {formatPlaceName(s.name)}
+                  {s.displayName}
                 </Link>
                 {!isLast && (isSecondLast ? " y " : ", ")}
               </span>
@@ -335,13 +326,11 @@ function ClassificationParagraph() {
 
   return dispatchTypeDisplay !== actualTypeDisplay ? (
     <p>
-      Los bomberos en la escena actualizan la clasificación del incidente a: "
-      <span className="lowercase">{actualTypeDisplay}</span>".
+      Los bomberos en la escena actualizan la clasificación del incidente a: "{actualTypeDisplay}".
     </p>
   ) : (
     <p>
-      Los bomberos en la escena confirman la categoría del incidente como "
-      <span className="lowercase">{actualTypeDisplay}</span>".
+      Los bomberos en la escena confirman la categoría del incidente como "{actualTypeDisplay}".
     </p>
   );
 }
@@ -356,7 +345,7 @@ function StatisticsParagraph() {
   const count = incident.statistics.currentYearCount;
   const cantonCount = incident.statistics.currentYearCantonCount;
   const prevCount = incident.statistics.previousYearCount;
-  const cantonName = incident.cantonName ? formatPlaceName(incident.cantonName) : null;
+  const cantonName = incident.cantonName;
 
   const typeDisplay = joinTypeNames(
     incident.actualTypeName ?? incident.dispatchTypeName,
@@ -375,8 +364,7 @@ function StatisticsParagraph() {
   return (
     <p>
       En {isCurrentYear ? "lo que va del" : "el"} {incident.statistics.currentYear} {verb}{" "}
-      {count.toLocaleString("es-CR")} incidente{count !== 1 ? "s" : ""} de tipo "
-      <span className="lowercase">{typeDisplay}</span>"
+      {count.toLocaleString("es-CR")} incidente{count !== 1 ? "s" : ""} de tipo "{typeDisplay}"
       {cantonCount > 0 && cantonName && (
         <>
           {", "}

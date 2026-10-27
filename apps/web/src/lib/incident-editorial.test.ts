@@ -3,64 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildIncidentDeck,
   formatElapsed,
-  formatIncidentHeadline,
-  formatPlaceName,
   getAttentionSeconds,
-  getFirstArrival,
-  toSentenceCase
+  getFirstArrival
 } from "@/lib/incident-editorial";
-
-const location = { districtName: "QUITIRRISI", cantonName: "MORA", provinceName: "SAN JOSE" };
-
-describe("formatPlaceName", () => {
-  it("proper-cases words and keeps connectors lower case", () => {
-    expect(formatPlaceName("SAN RAFAEL DE ALAJUELA")).toBe("San Rafael de Alajuela");
-    expect(formatPlaceName("LA UNION")).toBe("La Union");
-  });
-
-  it("keeps the connectors of a free-text address lower case", () => {
-    expect(formatPlaceName("PUNTARENAS GARABITO JACO EN EL HOTEL BALCON DEL MAR")).toBe(
-      "Puntarenas Garabito Jaco en el Hotel Balcon del Mar"
-    );
-    expect(formatPlaceName("200 M AL NORTE DE LA ESCUELA")).toBe("200 M al Norte de la Escuela");
-  });
-});
-
-describe("toSentenceCase", () => {
-  it("lower-cases everything but the first letter and acronym-like words", () => {
-    expect(toSentenceCase("C.C. EN LINEAS PRIMARIAS")).toBe("C.C. en lineas primarias");
-    expect(toSentenceCase("CHOQUE DE LA M-128")).toBe("Choque de la M-128");
-  });
-
-  it("lower-cases a word that only ends a sentence with a period", () => {
-    expect(toSentenceCase("ACCIDENTE DE TRANSITO.")).toBe("Accidente de transito.");
-    expect(toSentenceCase("RETIRO DE S.A. Y TRANSITO.")).toBe("Retiro de S.A. y transito.");
-  });
-});
-
-describe("formatIncidentHeadline", () => {
-  it("splits the location suffix getIncidentTitle appends", () => {
-    expect(
-      formatIncidentHeadline(
-        "COLISION CON PERSONA ATRAPADA EN QUITIRRISI, MORA, SAN JOSE",
-        location
-      )
-    ).toBe("Colision con persona atrapada en Quitirrisi, Mora, San Jose");
-  });
-
-  it("falls back to sentence case when the title has no location suffix", () => {
-    expect(formatIncidentHeadline("C.C. EN LINEAS PRIMARIAS", location)).toBe(
-      "C.C. en lineas primarias"
-    );
-    expect(
-      formatIncidentHeadline("INCENDIO", {
-        districtName: null,
-        cantonName: null,
-        provinceName: null
-      })
-    ).toBe("Incendio");
-  });
-});
 
 const nbsp = (text: string) => text.replaceAll(" ", "\u00A0");
 
@@ -117,8 +62,8 @@ describe("getAttentionSeconds", () => {
 
 describe("buildIncidentDeck", () => {
   const stations = [
-    { name: "PURISCAL", vehicles: [1] },
-    { name: "PAVAS", vehicles: [1, 2] }
+    { displayName: "Puriscal", vehicles: [1] },
+    { displayName: "Pavas", vehicles: [1, 2] }
   ];
 
   it("summarizes the dispatch, first arrival and duration", () => {
@@ -133,7 +78,7 @@ describe("buildIncidentDeck", () => {
     expect(
       buildIncidentDeck({
         isOpen: true,
-        stations: [{ name: "PURISCAL", vehicles: [1] }],
+        stations: [{ displayName: "Puriscal", vehicles: [1] }],
         responseTimes: [],
         attentionSeconds: 3600
       })
@@ -144,7 +89,7 @@ describe("buildIncidentDeck", () => {
     expect(
       buildIncidentDeck({
         isOpen: false,
-        stations: [{ name: "PURISCAL", vehicles: [1] }],
+        stations: [{ displayName: "Puriscal", vehicles: [1] }],
         responseTimes: [responseTimes[1]!],
         attentionSeconds: 8160
       })

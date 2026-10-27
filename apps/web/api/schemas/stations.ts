@@ -263,7 +263,7 @@ export const stationHighlightedIncidentSchema = z.object({
   }),
   responsibleStation: z.string().nullable().openapi({
     description: "Responsible station name.",
-    example: "ACOSTA"
+    example: "Acosta"
   }),
   latitude: z.string().openapi({
     description: "Incident latitude.",

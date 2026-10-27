@@ -811,9 +811,13 @@ export type ListStationsResponses = {
              */
             id: number;
             /**
-             * Station name.
+             * Station name as SIGAE sends it. Use it in URLs and lookups.
              */
             name: string;
+            /**
+             * Station name for display, in title case with accents.
+             */
+            displayName: string;
             /**
              * Station key.
              */
@@ -949,9 +953,13 @@ export type GetStationByNameResponses = {
              */
             id: number;
             /**
-             * Station name.
+             * Station name as SIGAE sends it. Use it in URLs and lookups.
              */
             name: string;
+            /**
+             * Station name for display, in title case with accents.
+             */
+            displayName: string;
             /**
              * Station key.
              */
@@ -1168,9 +1176,13 @@ export type GetStationCollaborationsResponses = {
              */
             id: number;
             /**
-             * Station name.
+             * Station name as SIGAE sends it. Use it in URLs and lookups.
              */
             name: string;
+            /**
+             * Station name for display, in title case with accents.
+             */
+            displayName: string;
             /**
              * Station key.
              */

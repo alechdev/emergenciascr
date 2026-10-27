@@ -4,6 +4,11 @@ import {
   buildOriginalSourceUrl as buildOriginalSourceUrlBase
 } from "@api/lib/imgproxy";
 import { existsInS3, getFromS3 } from "@api/lib/s3";
+import {
+  formatAddress,
+  formatIncidentDetails,
+  formatStationName
+} from "@api/lib/spelling/incident-text";
 import { buildMapImageUrl, buildStationImageUrl } from "@api/lib/url-builder";
 import { hasMapCoordinates } from "@api/lib/utils/incidents/map-utils";
 import {
@@ -38,6 +43,16 @@ import { jsonContent } from "stoker/openapi/helpers";
 import { createMessageObjectSchema } from "stoker/openapi/schemas";
 
 const app = new OpenAPIHono();
+
+/** `name` stays as SIGAE sends it: it is the station's URL and lookup key. */
+function formatStation<T extends { name: string; address: string | null }>(station: T) {
+  return {
+    ...station,
+    displayName: formatStationName(station.name),
+    address: station.address ? formatAddress(station.address) : null,
+    imageUrl: buildStationImageUrl(station.name)
+  };
+}
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"] as const;
 const IMAGE_SIZE = { width: 800, height: 600 };
@@ -150,10 +165,7 @@ app.openapi(
 
     return c.json(
       {
-        data: data.map((station) => ({
-          ...station,
-          imageUrl: buildStationImageUrl(station.name)
-        })),
+        data: data.map(formatStation),
         meta
       },
       HttpStatusCodes.OK
@@ -218,10 +230,7 @@ app.openapi(
 
     return c.json(
       {
-        station: {
-          ...station,
-          imageUrl: buildStationImageUrl(station.name)
-        }
+        station: formatStation(station)
       },
       HttpStatusCodes.OK
     );
@@ -306,6 +315,11 @@ app.openapi(
       {
         incidents: incidents.map((incident) => ({
           ...incident,
+          details: incident.details ? formatIncidentDetails(incident.details) : null,
+          address: incident.address ? formatAddress(incident.address) : null,
+          responsibleStation: incident.responsibleStation
+            ? formatStationName(incident.responsibleStation)
+            : null,
           incidentTimestamp: incident.incidentTimestamp.toISOString(),
           mapImageUrl:
             incident.latitude !== null &&
@@ -355,6 +369,7 @@ app.openapi(
       {
         collaborations: collaborations.map((collab) => ({
           ...collab,
+          displayName: formatStationName(collab.name),
           imageUrl: buildStationImageUrl(collab.name)
         }))
       },

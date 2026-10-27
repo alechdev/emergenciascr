@@ -1,6 +1,15 @@
 import env from "@api/env";
 import { getFromS3, uploadToS3 } from "@api/lib/s3";
 import { buildIncidentSlug } from "@api/lib/slug";
+import {
+  formatAddress,
+  formatCantonName,
+  formatDistrictName,
+  formatIncidentDetails,
+  formatStationName,
+  formatTypeLabel,
+  getIncidentHeadline
+} from "@api/lib/spelling/incident-text";
 import { buildMapImageUrl, buildStationImageUrl, buildTypeImageUrl } from "@api/lib/url-builder";
 import {
   getFirstValidCoordinatePair,
@@ -74,7 +83,7 @@ function buildIncidentType(
   if (!code || !name) return null;
   return {
     code,
-    name,
+    name: formatTypeLabel(name),
     imageUrl: buildTypeImageUrl(code)
   };
 }
@@ -246,15 +255,16 @@ app.openapi(
     return c.json({
       meta,
       data: data.map((incident) => {
-        const title = getIncidentTitle(
+        const location = {
+          districtName: incident.districtName,
+          cantonName: incident.cantonName,
+          provinceName: incident.provinceName
+        };
+        const rawTitle = getIncidentTitle(
           incident.importantDetails,
           incident.specificIncidentType,
           incident.incidentType,
-          {
-            districtName: incident.districtName,
-            cantonName: incident.cantonName,
-            provinceName: incident.provinceName
-          }
+          location
         );
 
         const fallbackCoordinates = getFirstValidCoordinatePair([
@@ -274,16 +284,21 @@ app.openapi(
 
         return {
           id: incident.id,
-          slug: buildIncidentSlug(incident.id, title, incident.incidentTimestamp),
-          title,
+          slug: buildIncidentSlug(incident.id, rawTitle, incident.incidentTimestamp),
+          title: getIncidentHeadline(
+            incident.importantDetails,
+            incident.specificIncidentType,
+            incident.incidentType,
+            location
+          ),
           isOpen: incident.isOpen,
           EEConsecutive: incident.EEConsecutive,
-          address: incident.address,
+          address: formatAddress(incident.address),
           incidentTimestamp: incident.incidentTimestamp,
           modifiedAt: incident.modifiedAt,
           closedAt: toIsoStringOrNull(incident.closedAt),
           closedAtSource: incident.closedAtSource,
-          importantDetails: incident.importantDetails,
+          importantDetails: formatIncidentDetails(incident.importantDetails),
           latitude: coordinates.latitude,
           longitude: coordinates.longitude,
           isTemporaryCoordinates: coordinates.isTemporaryCoordinates,
@@ -303,8 +318,12 @@ app.openapi(
             incident.specificIncidentTypeCode,
             incident.specificIncidentType
           ),
-          responsibleStationName: incident.responsibleStation,
-          districtName: incident.districtName,
+          responsibleStationName: incident.responsibleStation
+            ? formatStationName(incident.responsibleStation)
+            : null,
+          districtName: incident.districtName
+            ? formatDistrictName(incident.districtName, incident.cantonName)
+            : null,
           dispatchedStationsCount: incident.dispatchedStationsCount ?? 0,
           dispatchedVehiclesCount: incident.dispatchedVehiclesCount ?? 0,
           totalDispatched: incident.totalDispatched ?? 0
@@ -343,15 +362,16 @@ app.openapi(
     }
 
     const dispatchedStations = buildDispatchedStations(incident);
-    const title = getIncidentTitle(
+    const location = {
+      districtName: incident.district?.name ?? null,
+      cantonName: incident.canton?.name ?? null,
+      provinceName: incident.province?.name ?? null
+    };
+    const rawTitle = getIncidentTitle(
       incident.importantDetails,
       incident.specificIncidentType?.name,
       incident.incidentType?.name,
-      {
-        districtName: incident.district?.name ?? null,
-        cantonName: incident.canton?.name ?? null,
-        provinceName: incident.province?.name ?? null
-      }
+      location
     );
 
     const fallbackCoordinates = getFirstValidCoordinatePair([
@@ -388,20 +408,25 @@ app.openapi(
     return c.json(
       {
         id: incident.id,
-        slug: buildIncidentSlug(incident.id, title, incident.incidentTimestamp),
-        title,
+        slug: buildIncidentSlug(incident.id, rawTitle, incident.incidentTimestamp),
+        title: getIncidentHeadline(
+          incident.importantDetails,
+          incident.specificIncidentType?.name,
+          incident.incidentType?.name,
+          location
+        ),
         isOpen: incident.isOpen,
         EEConsecutive: incident.EEConsecutive,
-        address: incident.address,
+        address: formatAddress(incident.address),
         incidentTimestamp: incident.incidentTimestamp,
         modifiedAt: incident.modifiedAt,
         closedAt: toIsoStringOrNull(incident.closedAt),
         closedAtSource: incident.closedAtSource,
-        importantDetails: incident.importantDetails,
+        importantDetails: formatIncidentDetails(incident.importantDetails),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
         isTemporaryCoordinates: coordinates.isTemporaryCoordinates,
-        cantonName: incident.canton?.name ?? null,
+        cantonName: incident.canton?.name ? formatCantonName(incident.canton.name) : null,
         mapImageUrl: coordinates.hasStoredCoordinates
           ? buildMapImageUrl(incident.id, coordinates.latitude, coordinates.longitude)
           : null,

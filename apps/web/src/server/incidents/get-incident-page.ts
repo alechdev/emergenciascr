@@ -1,4 +1,13 @@
 import { buildIncidentSlug } from "@api/lib/slug";
+import {
+  formatAddress,
+  formatCantonName,
+  formatDistrictName,
+  formatProvinceName,
+  formatStationName,
+  formatTypeName,
+  getIncidentHeadline
+} from "@api/lib/spelling/incident-text";
 import { buildMapImageUrl, buildStationImageUrl } from "@api/lib/url-builder";
 import {
   getFirstValidCoordinatePair,
@@ -36,7 +45,9 @@ type IncidentPageVehicle = {
 };
 
 type IncidentPageStation = {
+  /** SIGAE's name, which station URLs use. */
   name: string;
+  displayName: string;
   stationKey: string;
   imageUrl: string;
   isResponsible: boolean;
@@ -67,7 +78,9 @@ type IncidentPageResponseTime = {
 type IncidentPageIncident = {
   id: number;
   slug: string;
+  /** SIGAE's upper-case title, which the slug is built from. */
   title: string;
+  headline: string;
   isOpen: boolean;
   EEConsecutive: string;
   address: string;
@@ -107,16 +120,24 @@ const getIncidentPage = createServerFn({ method: "GET" })
       return null;
     }
 
+    const location = {
+      districtName: incident.district?.name ?? null,
+      cantonName: incident.canton?.name ?? null,
+      provinceName: incident.province?.name ?? null
+    };
     const title = getIncidentTitle(
       incident.importantDetails,
       incident.specificIncidentType?.name,
       incident.incidentType?.name,
-      {
-        districtName: incident.district?.name ?? null,
-        cantonName: incident.canton?.name ?? null,
-        provinceName: incident.province?.name ?? null
-      }
+      location
     );
+    const headline = getIncidentHeadline(
+      incident.importantDetails,
+      incident.specificIncidentType?.name,
+      incident.incidentType?.name,
+      location
+    );
+    const typeName = (name: string | null | undefined) => (name ? formatTypeName(name) : null);
 
     const fallbackCoordinates = getFirstValidCoordinatePair([
       {
@@ -144,6 +165,7 @@ const getIncidentPage = createServerFn({ method: "GET" })
     const stations: IncidentPageStation[] = buildDispatchedStationsSummary(incident).map(
       (station) => ({
         name: station.name,
+        displayName: formatStationName(station.name),
         stationKey: station.key ?? "",
         imageUrl: buildStationImageUrl(station.name),
         isResponsible: station.isResponsible,
@@ -177,7 +199,7 @@ const getIncidentPage = createServerFn({ method: "GET" })
       (vehicle) => ({
         id: vehicle.id,
         vehicle: vehicle.vehicle,
-        station: vehicle.station,
+        station: formatStationName(vehicle.station),
         dispatchedTime: vehicle.dispatchedTime,
         arrivalTime: vehicle.arrivalTime,
         departureTime: vehicle.departureTime,
@@ -194,23 +216,26 @@ const getIncidentPage = createServerFn({ method: "GET" })
         id: incident.id,
         slug: buildIncidentSlug(incident.id, title, incident.incidentTimestamp),
         title,
+        headline,
         isOpen: incident.isOpen,
         EEConsecutive: incident.EEConsecutive,
-        address: incident.address,
+        address: formatAddress(incident.address),
         incidentTimestamp: incident.incidentTimestamp.toISOString(),
         modifiedAt: toIsoStringOrNull(incident.modifiedAt),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
-        districtName: incident.district?.name ?? null,
-        cantonName: incident.canton?.name ?? null,
-        provinceName: incident.province?.name ?? null,
+        districtName: location.districtName
+          ? formatDistrictName(location.districtName, location.cantonName)
+          : null,
+        cantonName: location.cantonName ? formatCantonName(location.cantonName) : null,
+        provinceName: location.provinceName ? formatProvinceName(location.provinceName) : null,
         mapImageUrl: coordinates.hasStoredCoordinates
           ? buildMapImageUrl(incident.id, coordinates.latitude, coordinates.longitude)
           : null,
-        dispatchTypeName: incident.dispatchIncidentType?.name ?? null,
-        specificDispatchTypeName: incident.specificDispatchIncidentType?.name ?? null,
-        actualTypeName: incident.incidentType?.name ?? null,
-        specificActualTypeName: incident.specificIncidentType?.name ?? null,
+        dispatchTypeName: typeName(incident.dispatchIncidentType?.name),
+        specificDispatchTypeName: typeName(incident.specificDispatchIncidentType?.name),
+        actualTypeName: typeName(incident.incidentType?.name),
+        specificActualTypeName: typeName(incident.specificIncidentType?.name),
         statistics: {
           currentYear: statistics.currentYear,
           currentYearCount: statistics.currentYearCount,

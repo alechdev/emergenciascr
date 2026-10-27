@@ -54,7 +54,7 @@ function collaborationsSection(page: StationPageData): string {
 
   const lines = page.collaborations.map((collaboration) => {
     const key = collaboration.stationKey.trim();
-    const label = key ? `${collaboration.name} (${key})` : collaboration.name;
+    const label = key ? `${collaboration.displayName} (${key})` : collaboration.displayName;
     const count = collaboration.collaborationCount.toLocaleString("es-CR");
     const noun = collaboration.collaborationCount === 1 ? "incidente" : "incidentes";
     return `- **[${label}](${stationUrl(collaboration.name)})** — ${count} ${noun} en conjunto`;
@@ -114,7 +114,7 @@ export function stationPageToMarkdown(page: StationPageData): string {
   ];
 
   const sections = [
-    `# Estación de Bomberos ${station.name}`,
+    `# Estación de Bomberos ${station.displayName}`,
     facts.join("\n"),
     `## Actividad del último año\n\n${yearCount} incidente${page.yearIncidentCount === 1 ? "" : "s"}.`,
     incidentsSection(

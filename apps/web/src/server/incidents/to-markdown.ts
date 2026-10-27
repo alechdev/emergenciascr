@@ -65,7 +65,7 @@ function stationsSection(stations: IncidentPageStation[]): string {
   const lines = sortedStations(stations).map((station) => {
     const key = station.stationKey.trim();
     const role = station.isResponsible ? "responsable" : "apoyo";
-    const label = key ? `${station.name} (${key})` : station.name;
+    const label = key ? `${station.displayName} (${key})` : station.displayName;
     const vehicles =
       station.vehicles.length > 0
         ? station.vehicles.map((vehicle) => vehicle.internalNumber).join(", ")
@@ -188,12 +188,12 @@ export function incidentPageToMarkdown(page: IncidentPageData, now = new Date())
     `- JSON: ${SITE_URL}/api/incidents/${incident.id}`,
     incident.mapImageUrl ? `- Mapa: ${incident.mapImageUrl}` : null,
     ...sortedStations(page.stations).map(
-      (station) => `- Estación ${station.name}: ${stationUrl(station.name)}`
+      (station) => `- Estación ${station.displayName}: ${stationUrl(station.name)}`
     )
   ].filter((line): line is string => Boolean(line));
 
   const sections = [
-    `# ${incident.title}`,
+    `# ${incident.headline}`,
     incident.isOpen ? "Incidente en progreso." : null,
     facts.join("\n"),
     stationsSection(page.stations),

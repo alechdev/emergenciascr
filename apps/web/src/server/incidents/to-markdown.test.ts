@@ -13,6 +13,7 @@ function page(currentYear: number): IncidentPageData {
       id: 1923918,
       slug: "1923918-incendio-estructural-2026-10-10",
       title: "Incendio estructural",
+      headline: "Incendio estructural",
       isOpen: false,
       EEConsecutive: "2026-012345",
       address: "",

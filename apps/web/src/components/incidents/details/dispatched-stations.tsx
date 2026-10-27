@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 
 import { SectionHeading } from "@/components/incidents/details/section-heading";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatPlaceName } from "@/lib/incident-editorial";
 import { Route } from "@/routes/_dashboard/incidentes/$slug";
 
 export function DispatchedStations() {
@@ -42,7 +41,7 @@ export function DispatchedStations() {
               </span>
               <span>
                 <span className="transition-colors group-hover:text-primary">
-                  {formatPlaceName(station.name)}
+                  {station.displayName}
                 </span>
                 {station.isResponsible && (
                   <span className="ms-2 text-xs text-muted-foreground">Responsable</span>

@@ -17,6 +17,13 @@ describe("formatPlaceName", () => {
     expect(formatPlaceName("SAN RAFAEL DE ALAJUELA")).toBe("San Rafael de Alajuela");
     expect(formatPlaceName("LA UNION")).toBe("La Union");
   });
+
+  it("keeps the connectors of a free-text address lower case", () => {
+    expect(formatPlaceName("PUNTARENAS GARABITO JACO EN EL HOTEL BALCON DEL MAR")).toBe(
+      "Puntarenas Garabito Jaco en el Hotel Balcon del Mar"
+    );
+    expect(formatPlaceName("200 M AL NORTE DE LA ESCUELA")).toBe("200 M al Norte de la Escuela");
+  });
 });
 
 describe("toSentenceCase", () => {
@@ -122,15 +129,15 @@ describe("buildIncidentDeck", () => {
     );
   });
 
-  it("uses the singular for a single unit and notes open incidents", () => {
+  it("uses the singular for a single unit and skips the duration of open incidents", () => {
     expect(
       buildIncidentDeck({
         isOpen: true,
         stations: [{ name: "PURISCAL", vehicles: [1] }],
         responseTimes: [],
-        attentionSeconds: null
+        attentionSeconds: 3600
       })
-    ).toBe("Se despachó una unidad de la estación Puriscal. La atención sigue en curso.");
+    ).toBe("Se despachó una unidad de la estación Puriscal.");
   });
 
   it("describes the arrival of a single unit", () => {

@@ -15,7 +15,6 @@ import {
   DispatchedStations,
   DispatchedStationsSkeleton
 } from "@/components/incidents/details/dispatched-stations";
-import OpenIncidentBanner from "@/components/incidents/details/open-incident-banner";
 import {
   VehicleResponseTimes,
   VehicleResponseTimesSkeleton
@@ -143,15 +142,19 @@ export const Route = createFileRoute("/_dashboard/incidentes/$slug")({
   component: IncidenteDetailPage
 });
 
-const columnClassName = "mx-auto flex w-full max-w-2xl flex-col gap-16 pt-4 pb-32";
+// The headline and map run wider than the reading column beneath them.
+const pageClassName = "mx-auto flex w-full max-w-4xl flex-col gap-14 pt-4 pb-32";
+const columnClassName = "mx-auto flex w-full max-w-2xl flex-col gap-16";
 
 function IncidentDetailSkeleton() {
   return (
-    <div className={columnClassName}>
+    <div className={pageClassName}>
       <IncidentHeaderSkeleton />
-      <IncidentStorySkeleton />
-      <VehicleResponseTimesSkeleton />
-      <DispatchedStationsSkeleton />
+      <div className={columnClassName}>
+        <IncidentStorySkeleton />
+        <VehicleResponseTimesSkeleton />
+        <DispatchedStationsSkeleton />
+      </div>
     </div>
   );
 }
@@ -178,15 +181,14 @@ function IncidenteDetailPage() {
   return (
     <>
       <JsonLdScript data={jsonLd} />
-      <article className={columnClassName}>
-        <div>
-          {incident.isOpen && <OpenIncidentBanner className="mb-6" />}
-          <IncidentHeader />
+      <article className={pageClassName}>
+        <IncidentHeader />
+        <div className={columnClassName}>
+          <IncidentStory />
+          <VehicleResponseTimes />
+          <DispatchedStations />
+          <IncidentRecord />
         </div>
-        <IncidentStory />
-        <VehicleResponseTimes />
-        <DispatchedStations />
-        <IncidentRecord />
       </article>
     </>
   );

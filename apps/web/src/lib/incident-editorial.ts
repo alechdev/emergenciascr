@@ -2,7 +2,21 @@ import { isKnownDate } from "@bomberoscr/lib/missing-date";
 
 const LOCALE = "es-CR";
 
-const PLACE_CONNECTORS = new Set(["de", "del", "la", "las", "los", "el", "y", "e"]);
+const PLACE_CONNECTORS = new Set([
+  "a",
+  "al",
+  "con",
+  "de",
+  "del",
+  "e",
+  "el",
+  "en",
+  "la",
+  "las",
+  "los",
+  "por",
+  "y"
+]);
 
 type IncidentLocation = {
   districtName: string | null;
@@ -153,9 +167,7 @@ export function buildIncidentDeck({
     );
   }
 
-  if (isOpen) {
-    sentences.push("La atención sigue en curso.");
-  } else if (attentionSeconds !== null) {
+  if (!isOpen && attentionSeconds !== null) {
     sentences.push(
       `El incidente se cerró tras ${formatElapsed(attentionSeconds, { withSeconds: false })}.`
     );

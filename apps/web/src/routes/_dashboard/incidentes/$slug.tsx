@@ -106,7 +106,7 @@ export const Route = createFileRoute("/_dashboard/incidentes/$slug")({
 
     const description = buildIncidentDescription(incident, stations);
 
-    const titleWithLocation = incident.title;
+    const titleWithLocation = incident.headline;
     const fullUrl = `${SITE_URL}/incidentes/${incident.slug}`;
     const ogImageUrl = `${SITE_URL}/api/incidents/${incident.id}/og`;
 
@@ -165,7 +165,7 @@ function IncidenteDetailPage() {
   const description = buildIncidentDescription(incident, stations);
 
   const jsonLd = buildIncidentJsonLd({
-    title: incident.title,
+    title: incident.headline,
     description,
     url: `${SITE_URL}/incidentes/${incident.slug}`,
     datePublished: incident.incidentTimestamp,

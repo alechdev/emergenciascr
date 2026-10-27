@@ -2,79 +2,6 @@ import { isKnownDate } from "@bomberoscr/lib/missing-date";
 
 const LOCALE = "es-CR";
 
-const PLACE_CONNECTORS = new Set([
-  "a",
-  "al",
-  "con",
-  "de",
-  "del",
-  "e",
-  "el",
-  "en",
-  "la",
-  "las",
-  "los",
-  "por",
-  "y"
-]);
-
-type IncidentLocation = {
-  districtName: string | null;
-  cantonName: string | null;
-  provinceName: string | null;
-};
-
-function capitalize(word: string): string {
-  return word.charAt(0).toLocaleUpperCase(LOCALE) + word.slice(1);
-}
-
-// SIGAE sends text in upper case; abbreviations ("C.C.") and unit numbers ("M-128") must keep it.
-// Only a period followed by more text marks an abbreviation, so "TRANSITO." still lower-cases.
-function isAcronymLike(word: string): boolean {
-  return /\d|\.\S/.test(word);
-}
-
-/** "SAN RAFAEL DE ALAJUELA" -> "San Rafael de Alajuela". */
-export function formatPlaceName(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .map((word, index) => {
-      if (isAcronymLike(word)) return word;
-      const lower = word.toLocaleLowerCase(LOCALE);
-      return index > 0 && PLACE_CONNECTORS.has(lower) ? lower : capitalize(lower);
-    })
-    .join(" ");
-}
-
-/** "INCENDIO EN C.C. DE LINEAS" -> "Incendio en C.C. de lineas". */
-export function toSentenceCase(text: string): string {
-  const sentence = text
-    .trim()
-    .split(/\s+/)
-    .map((word) => (isAcronymLike(word) ? word : word.toLocaleLowerCase(LOCALE)))
-    .join(" ");
-  return capitalize(sentence);
-}
-
-/**
- * The page title as a sentence-case headline with proper-cased place names. Mirrors the
- * `<details> EN <district>, <canton>, <province>` shape `getIncidentTitle` builds.
- */
-export function formatIncidentHeadline(title: string, location: IncidentLocation): string {
-  const places = [location.districtName, location.cantonName, location.provinceName].filter(
-    (place): place is string => Boolean(place)
-  );
-  const suffix = places.length > 0 ? ` EN ${places.join(", ")}` : "";
-
-  if (suffix && title.endsWith(suffix) && title.length > suffix.length) {
-    const base = title.slice(0, -suffix.length);
-    return `${toSentenceCase(base)} en ${places.map(formatPlaceName).join(", ")}`;
-  }
-
-  return toSentenceCase(title);
-}
-
 /**
  * "17 min 8 s", "2 h 16 min", "45 s". Parts are joined with non-breaking spaces so a
  * duration never wraps across lines in running text.
@@ -135,7 +62,7 @@ export function getAttentionSeconds(
 
 type DeckInput = {
   isOpen: boolean;
-  stations: readonly { name: string; vehicles: readonly unknown[] }[];
+  stations: readonly { displayName: string; vehicles: readonly unknown[] }[];
   responseTimes: readonly ResponseTimeLike[];
   attentionSeconds: number | null;
 };
@@ -153,7 +80,7 @@ export function buildIncidentDeck({
   const units = unitCount === 1 ? "una unidad" : `${unitCount.toLocaleString(LOCALE)} unidades`;
   const from =
     stations.length === 1
-      ? `la estación ${formatPlaceName(stations[0]?.name ?? "")}`
+      ? `la estación ${stations[0]?.displayName ?? ""}`
       : `${stations.length.toLocaleString(LOCALE)} estaciones`;
   const sentences = [`${unitCount === 1 ? "Se despachó" : "Se despacharon"} ${units} de ${from}.`];
 

@@ -19,7 +19,9 @@ const TOKEN = new RegExp(
   `^([^${LETTERS}]*)([${LETTERS}](?:[${LETTERS}'-]*[${LETTERS}])?)([^${LETTERS}]*)$`
 );
 // The longest place or station name the free-text matcher looks for, in words.
-const MAX_NAME_WORDS = 6;
+const MAX_NAME_WORDS = Math.max(
+  ...[...STATION_NAMES, ...Object.keys(PLACE_NAMES)].map((name) => name.split(" ").length)
+);
 
 /** Words a name keeps in lower case: "Barrio San José de la Montaña". */
 const CONNECTORS = new Set([
@@ -74,6 +76,9 @@ const SHORT_WORDS = new Set([
 ]);
 
 type Token = { pre: string; core: string; post: string };
+
+/** The preposition "A" is never followed by these, so a lone "A" before them is a letter. */
+const NOT_AFTER_PREPOSITION = new Set(["DE", "DEL", "Y"]);
 
 /** Upper case without acute accents or diaeresis; keeps Ñ, the way SIGAE writes. */
 function toKey(text: string): string {
@@ -142,14 +147,30 @@ function formatLiteral(raw: string, format: (key: string) => string): string {
   return raw.replace(WORD, (word) => format(word));
 }
 
+/**
+ * A lone "A" that names a building, block or unit ("Edificio A", "Casa 30 A") rather than
+ * the preposition ("Casa a mano derecha"): it ends the text or a clause, or comes before a
+ * word the preposition can't.
+ */
+function isLetterDesignator(tokens: readonly (Token | string)[], index: number): boolean {
+  const token = tokens[index];
+  if (typeof token === "string" || token?.core !== "A") return false;
+  const next = tokens[index + 1];
+  if (next === undefined || token.post !== "") return true;
+  return typeof next !== "string" && next.pre === "" && NOT_AFTER_PREPOSITION.has(next.core);
+}
+
 /** Title case for names: "BARRIO SAN JOSE" -> "Barrio San José". */
 function toTitleCase(text: string): string {
-  return tokenize(toKey(text))
-    .map((token, index) =>
-      typeof token === "string"
-        ? formatLiteral(token, (word) => titleWord(word, index === 0))
-        : `${token.pre}${titleWord(token.core, index === 0)}${token.post}`
-    )
+  const tokens = tokenize(toKey(text));
+  return tokens
+    .map((token, index) => {
+      if (typeof token === "string") {
+        return formatLiteral(token, (word) => titleWord(word, index === 0));
+      }
+      const word = isLetterDesignator(tokens, index) ? "A" : titleWord(token.core, index === 0);
+      return `${token.pre}${word}${token.post}`;
+    })
     .join(" ");
 }
 
@@ -304,7 +325,8 @@ export function formatIncidentDetails(details: string): string {
       index += match.length - 1;
       continue;
     }
-    output.push(`${token.pre}${detailWord(token.core)}${token.post}`);
+    const word = isLetterDesignator(tokens, index) ? "A" : detailWord(token.core);
+    output.push(`${token.pre}${word}${token.post}`);
   }
 
   return capitalize(output.join(" "));

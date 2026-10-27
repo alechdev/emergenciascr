@@ -1,4 +1,13 @@
 import { buildIncidentSlug } from "@api/lib/slug";
+import {
+  formatAddress,
+  formatCantonName,
+  formatDistrictName,
+  formatProvinceName,
+  formatStationName,
+  formatTypeName,
+  getIncidentHeadline
+} from "@api/lib/spelling/incident-text";
 import { buildMapImageUrl, buildStationImageUrl } from "@api/lib/url-builder";
 import {
   getFirstValidCoordinatePair,
@@ -12,16 +21,6 @@ import { getIncidentStatistics } from "@api/lib/utils/incidents/statistics";
 import { buildTimelineEvents } from "@api/lib/utils/incidents/timeline";
 import { getIncidentById } from "@bomberoscr/db/queries/incidents";
 import { createServerFn } from "@tanstack/react-start";
-
-import {
-  formatAddress,
-  formatCantonName,
-  formatDistrictName,
-  formatIncidentHeadline,
-  formatProvinceName,
-  formatStationName,
-  formatTypeName
-} from "@/lib/spelling/incident-text";
 
 type IncidentPageTypeNames = {
   dispatchTypeName: string | null;
@@ -132,11 +131,10 @@ const getIncidentPage = createServerFn({ method: "GET" })
       incident.incidentType?.name,
       location
     );
-    const headline = formatIncidentHeadline(
-      incident.importantDetails ||
-        incident.specificIncidentType?.name ||
-        incident.incidentType?.name ||
-        "Incidente",
+    const headline = getIncidentHeadline(
+      incident.importantDetails,
+      incident.specificIncidentType?.name,
+      incident.incidentType?.name,
       location
     );
     const typeName = (name: string | null | undefined) => (name ? formatTypeName(name) : null);

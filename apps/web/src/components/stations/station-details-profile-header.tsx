@@ -21,7 +21,7 @@ export function StationDetailsProfileHeader({ station }: StationDetailsProfileHe
           />
           <img
             src={station.imageUrl}
-            alt={`Estación ${station.name}`}
+            alt={`Estación ${station.displayName}`}
             className="relative h-full w-full object-contain"
           />
         </div>
@@ -32,7 +32,7 @@ export function StationDetailsProfileHeader({ station }: StationDetailsProfileHe
 
       <div className="pt-14 sm:pt-16">
         <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
-          Estación de Bomberos {station.name}
+          Estación de Bomberos {station.displayName}
         </h1>
         {station.address && <p className="mt-1 text-sm text-muted-foreground">{station.address}</p>}
 

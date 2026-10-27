@@ -105,7 +105,7 @@ export function IncidentsSearchHeader({
 
   const stationItems = stations.map((station) => ({
     value: station.id.toString(),
-    label: station.name
+    label: station.displayName
   }));
 
   const handleResetFilters = () => {

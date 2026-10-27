@@ -10,7 +10,7 @@ import {
   PROVINCES,
   STATION_NAMES,
   TYPOS
-} from "@/lib/spelling/dictionary.gen";
+} from "@api/lib/spelling/dictionary.gen";
 
 const LOCALE = "es-CR";
 const LETTERS = "A-ZÑÁÉÍÓÚÜ";
@@ -217,6 +217,11 @@ export function formatTypeName(name: string): string {
     .join(" ");
 }
 
+/** An incident type standing on its own, like a badge: "Incendio estructural". */
+export function formatTypeLabel(name: string): string {
+  return capitalize(formatTypeName(name));
+}
+
 function fixTyposAndPhrases(text: string): string {
   let fixed = toKey(text).replace(WORD, (word) => TYPOS[word] ?? word);
   for (const [phrase, replacement] of Object.entries(PHRASES)) {
@@ -348,4 +353,14 @@ export function formatIncidentHeadline(details: string, location: IncidentLocati
 
   const sentence = formatIncidentDetails(details);
   return places.length > 0 ? `${sentence} en ${places.join(", ")}` : sentence;
+}
+
+/** The readable counterpart of `getIncidentTitle`, which stays raw because slugs are built from it. */
+export function getIncidentHeadline(
+  importantDetails: string | null,
+  specificType: string | null | undefined,
+  type: string | null | undefined,
+  location: IncidentLocation
+): string {
+  return formatIncidentHeadline(importantDetails || specificType || type || "Incidente", location);
 }

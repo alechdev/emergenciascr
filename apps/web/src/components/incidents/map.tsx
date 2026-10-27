@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 
 import { useIncidentsQuery } from "@/components/incidents/query-options";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTheme, type Theme } from "@/lib/theme";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { Route } from "@/routes/_incidents/incidentes";
 
@@ -29,6 +30,18 @@ const MARKER_TEXT_COLOR = "#ffffff";
 const MARKER_BASE_Z_INDEX = "1";
 const MARKER_ACTIVE_Z_INDEX = "30";
 const MARKER_LABEL_MIN_ZOOM = 11;
+
+// Mapbox Standard switches between these at runtime through its "basemap" config.
+const BASEMAP_CONFIG: Record<Theme, { lightPreset: string; theme: string }> = {
+  light: { lightPreset: "day", theme: "default" },
+  dark: { lightPreset: "night", theme: "monochrome" }
+};
+
+function applyBasemapTheme(map: MapboxMap, theme: Theme) {
+  const config = BASEMAP_CONFIG[theme];
+  map.setConfigProperty("basemap", "lightPreset", config.lightPreset);
+  map.setConfigProperty("basemap", "theme", config.theme);
+}
 
 type IncidentFeatureCollection = {
   type: "FeatureCollection";
@@ -91,6 +104,7 @@ type MapboxMap = {
   remove: () => void;
   resize: () => void;
   setTerrain: (terrain: Record<string, unknown> | null) => void;
+  setConfigProperty: (importId: string, property: string, value: unknown) => void;
   getZoom: () => number;
 };
 
@@ -529,6 +543,8 @@ export function IncidentsMap({
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const { data, isPending, isError } = useIncidentsQuery(search);
+  const { theme } = useTheme();
+  const themeRef = useRef(theme);
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapboxMap | null>(null);
@@ -568,6 +584,14 @@ export function IncidentsMap({
   }, [featureCollection]);
 
   useEffect(() => {
+    themeRef.current = theme;
+
+    if (mapRef.current && mapReady) {
+      applyBasemapTheme(mapRef.current, theme);
+    }
+  }, [theme, mapReady]);
+
+  useEffect(() => {
     highlightedIncidentIdRef.current = highlightedIncidentId;
 
     for (const marker of markersRef.current) {
@@ -598,6 +622,7 @@ export function IncidentsMap({
         const map = new mapboxgl.Map({
           container: mapContainerRef.current,
           style: "mapbox://styles/mapbox/standard",
+          config: { basemap: BASEMAP_CONFIG[themeRef.current] },
           center: DEFAULT_CENTER,
           zoom: initialZoomRef.current,
           bearing: DEFAULT_BEARING,

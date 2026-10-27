@@ -1,16 +1,31 @@
 import {
+  type CostaRicaDateFormatOptions,
   formatCostaRicaDate,
   getCostaRicaDateParts,
   getCostaRicaYear
 } from "@bomberoscr/lib/costa-rica-time";
 import { isKnownDate } from "@bomberoscr/lib/missing-date";
-import { WarningIcon } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
 
+import { RelativeTime } from "@/components/ui/relative-time";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  buildIncidentDeck,
+  formatIncidentHeadline,
+  formatPlaceName,
+  getAttentionSeconds,
+  toSentenceCase
+} from "@/lib/incident-editorial";
 import { Route } from "@/routes/_dashboard/incidentes/$slug";
 
 const tenMinutesInMs = 600_000;
+
+// Running text reads "8 de abril", not the site-wide zero-padded "08 de abril".
+const bylineDateFormat: CostaRicaDateFormatOptions = {
+  day: "numeric",
+  month: "long",
+  year: "numeric"
+};
 
 function formatArticleForTime(date: Date): "la" | "las" {
   const hour = getCostaRicaDateParts(date).hour % 12;
@@ -45,11 +60,58 @@ function calculateResponseTime(dispatchTime: Date, arrivalTime: Date): string {
   return `${seconds} segundo${seconds !== 1 ? "s" : ""}`;
 }
 
-export function IncidentArticle() {
+export function IncidentHeader() {
+  const { incident, stations, responseTimes, timeline } = Route.useLoaderData();
+
+  const incidentTimestamp = new Date(incident.incidentTimestamp);
+  const headline = formatIncidentHeadline(incident.title, incident);
+  const category = incident.actualTypeName ?? incident.dispatchTypeName;
+  const deck = buildIncidentDeck({
+    isOpen: incident.isOpen,
+    stations,
+    responseTimes,
+    attentionSeconds: getAttentionSeconds(incident.incidentTimestamp, timeline)
+  });
+
+  return (
+    <header>
+      {category && <p className="text-sm text-muted-foreground">{toSentenceCase(category)}</p>}
+      <h1 className="mt-3 font-serif text-3xl text-balance sm:text-4xl">{headline}</h1>
+      {deck && (
+        <p className="mt-5 text-lg leading-relaxed text-pretty text-muted-foreground">{deck}</p>
+      )}
+      <p className="mt-6 text-sm text-muted-foreground">
+        Reportado el{" "}
+        <time dateTime={incidentTimestamp.toISOString()}>
+          {formatCostaRicaDate(incidentTimestamp, bylineDateFormat)} a{" "}
+          {formatArticleForTime(incidentTimestamp)} {formatCostaRicaDate(incidentTimestamp, "time")}
+        </time>
+        {/* The time already ends in "a. m."/"p. m.", which closes the sentence. */}
+        {incident.isOpen && incident.modifiedAt && (
+          <>
+            {" "}
+            Actualizado <RelativeTime date={incident.modifiedAt} />.
+          </>
+        )}
+      </p>
+    </header>
+  );
+}
+
+export function IncidentRecord() {
+  const { incident } = Route.useLoaderData();
+
+  return (
+    <p className="text-sm text-muted-foreground">
+      Consecutivo # <span className="text-foreground tabular-nums">{incident.EEConsecutive}</span>
+    </p>
+  );
+}
+
+export function IncidentStory() {
   const { incident, stations } = Route.useLoaderData();
 
   const incidentTimestamp = new Date(incident.incidentTimestamp);
-  const formattedIncidentDate = formatCostaRicaDate(incidentTimestamp, "longDate");
   const formattedIncidentTime = formatCostaRicaDate(incidentTimestamp, "time");
 
   const responsibleStation = stations.find((station) => station.isResponsible);
@@ -85,54 +147,34 @@ export function IncidentArticle() {
   const singleVehicleWithDeparture = getSingleVehicleWithDeparture(allVehicles);
 
   return (
-    <article className="flex flex-col gap-4 md:gap-6">
-      <h1 className="font-sans text-2xl leading-snug font-bold tracking-tight text-balance sm:text-3xl lg:text-4xl lg:leading-[1.15]">
-        {incident.title}
-      </h1>
-      <figure className="not-typography">
-        {incident.mapImageUrl ? (
-          // TODO: Re-enable interactive map when ready
-          // <IncidentMap
-          //   latitude={Number(incident.latitude)}
-          //   longitude={Number(incident.longitude)}
-          //   stations={incident.dispatchedStations.map((station) => ({
-          //     latitude: Number(station.station.latitude),
-          //     longitude: Number(station.station.longitude),
-          //     name: station.station.name
-          //   }))}
-          // />
-          <div className="relative aspect-video w-full overflow-hidden rounded-xl">
-            <img
-              src={incident.mapImageUrl}
-              alt="magen satelital de las coordenadas del incidente"
-              referrerPolicy="origin"
-              className="h-full w-full object-cover"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 672px"
-              fetchPriority="high"
-            />
-          </div>
-        ) : (
-          <div className="relative flex min-h-[400px] flex-col gap-4 overflow-hidden rounded-xl border-2 bg-muted">
-            <div className="absolute inset-0 z-20 flex items-center justify-center backdrop-blur-sm">
-              <div className="mx-4 w-fit rounded-md bg-background/60 px-4 py-3 backdrop-blur-3xl">
-                <p className="text-sm select-none">
-                  <WarningIcon
-                    className="me-3 -mt-0.5 inline-flex text-amber-500"
-                    size={16}
-                    aria-hidden="true"
-                  />
-                  Coordenadas aún no disponibles.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-      </figure>
-      <time
-        dateTime={incidentTimestamp.toISOString()}
-        className="font-sans text-sm text-muted-foreground">
-        {formattedIncidentDate}, {formattedIncidentTime}
-      </time>
+    <div className="flex flex-col gap-10">
+      {incident.mapImageUrl ? (
+        // TODO: Re-enable interactive map when ready
+        // <IncidentMap
+        //   latitude={Number(incident.latitude)}
+        //   longitude={Number(incident.longitude)}
+        //   stations={incident.dispatchedStations.map((station) => ({
+        //     latitude: Number(station.station.latitude),
+        //     longitude: Number(station.station.longitude),
+        //     name: station.station.name
+        //   }))}
+        // />
+        <div className="relative aspect-video w-full overflow-hidden bg-muted">
+          <img
+            src={incident.mapImageUrl}
+            alt="Imagen satelital de las coordenadas del incidente"
+            referrerPolicy="origin"
+            className="h-full w-full object-cover"
+            sizes="(max-width: 672px) 100vw, 672px"
+            fetchPriority="high"
+          />
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          El mapa aparecerá cuando las coordenadas estén disponibles.
+        </p>
+      )}
+
       <section className="incident-prose">
         <p>
           Al ser {formatArticleForTime(incidentTimestamp)} {formattedIncidentTime}, Bomberos recibe
@@ -151,7 +193,7 @@ export function IncidentArticle() {
             <Link
               to={`/estaciones/$name`}
               params={{ name: responsibleStation.name }}>
-              {responsibleStation.name}
+              {formatPlaceName(responsibleStation.name)}
             </Link>{" "}
             como responsable
             {responsibleStation.vehicles.length > 0 && (
@@ -177,7 +219,8 @@ export function IncidentArticle() {
                 {formatCostaRicaDate(firstBatchVehicles[0].arrivalTime ?? "", "time")}
               </>
             )}
-            .
+            {/* A trailing time ends in "a. m."/"p. m.", which already closes the sentence. */}
+            {firstBatchVehicles.length === 0 && "."}
           </p>
         )}
         {singleVehicleWithDeparture && (
@@ -189,7 +232,7 @@ export function IncidentArticle() {
             )}{" "}
             y se retira al ser{" "}
             {formatArticleForTime(new Date(singleVehicleWithDeparture.departureTime ?? ""))}{" "}
-            {formatCostaRicaDate(singleVehicleWithDeparture.departureTime ?? "", "time")}.
+            {formatCostaRicaDate(singleVehicleWithDeparture.departureTime ?? "", "time")}
           </p>
         )}
 
@@ -206,7 +249,7 @@ export function IncidentArticle() {
                   <Link
                     to={`/estaciones/$name`}
                     params={{ name: s.name }}>
-                    {s.name}
+                    {formatPlaceName(s.name)}
                   </Link>
                   {!isLast && (isSecondLast ? " y " : ", ")}
                 </span>
@@ -251,6 +294,7 @@ export function IncidentArticle() {
             const count = incident.statistics.currentYearCount;
             const cantonCount = incident.statistics.currentYearCantonCount;
             const prevCount = incident.statistics.previousYearCount;
+            const cantonName = incident.cantonName ? formatPlaceName(incident.cantonName) : null;
 
             const typeDisplay = [
               incident.actualTypeName ?? incident.dispatchTypeName,
@@ -273,12 +317,12 @@ export function IncidentArticle() {
                 En {isCurrentYear ? "lo que va del" : "el"} {incident.statistics.currentYear} {verb}{" "}
                 {count.toLocaleString("es-CR")} incidente{count !== 1 ? "s" : ""} de tipo "
                 <em className="lowercase">{typeDisplay}</em>"
-                {cantonCount > 0 && incident.cantonName && (
+                {cantonCount > 0 && cantonName && (
                   <>
                     {", "}
                     {cantonCount === 1
-                      ? `siendo este el primero en el cantón de ${incident.cantonName}`
-                      : `${cantonCount.toLocaleString("es-CR")} de ellos en ${incident.cantonName}`}
+                      ? `siendo este el primero en el cantón de ${cantonName}`
+                      : `${cantonCount.toLocaleString("es-CR")} de ellos en ${cantonName}`}
                   </>
                 )}
                 .
@@ -293,33 +337,42 @@ export function IncidentArticle() {
             );
           })()}
       </section>
-    </article>
+    </div>
   );
 }
 
-export function IncidentArticleSkeleton() {
+export function IncidentHeaderSkeleton() {
   return (
-    <div className="flex flex-col gap-4 md:gap-6">
-      <div className="space-y-2">
-        <Skeleton className="h-7 w-full sm:h-8 lg:h-9" />
-        <Skeleton className="h-7 w-full sm:h-8 lg:h-9" />
-        <Skeleton className="h-7 w-3/4 sm:h-8 lg:h-9" />
+    <header>
+      <Skeleton className="h-4 w-48" />
+      <div className="mt-3 space-y-2">
+        <Skeleton className="h-9 w-full sm:h-10" />
+        <Skeleton className="h-9 w-2/3 sm:h-10" />
       </div>
+      <div className="mt-5 space-y-2">
+        <Skeleton className="h-5 w-full" />
+        <Skeleton className="h-5 w-4/5" />
+      </div>
+      <Skeleton className="mt-6 h-4 w-64" />
+    </header>
+  );
+}
 
-      <Skeleton className="aspect-video w-full rounded-xl" />
-
-      <Skeleton className="h-5 w-56" />
-
-      <section className="space-y-4">
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-full max-w-prose" />
-          <Skeleton className="h-4 w-3/4 max-w-prose" />
+export function IncidentStorySkeleton() {
+  return (
+    <div className="flex flex-col gap-10">
+      <Skeleton className="aspect-video w-full" />
+      <section className="space-y-6">
+        <div className="space-y-2.5">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-11/12" />
+          <Skeleton className="h-4 w-3/4" />
         </div>
-        <Skeleton className="ml-4 h-5 w-5/6 max-w-prose border-l-4 pl-4" />
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-full max-w-prose" />
-          <Skeleton className="h-4 w-4/5 max-w-prose" />
-          <Skeleton className="h-4 w-2/3 max-w-prose" />
+        <Skeleton className="h-4 w-5/6" />
+        <div className="space-y-2.5">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-4/5" />
+          <Skeleton className="h-4 w-2/3" />
         </div>
       </section>
     </div>

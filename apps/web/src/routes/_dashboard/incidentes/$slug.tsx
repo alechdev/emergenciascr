@@ -4,16 +4,18 @@ import {
 } from "@bomberoscr/lib/incident-indexability";
 import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 
-import { IncidentArticle, IncidentArticleSkeleton } from "@/components/incidents/details/article";
+import {
+  IncidentHeader,
+  IncidentHeaderSkeleton,
+  IncidentRecord,
+  IncidentStory,
+  IncidentStorySkeleton
+} from "@/components/incidents/details/article";
 import {
   DispatchedStations,
   DispatchedStationsSkeleton
 } from "@/components/incidents/details/dispatched-stations";
 import OpenIncidentBanner from "@/components/incidents/details/open-incident-banner";
-import {
-  IncidentTimeline,
-  IncidentTimelineSkeleton
-} from "@/components/incidents/details/timeline";
 import {
   VehicleResponseTimes,
   VehicleResponseTimesSkeleton
@@ -141,18 +143,16 @@ export const Route = createFileRoute("/_dashboard/incidentes/$slug")({
   component: IncidenteDetailPage
 });
 
+const columnClassName = "mx-auto flex w-full max-w-2xl flex-col gap-16 pt-4 pb-32";
+
 function IncidentDetailSkeleton() {
   return (
-    <article className="grid w-full max-w-none grid-cols-1 gap-6 pt-8 pb-24 md:gap-8 lg:grid-cols-3 lg:items-start">
-      <div className="order-1 lg:order-1 lg:col-span-2">
-        <IncidentArticleSkeleton />
-        <VehicleResponseTimesSkeleton />
-        <DispatchedStationsSkeleton />
-      </div>
-      <aside className="incident-timeline-scroll order-2 lg:sticky lg:top-[calc(var(--app-header-height)+1rem)] lg:order-2 lg:col-span-1 lg:max-h-[calc(100dvh-var(--app-header-height)-2rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-24">
-        <IncidentTimelineSkeleton />
-      </aside>
-    </article>
+    <div className={columnClassName}>
+      <IncidentHeaderSkeleton />
+      <IncidentStorySkeleton />
+      <VehicleResponseTimesSkeleton />
+      <DispatchedStationsSkeleton />
+    </div>
   );
 }
 
@@ -178,24 +178,16 @@ function IncidenteDetailPage() {
   return (
     <>
       <JsonLdScript data={jsonLd} />
-      <div className="typography grid w-full max-w-none grid-cols-1 gap-6 pt-8 pb-24 md:gap-8 lg:grid-cols-3 lg:items-start">
-        {incident.isOpen && (
-          <OpenIncidentBanner
-            modifiedAt={incident.modifiedAt ?? ""}
-            className="not-typography col-span-full"
-          />
-        )}
-        <div className="order-1 flex flex-col gap-4 md:gap-6 lg:order-1 lg:col-span-2">
-          <IncidentArticle />
-          <VehicleResponseTimes />
-          <DispatchedStations />
+      <article className={columnClassName}>
+        <div>
+          {incident.isOpen && <OpenIncidentBanner className="mb-6" />}
+          <IncidentHeader />
         </div>
-        <aside
-          className="incident-timeline-scroll not-typography order-2 lg:sticky lg:top-[calc(var(--app-header-height)+1rem)] lg:order-2 lg:col-span-1 lg:max-h-[calc(100dvh-var(--app-header-height)-2rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-24"
-          aria-label="Cronología del incidente">
-          <IncidentTimeline />
-        </aside>
-      </div>
+        <IncidentStory />
+        <VehicleResponseTimes />
+        <DispatchedStations />
+        <IncidentRecord />
+      </article>
     </>
   );
 }

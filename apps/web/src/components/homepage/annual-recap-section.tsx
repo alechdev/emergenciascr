@@ -90,7 +90,7 @@ function AnimatedBarLine({
   return (
     <motion.rect
       animate={{ opacity: isHovered ? 1 : 0 }}
-      fill="rgba(255,255,255,0.9)"
+      fill="var(--foreground)"
       height={2}
       initial={false}
       style={{ y: animatedY }}
@@ -127,7 +127,7 @@ function BarLineIndicators({ data }: { data: RankedTopFiveDatum[] }) {
               width={bandWidth}
             />
             <text
-              className="fill-zinc-300 font-mono text-[10px]"
+              className="fill-muted-foreground font-mono text-[10px]"
               textAnchor="middle"
               x={barX + bandWidth / 2}
               y={valueLabelY}>
@@ -160,16 +160,16 @@ function TopFiveRecapBarPanel({
   const topItem = rankedData[0];
 
   return (
-    <article className={cn("bg-zinc-900/55 p-4", className)}>
+    <article className={cn("bg-card p-4", className)}>
       <p className="text-sm font-semibold tracking-wide uppercase">{title}</p>
 
       {topItem ? (
         <>
           <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h3 className="max-w-full truncate text-sm font-semibold text-zinc-100 sm:text-base">
+            <h3 className="max-w-full truncate text-sm font-semibold text-foreground sm:text-base">
               {topItem.label}
             </h3>
-            <span className="text-xs text-zinc-400">
+            <span className="text-xs text-muted-foreground">
               {formatNumber(topItem.value)} {unit}
             </span>
           </div>
@@ -242,13 +242,13 @@ function TopFiveRecapBarPanel({
                     <Link
                       to="/estaciones/$name"
                       params={{ name: item.stationRouteParamName }}
-                      className="block truncate text-[11px] leading-4 text-zinc-400 transition-colors hover:text-zinc-200"
+                      className="block truncate text-[11px] leading-4 text-muted-foreground transition-colors hover:text-foreground"
                       title={item.label}>
                       {item.shortLabel}
                     </Link>
                   ) : (
                     <p
-                      className="truncate text-[11px] leading-4 text-zinc-400"
+                      className="truncate text-[11px] leading-4 text-muted-foreground"
                       title={item.label}>
                       {item.shortLabel}
                     </p>
@@ -259,7 +259,7 @@ function TopFiveRecapBarPanel({
           </div>
         </>
       ) : (
-        <p className="mt-3 text-sm text-zinc-500">No hay datos suficientes para mostrar.</p>
+        <p className="mt-3 text-sm text-muted-foreground">No hay datos suficientes para mostrar.</p>
       )}
     </article>
   );
@@ -303,7 +303,7 @@ function AnnualRecapBoard({ data }: { data: GetYearRecapResponse }) {
   );
 
   return (
-    <div className="grid grid-cols-1 gap-0 divide-y divide-zinc-800/70 border border-zinc-800/70 xl:grid-cols-3 xl:divide-x xl:divide-y-0">
+    <div className="grid grid-cols-1 gap-0 divide-y divide-border border xl:grid-cols-3 xl:divide-x xl:divide-y-0">
       <TopFiveRecapBarPanel
         title="Días con más incidentes"
         unit="incidentes"
@@ -333,25 +333,25 @@ function AnnualRecapBoard({ data }: { data: GetYearRecapResponse }) {
 
 function AnnualRecapBoardSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-0 divide-y divide-zinc-800/70 border border-zinc-800/70 xl:grid-cols-3 xl:divide-x xl:divide-y-0">
+    <div className="grid grid-cols-1 gap-0 divide-y divide-border border xl:grid-cols-3 xl:divide-x xl:divide-y-0">
       {Array.from({ length: 3 }).map((_, index) => (
         <div
           key={`annual-recap-skeleton-${index}`}
-          className="h-full bg-zinc-900/55 p-4">
-          <Skeleton className="h-5 w-44 bg-zinc-800" />
+          className="h-full bg-card p-4">
+          <Skeleton className="h-5 w-44" />
           <div className="mt-2 flex items-center gap-3">
-            <Skeleton className="h-6 w-3/5 bg-zinc-800" />
-            <Skeleton className="h-4 w-20 bg-zinc-800" />
+            <Skeleton className="h-6 w-3/5" />
+            <Skeleton className="h-4 w-20" />
           </div>
           <div className="mt-4 aspect-[5/1.35] w-full">
-            <Skeleton className="h-full w-full bg-zinc-800" />
+            <Skeleton className="h-full w-full" />
           </div>
           <div className="mt-2 grid grid-cols-5 gap-1">
             {Array.from({ length: 5 }).map((__, lineIndex) => (
               <div
                 key={`annual-recap-skeleton-label-${index}-${lineIndex}`}
                 className="flex flex-col items-center gap-1">
-                <Skeleton className="h-4 w-10 bg-zinc-800" />
+                <Skeleton className="h-4 w-10" />
               </div>
             ))}
           </div>

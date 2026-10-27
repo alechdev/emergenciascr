@@ -8,10 +8,11 @@ import {
   useLocation
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Header } from "@/components/layout/header";
 import { STATIC_OG_IMAGE_URL } from "@/lib/site";
+import { getStoredTheme, storeTheme, ThemeContext, type Theme } from "@/lib/theme";
 
 import appCss from "../styles.css?url";
 
@@ -78,6 +79,8 @@ export const Route = createRootRouteWithContext<{
       : []
   }),
 
+  loader: () => ({ theme: getStoredTheme() }),
+
   component: RootComponent
 });
 
@@ -93,6 +96,19 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const normalizedPathname = pathname.replace(/\/+$/, "") || "/";
   const isIncidentesPage = normalizedPathname === "/incidentes";
+
+  const { theme: storedTheme } = Route.useLoaderData();
+  const [theme, setThemeState] = useState<Theme>(storedTheme);
+  const themeContext = useMemo(
+    () => ({
+      theme,
+      setTheme: (nextTheme: Theme) => {
+        storeTheme(nextTheme);
+        setThemeState(nextTheme);
+      }
+    }),
+    [theme]
+  );
 
   useEffect(() => {
     const updateViewportInlineSize = () => {
@@ -113,13 +129,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="es-CR"
-      className="dark">
+      className={theme}>
       <head>
         <HeadContent />
       </head>
       <body className={`font-sans antialiased${isIncidentesPage ? " no-page-rails" : ""}`}>
-        <Header />
-        <main>{children}</main>
+        <ThemeContext value={themeContext}>
+          <Header />
+          <main>{children}</main>
+        </ThemeContext>
         <TanStackDevtools
           config={{
             position: "bottom-right"

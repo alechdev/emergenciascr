@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build apps/web/src/lib/spelling/dictionary.gen.ts from the SIGAE text in the database.
+"""Build apps/web/api/lib/spelling/dictionary.gen.ts from the SIGAE text in the database.
 
 SIGAE sends upper-case text with acute accents stripped ("ESTACION DE JACO"). This script
 collects every word the site displays (incident details, addresses, type, station and place
@@ -39,7 +39,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1].parent
 CURATED_PATH = Path(__file__).resolve().parent / "curated.json"
-OUTPUT_PATH = REPO_ROOT / "apps/web/src/lib/spelling/dictionary.gen.ts"
+OUTPUT_PATH = REPO_ROOT / "apps/web/api/lib/spelling/dictionary.gen.ts"
 
 DTA_COMMIT = "d52bbd1feb6b28915d08b36fca298bf1adb2c278"
 DTA_URL = f"https://raw.githubusercontent.com/ryze-cr/ubicaciones-cr/{DTA_COMMIT}/data/dta.json"

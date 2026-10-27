@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import {
   formatAddress,
   formatCantonName,
@@ -8,8 +6,11 @@ import {
   formatIncidentHeadline,
   formatProvinceName,
   formatStationName,
-  formatTypeName
-} from "@/lib/spelling/incident-text";
+  formatTypeLabel,
+  formatTypeName,
+  getIncidentHeadline
+} from "@api/lib/spelling/incident-text";
+import { describe, expect, it } from "vitest";
 
 describe("formatIncidentHeadline", () => {
   it("writes the headline as a sentence with official place names", () => {
@@ -145,5 +146,23 @@ describe("formatTypeName", () => {
       "intoxicación por monóxido de carbono"
     );
     expect(formatTypeName("C.C. EN ALUMBRADO PUBLICO")).toBe("C.C. en alumbrado público");
+  });
+});
+
+describe("formatTypeLabel", () => {
+  it("capitalizes the type for a standalone label", () => {
+    expect(formatTypeLabel("INCENDIO ESTRUCTURAL")).toBe("Incendio estructural");
+  });
+});
+
+describe("getIncidentHeadline", () => {
+  it("falls back to the incident type when there are no details", () => {
+    expect(
+      getIncidentHeadline(null, "RESCATE DE ANIMAL", "RESCATE", {
+        districtName: "CATEDRAL",
+        cantonName: "SAN JOSE",
+        provinceName: "SAN JOSE"
+      })
+    ).toBe("Rescate de animal en Catedral, San José, San José");
   });
 });

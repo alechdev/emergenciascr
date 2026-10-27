@@ -86,8 +86,12 @@ export const stationSchema = z.object({
     example: 53
   }),
   name: z.string().openapi({
-    description: "Station name.",
+    description: "Station name as SIGAE sends it. Use it in URLs and lookups.",
     example: "ACOSTA"
+  }),
+  displayName: z.string().openapi({
+    description: "Station name for display, in title case with accents.",
+    example: "Acosta"
   }),
   stationKey: z.string().openapi({
     description: "Station key.",
@@ -108,7 +112,7 @@ export const stationSchema = z.object({
   address: z.string().nullable().openapi({
     description: "Station address.",
     example:
-      "SAN JOSE, ACOSTA, SAN IGNACIO, 50 METROS OESTE DE LA ESTACIÓN DE SEVICIO COOPECARAIGRES"
+      "San José, Acosta, San Ignacio, 50 Metros Oeste de la Estación de Sevicio Coopecaraigres"
   }),
   phoneNumber: z.string().nullable().openapi({
     description: "Station phone number.",
@@ -167,11 +171,12 @@ export const stationsListResponse = z
         {
           id: 106,
           name: "ACADEMIA NACIONAL DE BOMBEROS",
+          displayName: "Academia Nacional de Bomberos",
           stationKey: "ANB",
           radioChannel: null,
           latitude: "9.89637844233335",
           longitude: "-84.0443111892689",
-          address: "SAN JOSE, DESAMPARADOS, DAMAS, FRENTE AL CENTRO DE RECREO DEL INS.",
+          address: "San José, Desamparados, Damas, Frente al Centro de Recreo del INS.",
           phoneNumber: null,
           fax: null,
           email: null,
@@ -181,12 +186,13 @@ export const stationsListResponse = z
         {
           id: 53,
           name: "ACOSTA",
+          displayName: "Acosta",
           stationKey: "1-11",
           radioChannel: "05 Abejonal",
           latitude: "9.79495174363123",
           longitude: "-84.1638760142178",
           address:
-            "SAN JOSE, ACOSTA, SAN IGNACIO, 50 METROS OESTE DE LA ESTACIÓN DE SEVICIO COOPECARAIGRES",
+            "San José, Acosta, San Ignacio, 50 Metros Oeste de la Estación de Sevicio Coopecaraigres",
           phoneNumber: "2410-1415",
           fax: "2410-1415",
           email: "acosta@bomberos.go.cr",
@@ -214,12 +220,13 @@ export const stationByNameResponse = z
       station: {
         id: 53,
         name: "ACOSTA",
+        displayName: "Acosta",
         stationKey: "1-11",
         radioChannel: "05 Abejonal",
         latitude: "9.79495174363123",
         longitude: "-84.1638760142178",
         address:
-          "SAN JOSE, ACOSTA, SAN IGNACIO, 50 METROS OESTE DE LA ESTACIÓN DE SEVICIO COOPECARAIGRES",
+          "San José, Acosta, San Ignacio, 50 Metros Oeste de la Estación de Sevicio Coopecaraigres",
         phoneNumber: "2410-1415",
         fax: "2410-1415",
         email: "acosta@bomberos.go.cr",
@@ -247,12 +254,12 @@ export const stationHighlightedIncidentSchema = z.object({
   }),
   details: z.string().nullable().openapi({
     description: "Incident details.",
-    example: "QUEMA DE CHARRAL"
+    example: "Quema de charral"
   }),
   address: z.string().nullable().openapi({
     description: "Incident address.",
     example:
-      "SAN JOSE LEON CORTES SAN ANDRES DEL ANTIGUO BENEFICIO 75 METROS SUR HACIA PEDREGOSO EN LA SIEMBRA DE AGUACATE"
+      "San José León Cortés San Andrés del Antiguo Beneficio 75 Metros Sur Hacia Pedregoso en la Siembra de Aguacate"
   }),
   responsibleStation: z.string().nullable().openapi({
     description: "Responsible station name.",
@@ -290,10 +297,10 @@ export const stationHighlightedIncidentsResponseSchema = z
         {
           id: 1558658,
           incidentTimestamp: "2026-01-19T22:55:04.000Z",
-          details: "QUEMA DE CHARRAL",
+          details: "Quema de charral",
           address:
-            "SAN JOSE LEON CORTES SAN ANDRES DEL ANTIGUO BENEFICIO 75 METROS SUR HACIA PEDREGOSO EN LA SIEMBRA DE AGUACATE",
-          responsibleStation: "ACOSTA",
+            "San José León Cortés San Andrés del Antiguo Beneficio 75 Metros Sur Hacia Pedregoso en la Siembra de Aguacate",
+          responsibleStation: "Acosta",
           latitude: "9.73357675239847",
           longitude: "-84.0765451393084",
           mapImageUrl: "https://api.example.com/incidents/1558658/map?v=3f2a9c1b7d4e",
@@ -303,9 +310,9 @@ export const stationHighlightedIncidentsResponseSchema = z
         {
           id: 1580178,
           incidentTimestamp: "2026-01-28T03:59:00.000Z",
-          details: "ESTACION DE ACOSTA REPORTA QUEMA DE CHARRAL",
-          address: "SAN JOSE ASERRI VUELTA DE JORCO DEL CEMENTERIO 800 SUR CAMINO MONTE REDONDO",
-          responsibleStation: "ACOSTA",
+          details: "Estación de Acosta reporta quema de charral",
+          address: "San José Aserrí Vuelta de Jorco del Cementerio 800 Sur Camino Monte Redondo",
+          responsibleStation: "Acosta",
           latitude: "0",
           longitude: "0",
           mapImageUrl: null,
@@ -352,8 +359,12 @@ export const stationCollaborationSchema = z.object({
     example: 46
   }),
   name: z.string().openapi({
-    description: "Station name.",
+    description: "Station name as SIGAE sends it. Use it in URLs and lookups.",
     example: "DESAMPARADOS"
+  }),
+  displayName: z.string().openapi({
+    description: "Station name for display, in title case with accents.",
+    example: "Desamparados"
   }),
   stationKey: z.string().openapi({
     description: "Station key.",
@@ -378,6 +389,7 @@ export const stationCollaborationsResponseSchema = z
         {
           id: 46,
           name: "DESAMPARADOS",
+          displayName: "Desamparados",
           stationKey: "1-4",
           imageUrl: "https://api.example.com/stations/DESAMPARADOS/image",
           collaborationCount: 19
@@ -385,6 +397,7 @@ export const stationCollaborationsResponseSchema = z
         {
           id: 48,
           name: "PURISCAL",
+          displayName: "Puriscal",
           stationKey: "1-6",
           imageUrl: "https://api.example.com/stations/PURISCAL/image",
           collaborationCount: 3

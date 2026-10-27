@@ -1,4 +1,9 @@
 import { buildIncidentSlug } from "@api/lib/slug";
+import {
+  formatAddress,
+  formatStationName,
+  getIncidentHeadline
+} from "@api/lib/spelling/incident-text";
 import { buildStationImageUrl } from "@api/lib/url-builder";
 import { getIncidentTitle } from "@api/lib/utils/incidents/formatters";
 import { getIncidents } from "@bomberoscr/db/queries/incidents";
@@ -21,6 +26,7 @@ type StationPageIncident = {
 
 type StationPageCollaboration = {
   name: string;
+  displayName: string;
   stationKey: string;
   collaborationCount: number;
 };
@@ -39,6 +45,7 @@ type StationPageVehicle = {
 type StationPageStation = {
   id: number;
   name: string;
+  displayName: string;
   stationKey: string;
   radioChannel: string | null;
   latitude: string;
@@ -73,21 +80,27 @@ function mapIncident(incident: {
   dispatchedStationsCount: number | null;
   dispatchedVehiclesCount: number | null;
 }): StationPageIncident {
-  const title = getIncidentTitle(
+  const location = {
+    districtName: incident.districtName,
+    cantonName: incident.cantonName,
+    provinceName: incident.provinceName
+  };
+  const rawTitle = getIncidentTitle(
     incident.importantDetails,
     incident.specificIncidentType,
     incident.incidentType,
-    {
-      districtName: incident.districtName,
-      cantonName: incident.cantonName,
-      provinceName: incident.provinceName
-    }
+    location
   );
 
   return {
-    slug: buildIncidentSlug(incident.id, title, incident.incidentTimestamp),
-    title,
-    address: incident.address,
+    slug: buildIncidentSlug(incident.id, rawTitle, incident.incidentTimestamp),
+    title: getIncidentHeadline(
+      incident.importantDetails,
+      incident.specificIncidentType,
+      incident.incidentType,
+      location
+    ),
+    address: formatAddress(incident.address),
     incidentTimestamp: incident.incidentTimestamp.toISOString(),
     dispatchedStationsCount: incident.dispatchedStationsCount ?? 0,
     dispatchedVehiclesCount: incident.dispatchedVehiclesCount ?? 0
@@ -122,11 +135,12 @@ const getStationPage = createServerFn({ method: "GET" })
       station: {
         id: station.id,
         name: station.name,
+        displayName: formatStationName(station.name),
         stationKey: station.stationKey,
         radioChannel: station.radioChannel,
         latitude: station.latitude,
         longitude: station.longitude,
-        address: station.address,
+        address: station.address ? formatAddress(station.address) : null,
         phoneNumber: station.phoneNumber,
         fax: station.fax,
         email: station.email,
@@ -138,6 +152,7 @@ const getStationPage = createServerFn({ method: "GET" })
       recentIncidents: recent.data.map(mapIncident),
       collaborations: collaborations.map((collaboration) => ({
         name: collaboration.name,
+        displayName: formatStationName(collaboration.name),
         stationKey: collaboration.stationKey,
         collaborationCount: collaboration.collaborationCount
       })),

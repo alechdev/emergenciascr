@@ -98,11 +98,12 @@ export const Route = createFileRoute("/_dashboard/estaciones/$name")({
   head: ({ loaderData, params }) => {
     const stationName =
       loaderData?.station?.name ?? decodeURIComponent(params.name).replace(/-/g, " ");
+    const displayName = loaderData?.station?.displayName ?? stationName;
     const stationAddress = loaderData?.station?.address?.trim() || null;
-    const title = `Estación de Bomberos ${stationName} | Emergencias CR`;
+    const title = `Estación de Bomberos ${displayName} | Emergencias CR`;
     const description = stationAddress
-      ? `Estación de Bomberos ${stationName} del Cuerpo de Bomberos de Costa Rica. ${stationAddress}`
-      : `Estación de Bomberos ${stationName} del Cuerpo de Bomberos de Costa Rica. Incidentes, unidades y tiempos de respuesta.`;
+      ? `Estación de Bomberos ${displayName} del Cuerpo de Bomberos de Costa Rica. ${stationAddress}`
+      : `Estación de Bomberos ${displayName} del Cuerpo de Bomberos de Costa Rica. Incidentes, unidades y tiempos de respuesta.`;
     const stationUrl = `${SITE_URL}/estaciones/${encodeURIComponent(stationName)}`;
 
     return {
@@ -131,7 +132,7 @@ function EstacionDetailPage() {
   const stationUrl = `${SITE_URL}/estaciones/${encodeURIComponent(station.name)}`;
 
   const jsonLd = buildFireStationJsonLd({
-    name: station.name,
+    name: station.displayName,
     url: stationUrl,
     stationKey: station.stationKey,
     address: station.address,

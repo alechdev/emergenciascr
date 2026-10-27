@@ -16,7 +16,7 @@ export function StationCard({ station }: { station: GetStationByNameResponse["st
           <div className="aspect-3/2 w-full overflow-hidden rounded-t-xl bg-muted">
             <img
               src={station.imageUrl}
-              alt={`Estación ${station.name}`}
+              alt={`Estación ${station.displayName}`}
               className="h-full w-full object-cover"
               loading="lazy"
               decoding="async"
@@ -28,7 +28,7 @@ export function StationCard({ station }: { station: GetStationByNameResponse["st
         </div>
         <div className="flex flex-1 flex-col px-5 pt-7 pb-5">
           <h3 className="text-lg leading-tight font-bold tracking-tight text-foreground group-hover:text-primary">
-            Estación {station.name}
+            Estación {station.displayName}
           </h3>
           {station.address ? (
             <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground/80">

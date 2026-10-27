@@ -47,7 +47,7 @@ function CollaborationCard({ station }: CollaborationCardProps) {
       <div className="relative aspect-2/1 w-full bg-muted">
         <img
           src={station.imageUrl}
-          alt={station.name}
+          alt={station.displayName}
           className="h-full w-full object-cover"
           loading="lazy"
           decoding="async"
@@ -58,7 +58,7 @@ function CollaborationCard({ station }: CollaborationCardProps) {
       </div>
       <div className="flex flex-col gap-2 px-5 pt-7 pb-5">
         <h3 className="text-lg leading-tight font-bold text-foreground group-hover:text-primary">
-          {station.name}
+          {station.displayName}
         </h3>
         <p className="text-sm text-foreground">
           Trabajaron en conjunto en{" "}

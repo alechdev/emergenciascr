@@ -24,6 +24,11 @@ describe("toSentenceCase", () => {
     expect(toSentenceCase("C.C. EN LINEAS PRIMARIAS")).toBe("C.C. en lineas primarias");
     expect(toSentenceCase("CHOQUE DE LA M-128")).toBe("Choque de la M-128");
   });
+
+  it("lower-cases a word that only ends a sentence with a period", () => {
+    expect(toSentenceCase("ACCIDENTE DE TRANSITO.")).toBe("Accidente de transito.");
+    expect(toSentenceCase("RETIRO DE S.A. Y TRANSITO.")).toBe("Retiro de S.A. y transito.");
+  });
 });
 
 describe("formatIncidentHeadline", () => {
@@ -126,6 +131,19 @@ describe("buildIncidentDeck", () => {
         attentionSeconds: null
       })
     ).toBe("Se despachó una unidad de la estación Puriscal. La atención sigue en curso.");
+  });
+
+  it("describes the arrival of a single unit", () => {
+    expect(
+      buildIncidentDeck({
+        isOpen: false,
+        stations: [{ name: "PURISCAL", vehicles: [1] }],
+        responseTimes: [responseTimes[1]!],
+        attentionSeconds: 8160
+      })
+    ).toBe(
+      `Se despachó una unidad de la estación Puriscal. La M-128 llegó a la escena ${nbsp("17 min 8 s")} después del despacho. El incidente se cerró tras ${nbsp("2 h 16 min")}.`
+    );
   });
 
   it("returns null when nothing was dispatched", () => {

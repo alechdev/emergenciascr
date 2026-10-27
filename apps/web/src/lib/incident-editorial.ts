@@ -15,8 +15,9 @@ function capitalize(word: string): string {
 }
 
 // SIGAE sends text in upper case; abbreviations ("C.C.") and unit numbers ("M-128") must keep it.
+// Only a period followed by more text marks an abbreviation, so "TRANSITO." still lower-cases.
 function isAcronymLike(word: string): boolean {
-  return /[.\d]/.test(word);
+  return /\d|\.\S/.test(word);
 }
 
 /** "SAN RAFAEL DE ALAJUELA" -> "San Rafael de Alajuela". */

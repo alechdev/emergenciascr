@@ -40,7 +40,7 @@ export function DispatchedStations() {
               <span className="w-10 shrink-0 text-sm text-muted-foreground tabular-nums">
                 {station.stationKey}
               </span>
-              <span className="shrink-0">
+              <span>
                 <span className="transition-colors group-hover:text-primary">
                   {formatPlaceName(station.name)}
                 </span>
@@ -49,7 +49,7 @@ export function DispatchedStations() {
                 )}
               </span>
               {station.vehicles.length > 0 && (
-                <span className="min-w-0 flex-1 text-right text-sm text-balance text-muted-foreground tabular-nums">
+                <span className="flex-1 text-right text-sm text-balance text-muted-foreground tabular-nums">
                   {station.vehicles.map((vehicle, index) => (
                     <span key={vehicle.internalNumber}>
                       {index > 0 && ", "}

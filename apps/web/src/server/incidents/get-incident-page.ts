@@ -75,7 +75,9 @@ type IncidentPageIncident = {
   modifiedAt: string | null;
   latitude: number;
   longitude: number;
+  districtName: string | null;
   cantonName: string | null;
+  provinceName: string | null;
   mapImageUrl: string | null;
   statistics: IncidentPageStatistics;
 } & IncidentPageTypeNames;
@@ -199,7 +201,9 @@ const getIncidentPage = createServerFn({ method: "GET" })
         modifiedAt: toIsoStringOrNull(incident.modifiedAt),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
+        districtName: incident.district?.name ?? null,
         cantonName: incident.canton?.name ?? null,
+        provinceName: incident.province?.name ?? null,
         mapImageUrl: coordinates.hasStoredCoordinates
           ? buildMapImageUrl(incident.id, coordinates.latitude, coordinates.longitude)
           : null,

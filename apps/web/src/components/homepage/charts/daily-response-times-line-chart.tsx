@@ -120,7 +120,7 @@ export function DailyResponseTimesLineChart() {
     <section className="flex flex-col gap-0">
       <div className="grid grid-cols-1 gap-0 xl:grid-cols-3">
         <div className="xl:col-span-3">
-          <div className="border border-t-0 border-zinc-800/70 bg-card">
+          <div className="border border-t-0 border-border bg-card">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 pt-3">
               <h2 className="text-sm font-semibold tracking-wide uppercase">
                 Tiempos de respuesta
@@ -156,7 +156,7 @@ export function DailyResponseTimesLineChart() {
 
             {isLoading ? (
               <div className="h-[320px] w-full px-2 pb-2 sm:px-3 sm:pb-3">
-                <Skeleton className="h-full w-full bg-zinc-800" />
+                <Skeleton className="h-full w-full" />
               </div>
             ) : isError ? (
               <div className="flex h-[320px] items-center justify-center px-4 pb-4 text-sm text-muted-foreground">

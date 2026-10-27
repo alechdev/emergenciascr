@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 
 import { LogoIcon } from "@/components/layout/logo-icon";
 import { navItems } from "@/components/layout/nav-items";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { SERVER_URL } from "@/lib/site";
 
 const SOCIAL_LINKS = [
@@ -71,6 +72,8 @@ export function Footer() {
             </a>
           ))}
         </nav>
+
+        <ThemeToggle />
 
         <div className="mt-2 flex w-full flex-col items-center gap-1.5 border-t pt-6">
           <p className="font-mono text-xs text-muted-foreground">© {currentYear} Emergencias CR</p>

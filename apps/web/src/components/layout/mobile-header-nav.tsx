@@ -2,6 +2,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { navItems } from "@/components/layout/nav-items";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -69,7 +70,7 @@ export function MobileHeaderNav({ className }: { className?: string }) {
           positionerClassName="!h-auto !w-auto !max-w-none left-0!"
           side="bottom"
           sideOffset={8}>
-          <div className="flex flex-col gap-6 overflow-auto px-6 py-6">
+          <div className="flex min-h-[calc(100dvh-var(--app-header-height))] flex-col gap-6 overflow-auto px-6 py-6">
             <div className="flex flex-col gap-3">
               {enabledNavItems.map((item) => (
                 <MobileLink
@@ -80,6 +81,10 @@ export function MobileHeaderNav({ className }: { className?: string }) {
                   {item.title}
                 </MobileLink>
               ))}
+            </div>
+            <div className="mt-auto flex items-center justify-between gap-4 border-t pt-6">
+              <span className="text-sm text-muted-foreground">Tema</span>
+              <ThemeToggle />
             </div>
           </div>
         </PopoverContent>

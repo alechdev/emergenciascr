@@ -174,7 +174,7 @@ export function RecentIncidentsHoursBarChart() {
     <section className="flex flex-col gap-0">
       <div className="grid grid-cols-1 gap-0 xl:grid-cols-3">
         <div className="xl:col-span-3">
-          <div className="border border-t-0 border-zinc-800/70 bg-card">
+          <div className="border border-t-0 border-border bg-card">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 max-lgx:py-2">
               <h2 className="text-sm font-semibold tracking-wide uppercase">Incidentes por hora</h2>
 
@@ -214,7 +214,7 @@ export function RecentIncidentsHoursBarChart() {
                   aria-label="Grafico desplazable de incidentes por hora">
                   <div className={`w-full ${scrollContentClassName}`}>
                     <div className="h-[140px] w-full sm:h-[152px] lg:h-[120px]">
-                      <Skeleton className="h-full w-full bg-zinc-800" />
+                      <Skeleton className="h-full w-full" />
                     </div>
 
                     <ol
@@ -226,7 +226,7 @@ export function RecentIncidentsHoursBarChart() {
                         <li
                           key={`hourly-chart-skeleton-label-${index}`}
                           className="flex min-w-0 justify-center">
-                          <Skeleton className="h-4 w-10 bg-zinc-800" />
+                          <Skeleton className="h-4 w-10" />
                         </li>
                       ))}
                     </ol>
@@ -303,7 +303,7 @@ export function RecentIncidentsHoursBarChart() {
                           key={item.key}
                           className="min-w-0 text-center">
                           <p
-                            className="truncate text-[11px] leading-4 text-zinc-400"
+                            className="truncate text-[11px] leading-4 text-muted-foreground"
                             title={item.tooltipLabel}>
                             {item.shortLabel}
                           </p>

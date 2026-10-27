@@ -1,9 +1,9 @@
 import { Link } from "@tanstack/react-router";
 
+import { SectionHeading } from "@/components/incidents/details/section-heading";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatPlaceName } from "@/lib/incident-editorial";
 import { Route } from "@/routes/_dashboard/incidentes/$slug";
-
-type Station = ReturnType<typeof Route.useLoaderData>["stations"][number];
 
 export function DispatchedStations() {
   const { stations } = Route.useLoaderData();
@@ -25,70 +25,62 @@ export function DispatchedStations() {
   });
 
   return (
-    <section className="mt-6">
-      <h2 id="estaciones">Estaciones despachadas</h2>
-      <ul className="not-typography mt-4 ml-0 grid list-none grid-cols-1 gap-4 pl-0 sm:grid-cols-2">
+    <section aria-labelledby="estaciones">
+      <SectionHeading
+        id="estaciones"
+        title="Estaciones despachadas"
+      />
+      <ul className="mt-4 divide-y border-y">
         {sortedStations.map((station) => (
           <li key={station.name}>
-            <StationCard station={station} />
+            <Link
+              to="/estaciones/$name"
+              params={{ name: station.name }}
+              className="group flex items-baseline gap-4 py-3.5">
+              <span className="w-10 shrink-0 text-sm text-muted-foreground tabular-nums">
+                {station.stationKey}
+              </span>
+              <span>
+                <span className="transition-colors group-hover:text-primary">
+                  {formatPlaceName(station.name)}
+                </span>
+                {station.isResponsible && (
+                  <span className="ms-2 text-xs text-muted-foreground">Responsable</span>
+                )}
+              </span>
+              {station.vehicles.length > 0 && (
+                <span className="flex-1 text-right text-sm text-balance text-muted-foreground tabular-nums">
+                  {station.vehicles.map((vehicle, index) => (
+                    <span key={vehicle.internalNumber}>
+                      {index > 0 && ", "}
+                      <span className="whitespace-nowrap">{vehicle.internalNumber}</span>
+                    </span>
+                  ))}
+                </span>
+              )}
+            </Link>
           </li>
         ))}
       </ul>
     </section>
-  );
-}
-
-function StationCard({ station }: { station: Station }) {
-  return (
-    <Link
-      to="/estaciones/$name"
-      params={{ name: station.name }}
-      className="group block overflow-hidden rounded-xl bg-card shadow-md transition-shadow hover:shadow-xl">
-      <div className="relative aspect-3/2 w-full bg-muted">
-        <img
-          src={station.imageUrl}
-          alt={station.name}
-          className="h-full w-full object-cover transition-opacity duration-300"
-          loading="lazy"
-        />
-        <div className="absolute bottom-0 left-5 z-10 flex h-10 w-10 translate-y-1/2 items-center justify-center rounded-full bg-primary font-mono text-xs font-bold text-primary-foreground ring-4 ring-card">
-          {station.stationKey}
-        </div>
-      </div>
-      <div className="flex flex-col gap-2 px-5 pt-7 pb-5">
-        <h3 className="text-lg leading-tight font-bold tracking-tight text-foreground transition-colors group-hover:text-primary sm:line-clamp-1">
-          {station.name}
-        </h3>
-      </div>
-    </Link>
   );
 }
 
 export function DispatchedStationsSkeleton() {
   return (
-    <section className="mt-6">
-      <Skeleton className="h-8 w-56" />
-      <ul className="not-typography mt-4 ml-0 grid list-none grid-cols-1 gap-4 pl-0 sm:grid-cols-2">
+    <section>
+      <Skeleton className="h-7 w-64" />
+      <ul className="mt-4 divide-y border-y">
         {Array.from({ length: 2 }).map((_, i) => (
-          <li key={i}>
-            <StationCardSkeleton />
+          <li
+            key={i}
+            className="flex items-center gap-4 py-4">
+            <Skeleton className="h-4 w-10" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="ms-auto h-4 w-20" />
           </li>
         ))}
       </ul>
     </section>
-  );
-}
-
-function StationCardSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-xl bg-card shadow-sm">
-      <div className="relative">
-        <Skeleton className="aspect-3/2 w-full rounded-none" />
-        <Skeleton className="absolute bottom-0 left-5 h-10 w-10 translate-y-1/2 rounded-full ring-4 ring-card" />
-      </div>
-      <div className="flex flex-col gap-2 px-5 pt-7 pb-5">
-        <Skeleton className="h-6 w-40 rounded-md" />
-      </div>
-    </div>
   );
 }

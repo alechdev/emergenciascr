@@ -3,6 +3,7 @@ import { isKnownDate } from "@bomberoscr/lib/missing-date";
 import { ChartBarHorizontalIcon, TableIcon } from "@phosphor-icons/react";
 import { Bar, BarChart, XAxis, YAxis } from "recharts";
 
+import { SectionHeading } from "@/components/incidents/details/section-heading";
 import {
   type ChartConfig,
   ChartContainer,
@@ -73,22 +74,28 @@ export function VehicleResponseTimes() {
 
   if (timeData.length === 0) {
     return (
-      <section className="mt-6">
-        <h2 id="tiempos">Desglose de tiempos de vehículos despachados</h2>
-        <p className="mt-2 text-muted-foreground">No hay datos de tiempo disponibles</p>
+      <section aria-labelledby="tiempos">
+        <SectionHeading
+          id="tiempos"
+          title="Tiempos de respuesta"
+        />
+        <p className="mt-4 text-sm text-muted-foreground">No hay datos de tiempo disponibles.</p>
       </section>
     );
   }
 
   return (
-    <section className="mt-6">
-      <h2 id="tiempos">Desglose de tiempos de vehículos despachados</h2>
+    <section aria-labelledby="tiempos">
+      <SectionHeading
+        id="tiempos"
+        title="Tiempos de respuesta"
+      />
       <Tabs
         defaultValue="chart"
-        className="w-full">
+        className="mt-4 w-full">
         <TabsList
           variant="underline"
-          className="mt-2 h-auto">
+          className="h-auto">
           <TabsTab
             value="chart"
             className="border-none"
@@ -291,8 +298,8 @@ function VehicleResponseTimeTable({ vehicles }: { vehicles: VehicleTimeData[] })
 
 export function VehicleResponseTimesSkeleton() {
   return (
-    <section className="mt-6">
-      <Skeleton className="mb-4 h-8 w-80" />
+    <section>
+      <Skeleton className="mb-4 h-7 w-56" />
       <div className="flex gap-4 border-b pb-2">
         <Skeleton className="h-8 w-24" />
         <Skeleton className="h-8 w-20" />

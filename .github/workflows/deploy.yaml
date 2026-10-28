@@ -74,6 +74,11 @@ jobs:
       group: deploy-prod
       cancel-in-progress: false
     runs-on: ubuntu-latest
+    # Tailscale workload identity federation exchanges the job's GitHub OIDC
+    # token for an ephemeral tag:ci node; no client secret is stored.
+    permissions:
+      contents: read
+      id-token: write
     env:
       DEPLOY_WEB: ${{ needs.changes.outputs.web }}
       DEPLOY_SYNC_V2: ${{ needs.changes.outputs.sync_v2 }}
@@ -87,7 +92,7 @@ jobs:
         uses: tailscale/github-action@v4
         with:
           oauth-client-id: ${{ secrets.TAILSCALE_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TAILSCALE_CLIENT_SECRET }}
+          audience: ${{ secrets.TAILSCALE_AUDIENCE }}
           tags: tag:ci
       - name: Add registry host entry
         env:
